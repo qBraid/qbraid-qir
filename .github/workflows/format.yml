@@ -17,8 +17,9 @@ jobs:
           python-version: '3.10'
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install pylint black isort
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+          ppython3 -m pip install -r requirements-dev.txt
       - name: Check isort, pylint, black, headers
         run: |
           pylint qbraid_qir tests tools
