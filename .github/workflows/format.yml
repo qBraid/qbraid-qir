@@ -18,7 +18,8 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install -r requirements.txt requirements-dev.txt
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install -r requirements-dev.txt
       - name: Check isort, pylint, black, headers
         run: |
           pylint qbraid_qir tests tools
