@@ -59,9 +59,10 @@ here = os.path.abspath(os.path.dirname(__file__))
 version = read_version(os.path.join(here, "qbraid_qir/_version.py"))
 install_requires = read_requirements(os.path.join(here, "requirements.txt"))
 dev_requires = read_requirements(os.path.join(here, "requirements-dev.txt"))
+docs_requires = read_requirements(os.path.join(here, "docs", "requirements.txt"))
 
 setup(
     version=version,
     install_requires=install_requires,
-    extras_require={"dev": dev_requires},
+    extras_require={"dev": dev_requires, "docs": docs_requires},
 )
