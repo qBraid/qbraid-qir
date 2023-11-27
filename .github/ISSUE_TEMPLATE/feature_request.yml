@@ -1,0 +1,21 @@
+name: Feature Request
+description: Suggest a New Feature! 💡
+labels: ["type: feature request"]
+
+body:
+  - type: markdown
+    attributes:
+      value: Before submitting your feature request, please ensure it hasn't already been suggested by checking existing issues.
+
+  - type: textarea
+    attributes:
+      label: Feature Description
+      description: Clearly describe the feature you would like to see added. Explain why this feature would be beneficial.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed Implementation
+      description: |
+        Do you have a specific implementation in mind for this feature? Please share your ideas or any relevant details here. Your suggestions are greatly appreciated, but not mandatory.

@@ -1,0 +1,37 @@
+name: Bug Report
+description: Report a Bug 🪳
+labels: ["type: bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: Before submitting, please ensure that this issue has not already been reported by checking existing issues.
+
+  - type: textarea
+    attributes:
+      label: Environment
+      description: Please provide details about your environment to help us understand the context of the bug.
+      value: |
+        - **Python version**:
+        - **Operating system**:
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: What Happened?
+      description: Provide a brief description of the issue and steps to reproduce it.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Expected Outcome
+      description: Describe what you expected to happen instead of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Suggestions for Resolution
+      description: If you have any suggestions for resolving the issue, please share them here. Your input is valuable, but not required.
