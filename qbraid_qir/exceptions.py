@@ -16,4 +16,8 @@ from qbraid.exceptions import QbraidError
 
 
 class QirConversionError(QbraidError):
-    """Base class for errors raised by qBraid QIR package."""
+    """Class for errors raised when converting quantum program to QIR code."""
+
+    def __init__(self, program_type: str):
+        msg = f"Failed to convert {program_type} program to QIR code."
+        super().__init__(msg)
