@@ -14,5 +14,5 @@ Add an `x` between the boxes braket that apply, meaning to complete the check be
 
 - [ ] API Reference docstrings and/or User Guide have been updated to account for new features.
 
-- [ ] All integration tests, including remote tests, are passing. -->
+- [ ] All integration tests are passing. -->
 

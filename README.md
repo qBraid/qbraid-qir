@@ -12,6 +12,8 @@
   </a>
 </p>
 
+*Work in progress*
+
 qBraid-SDK extension providing support for QIR conversions
 
 ## Local install
