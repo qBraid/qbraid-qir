@@ -2,7 +2,7 @@
 
 <p align="left">
   <a href="https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml">
-    <img src="https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml/badge.svg?branch=main" alt="CI"/>
+      <img src="https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml/badge.svg" alt="CI">
   </a>
   <a href="https://www.gnu.org/licenses/gpl-3.0.html">
     <img src="https://img.shields.io/github/license/qBraid/qbraid.svg" alt="License"/>
