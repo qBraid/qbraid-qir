@@ -18,25 +18,23 @@ import pytest
 from qbraid_qir.cirq.conversions import cirq_to_qir
 from qbraid_qir.exceptions import QirConversionError
 
-
-@pytest.fixture
-def cirq_bell() -> cirq.Circuit:
-    """Returns a Cirq bell circuit with measurement over two qubits."""
-    q0, q1 = cirq.LineQubit.range(2)
-    circuit = cirq.Circuit(cirq.H(q0), cirq.CNOT(q0, q1), cirq.measure(q0, q1))
-    return circuit
-
-
-@pytest.fixture
-def qir_bell() -> str:
-    """Returns a QIR bell circuit with measurement over two qubits."""
-    raise NotImplementedError
+from .fixtures import cirq_bell, pyqir_bell
+from .utils import check_qir_result
 
 
 @pytest.mark.skip(reason="Not implemented yet")
-def test_convert_bell(cirq_bell, qir_bell):
+def test_convert_bell_compare_pyqir(cirq_bell, qir_bell):
     """Test converting Cirq bell circuit to QIR."""
-    assert cirq_to_qir(cirq_bell) == qir_bell
+    generator = cirq_to_qir(cirq_bell, name="test_pyqir_bell")
+    assert generator.ir() == qir_bell.ir()
+
+
+@pytest.mark.skip(reason="Not implemented yet")
+def test_convert_bell_compare_file(cirq_bell):
+    """Test converting Cirq bell circuit to QIR."""
+    test_name = "test_pyqir_bell"
+    generator = cirq_to_qir(cirq_bell, name=test_name)
+    check_qir_result(generator.ir(), test_name)
 
 
 def test_cirq_to_qir_type_error():
