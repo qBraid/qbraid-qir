@@ -31,9 +31,4 @@ def assert_equal_qir(given_qir: str, filename: str) -> None:
 
     processed_given_qir = given_qir.strip()
 
-    print(processed_given_qir)
-    print()
-    print()
-    print(file_data)
-
     assert file_data == processed_given_qir
