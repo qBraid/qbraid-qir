@@ -12,14 +12,15 @@
 Module defining CirqVisitor.
 
 """
+# isort: skip_file
+
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import FrozenSet, List
+from typing import FrozenSet
 
 import cirq
 import pyqir.rt as rt
-from pyqir import (BasicBlock, Builder, Constant, IntType, PointerType,
-                   entry_point)
+from pyqir import BasicBlock, Builder, Constant, IntType, PointerType, entry_point
 
 from qbraid_qir.cirq.elements import CirqModule
 
