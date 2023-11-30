@@ -22,4 +22,4 @@ Functions
    cirq_to_qir
 
 """
-from .conversions import cirq_to_qir
+from .convert import cirq_to_qir
