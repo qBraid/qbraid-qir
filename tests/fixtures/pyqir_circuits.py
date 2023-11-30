@@ -19,7 +19,7 @@ from pyqir import BasicQisBuilder, SimpleModule
 @pytest.fixture
 def pyqir_bell() -> SimpleModule:
     """Returns a QIR bell circuit with measurement over two qubits."""
-    bell = SimpleModule("test_bell", num_qubits=2, num_results=2)
+    bell = SimpleModule("test_qir_bell", num_qubits=2, num_results=2)
     qis = BasicQisBuilder(bell.builder)
 
     qis.h(bell.qubits[0])

@@ -24,9 +24,9 @@ def generate_module_id(circuit: cirq.Circuit) -> str:
     """
     Generates a QIR module ID from a given Cirq circuit.
 
-    This function serializes the Cirq circuit into a JSON string, computes its SHA-256 hash, and then converts
-    the hash into an alphanumeric string. The final name is a truncated version of this alphanumeric string,
-    prefixed with 'circuit-', ensuring a concise and semi-unique identifier.
+    This function serializes the Cirq circuit into a JSON string, computes its SHA-256 hash,
+    and converts the hash into an alphanumeric string. The final name is a truncated version,
+    prefixed with 'circuit-', to form a concise, semi-unique identifier.
 
     Args:
         circuit (cirq.Circuit): The Cirq circuit for which a unique name is to be generated.
