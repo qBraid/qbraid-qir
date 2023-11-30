@@ -8,8 +8,13 @@
 #
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
-import pytest
+"""
+Module defining Cirq basic gate fixtures for use in tests.
+
+"""
+
 import cirq
+import pytest
 
 # All of the following dictionaries map from the names of methods on Cirq Circuit objects
 # to the name of the equivalent pyqir BasicQisBuilder method
@@ -30,26 +35,27 @@ def _fixture_name(s: str) -> str:
     return f"Fixture_{s}"
 
 
-def _map_gate_name(gate: str) -> str:
-    if gate in _one_qubit_gates:
-        return _one_qubit_gates[gate]
-    else:
-        raise ValueError(f"Unknown Cirq gate {gate}")
+def _map_gate_name(gate_name: str) -> str:
+    if gate_name in _one_qubit_gates:
+        return _one_qubit_gates[gate_name]
+
+    raise ValueError(f"Unknown Cirq gate {gate_name}")
 
 
-def _generate_one_qubit_fixture(gate: str):
+def _generate_one_qubit_fixture(gate_name: str):
     @pytest.fixture()
     def test_fixture():
         circuit = cirq.Circuit()
-        q = cirq.NamedQubit('q')
-        circuit.append(getattr(cirq, gate)(q))
-        return _map_gate_name(gate), circuit
+        q = cirq.NamedQubit("q")
+        circuit.append(getattr(cirq, gate_name)(q))
+        return _map_gate_name(gate_name), circuit
 
     return test_fixture
 
+
 # Generate simple single-qubit gate fixtures
-for gate in _one_qubit_gates.keys():
+for gate in _one_qubit_gates:
     name = _fixture_name(gate)
     locals()[name] = _generate_one_qubit_fixture(gate)
 
-single_op_tests = [_fixture_name(s) for s in _one_qubit_gates.keys()]
+single_op_tests = [_fixture_name(s) for s in _one_qubit_gates]
