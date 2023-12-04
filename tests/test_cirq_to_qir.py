@@ -12,33 +12,18 @@
 Module containing unit tests for Cirq to QIR conversion functions.
 
 """
+import hashlib
+
 import cirq
 import pytest
 
 from qbraid_qir.cirq.conversions import cirq_to_qir
 from basic_gates import single_op_tests
 import test_utils
+from qbraid_qir.cirq.convert import cirq_to_qir, generate_module_id
 from qbraid_qir.exceptions import QirConversionError
 
-
-@pytest.fixture
-def cirq_bell() -> cirq.Circuit:
-    """Returns a Cirq bell circuit with measurement over two qubits."""
-    q0, q1 = cirq.LineQubit.range(2)
-    circuit = cirq.Circuit(cirq.H(q0), cirq.CNOT(q0, q1), cirq.measure(q0, q1))
-    return circuit
-
-
-@pytest.fixture
-def qir_bell() -> str:
-    """Returns a QIR bell circuit with measurement over two qubits."""
-    raise NotImplementedError
-
-
-@pytest.mark.skip(reason="Not implemented yet")
-def test_convert_bell(cirq_bell, qir_bell):
-    """Test converting Cirq bell circuit to QIR."""
-    assert cirq_to_qir(cirq_bell) == qir_bell
+from .qir_utils import assert_equal_qir
 
 
 def test_cirq_to_qir_type_error():
@@ -47,6 +32,7 @@ def test_cirq_to_qir_type_error():
         cirq_to_qir(None)
 
 
+@pytest.mark.skip(reason="Not implemented yet")
 def test_cirq_to_qir_conversion_error():
     """Test raising exception for conversion error."""
     circuit = cirq.Circuit()
@@ -62,3 +48,16 @@ def test_single_qubit_gates(circuit_name, request):
     assert func[1] == test_utils.single_op_call_string(qir_op, 0)
     assert func[2] == test_utils.return_string()
     assert len(func) == 3
+
+
+def test_verify_qir_bell_fixture(pyqir_bell):
+    """Test that pyqir fixture generates code equal to test_qir_bell.ll file."""
+    assert_equal_qir(pyqir_bell.ir(), "test_qir_bell")
+
+
+@pytest.mark.skip(reason="Not implemented yet")
+def test_convert_bell_compare_file(cirq_bell):
+    """Test converting Cirq bell circuit to QIR."""
+    test_name = "test_qir_bell"
+    generator = cirq_to_qir(cirq_bell, name=test_name)
+    assert_equal_qir(generator.ir(), test_name)

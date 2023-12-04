@@ -9,11 +9,16 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module defining exceptions for errors raised by qBraid.
+Module containing Cirq circuit fixtures for unit tests.
 
 """
-from qbraid.exceptions import QbraidError
+import cirq
+import pytest
 
 
-class QirConversionError(QbraidError):
-    """Class for errors raised when converting quantum program to QIR."""
+@pytest.fixture
+def cirq_bell() -> cirq.Circuit:
+    """Returns a Cirq bell circuit with measurement over two qubits."""
+    q0, q1 = cirq.LineQubit.range(2)
+    circuit = cirq.Circuit(cirq.H(q0), cirq.CNOT(q0, q1), cirq.measure(q0, q1))
+    return circuit

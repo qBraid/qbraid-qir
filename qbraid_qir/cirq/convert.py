@@ -15,22 +15,23 @@ Module containing Cirq to qBraid QIR conversion functions
 from typing import Optional
 
 import cirq
+from pyqir import Context, Module, qir_module
 
+from qbraid_qir.cirq.elements import CirqModule, generate_module_id
+from qbraid_qir.cirq.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
 
 
-# Example: https://github.com/qir-alliance/pyqir/blob/main/examples/mock_to_qir.py
-def cirq_to_qir(
-    circuit: cirq.Circuit, output_file: Optional[str] = None
-) -> Optional[str]:
-    """Converts a Cirq circuit to QIR code.
+def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
+    """
+    Converts a Cirq circuit to a PyQIR module.
 
     Args:
         circuit (cirq.Circuit): The Cirq circuit to convert.
-        output_file (str, optional): The output file to write the QIR code to. Defaults to None.
+        name (str, optional): Identifier for created QIR module. Auto-generated if not provided.
 
     Returns:
-        str: The QIR code.
+        The QIR ``pyqir.Module`` representation of the input Cirq circuit.
 
     Raises:
         TypeError: If the input is not a Cirq circuit.
@@ -39,17 +40,14 @@ def cirq_to_qir(
     if not isinstance(circuit, cirq.Circuit):
         raise TypeError("Input quantum program must be of type cirq.Circuit.")
 
-    try:
-        generated_qir = None  # TODO: Convert Cirq circuit to QIR code
+    if name is None:
+        name = generate_module_id(circuit)
 
-        raise NotImplementedError
-    except Exception as e:
-        raise QirConversionError("Cirq") from e
-
-    if output_file is not None:
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(generated_qir)
-
-        return None
-
-    return generated_qir
+    llvm_module = qir_module(Context(), name)
+    module = CirqModule.from_circuit(circuit, llvm_module)
+    visitor = BasicQisVisitor(**kwargs)
+    module.accept(visitor)
+    err = llvm_module.verify()
+    if err is not None:
+        raise QirConversionError(err)
+    return llvm_module

@@ -9,11 +9,8 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module defining exceptions for errors raised by qBraid.
+Module defining supported Cirq operations/gates.
 
 """
-from qbraid.exceptions import QbraidError
 
-
-class QirConversionError(QbraidError):
-    """Class for errors raised when converting quantum program to QIR."""
+CIRQ_GATES = {}
