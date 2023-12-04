@@ -47,6 +47,7 @@ def _generate_one_qubit_fixture(gate: str):
 
     return test_fixture
 
+
 # Generate simple single-qubit gate fixtures
 for gate in _one_qubit_gates.keys():
     name = _fixture_name(gate)
