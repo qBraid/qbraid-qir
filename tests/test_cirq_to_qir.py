@@ -17,8 +17,8 @@ import hashlib
 import cirq
 import pytest
 
-from qbraid_qir.cirq.conversions import cirq_to_qir
-from basic_gates import single_op_tests
+from qbraid_qir.cirq.convert import cirq_to_qir
+from fixtures.basic_gates import single_op_tests
 import test_utils
 from qbraid_qir.cirq.convert import cirq_to_qir, generate_module_id
 from qbraid_qir.exceptions import QirConversionError
