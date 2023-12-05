@@ -75,7 +75,7 @@ class BasicQisVisitor(CircuitElementVisitor):
     def record_output(self, module: CirqModule):
         raise NotImplementedError
 
-    def visit_qid(self, qid: cirq.Qid):
+    def visit_register(self, qid: cirq.Qid):
         _log.debug(f"Visiting qid '{str(qid)}'")
         if isinstance(qid, cirq.LineQubit):
             pass
