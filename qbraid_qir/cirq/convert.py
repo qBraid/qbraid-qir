@@ -34,7 +34,7 @@ def _preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
         cirq.Circuit: The preprocessed Cirq circuit.
 
     """
-    # return cirq.contrib.qasm_import.circuit_from_qasm(circuit.to_qasm()) # decompose?
+    # circuit = cirq.contrib.qasm_import.circuit_from_qasm(circuit.to_qasm()) # decompose?
     qprogram = qbraid.programs.cirq.CirqCircuit(circuit)
     qprogram._convert_to_line_qubits()
     cirq_circuit = qprogram.program

@@ -77,6 +77,7 @@ Documentation
    :hidden:
 
    api/qbraid_qir
+   api/qbraid_qir.cirq
 
 
 Indices and Tables

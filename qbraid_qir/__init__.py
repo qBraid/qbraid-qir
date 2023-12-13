@@ -31,5 +31,5 @@ Exceptions
 
 """
 from ._version import __version__
-from .exceptions import QirConversionError
 from .cirq import cirq_to_qir
+from .exceptions import QirConversionError
