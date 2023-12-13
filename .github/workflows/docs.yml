@@ -18,9 +18,12 @@ jobs:
         cache: pip
     - name: Install dependencies
       run: |
+        cd docs
         python3 -m pip install --upgrade pip
         python3 -m pip install -r docs/requirements.txt
+        python3 -m pip install -r requirements.txt
         python3 -m pip install -e .
     - name: Build docs
       run: |
-        sphinx-build -W -b html docs/ docs/build/html
+        cd docs
+        sphinx-build -W -b html . build/html
