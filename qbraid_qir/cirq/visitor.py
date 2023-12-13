@@ -112,10 +112,10 @@ class BasicQisVisitor(CircuitElementVisitor):
         if not all(isinstance(x, cirq.Qid) for x in qids):
             raise TypeError("All elements in the list must be of type cirq.Qid.")
             # self._qubit_labels[qid] = len(self._qubit_labels)
-        self._qubit_labels.update({bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)})
-        _log.debug(
-            f"Added label for qubits {qids}"
+        self._qubit_labels.update(
+            {bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)}
         )
+        _log.debug(f"Added label for qubits {qids}")
 
     def process_composite_operation(self, operation: cirq.Operation):
         # e.g. operation.gate.sub_gate, this functionality might exist elsewhere.
