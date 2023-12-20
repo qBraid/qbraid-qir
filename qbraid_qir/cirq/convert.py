@@ -44,6 +44,24 @@ def _preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     return cirq_circuit
 
 
+def _preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
+    """
+    Preprocesses a Cirq circuit to ensure that it is compatible with the QIR conversion.
+
+    Args:
+        circuit (cirq.Circuit): The Cirq circuit to preprocess.
+
+    Returns:
+        cirq.Circuit: The preprocessed Cirq circuit.
+
+    """
+    # circuit = cirq.contrib.qasm_import.circuit_from_qasm(circuit.to_qasm()) # decompose?
+    qprogram = qbraid.programs.cirq.CirqCircuit(circuit)
+    qprogram._convert_to_line_qubits()
+    cirq_circuit = qprogram.program
+    return cirq_circuit
+
+
 def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
     """
     Converts a Cirq circuit to a PyQIR module.

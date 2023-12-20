@@ -12,13 +12,13 @@
 Module containing unit tests for Cirq to QIR conversion functions.
 
 """
-import hashlib
-
 import cirq
 import pytest
 
+import tests.test_utils as test_utils
 from qbraid_qir.cirq.convert import cirq_to_qir, generate_module_id
 from qbraid_qir.exceptions import QirConversionError
+from tests.fixtures.basic_gates import single_op_tests
 
 from .qir_utils import assert_equal_qir
 
@@ -35,6 +35,18 @@ def test_cirq_to_qir_conversion_error():
     circuit = cirq.Circuit()
     with pytest.raises(QirConversionError):
         cirq_to_qir(circuit)
+
+
+@pytest.mark.skip(reason="Not implemented yet")
+@pytest.mark.parametrize("circuit_name", single_op_tests)
+def test_single_qubit_gates(circuit_name, request):
+    qir_op, circuit = request.getfixturevalue(circuit_name)
+    generated_qir = str(cirq_to_qir(circuit)[0]).splitlines()
+    func = test_utils.get_entry_point_body(generated_qir)
+    assert func[0] == test_utils.initialize_call_string()
+    assert func[1] == test_utils.single_op_call_string(qir_op, 0)
+    assert func[2] == test_utils.return_string()
+    assert len(func) == 3
 
 
 def test_verify_qir_bell_fixture(pyqir_bell):

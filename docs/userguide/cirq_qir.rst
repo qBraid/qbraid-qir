@@ -11,7 +11,7 @@ Convert a ``Cirq`` circuit to ``QIR`` code:
 .. code-block:: python
 
    import cirq
-   from qbraid.cirq_qir import cirq_to_qir
+   from qbraid_qir.cirq import cirq_to_qir
 
    # Create two qubits
    q0, q1 = cirq.LineQubit.range(2)
