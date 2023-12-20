@@ -18,8 +18,14 @@ import pyqir._native
 # "barrier",
 # "mz",
 # "reset",
-# "s_adj",
-# "t_adj",
+
+ZPOWER_DICT = {
+    1: pyqir._native.z,
+    0.5: pyqir._native.s,
+    0.25: pyqir._native.t,
+    -0.5: pyqir._native.s_adj,
+    -0.25: pyqir._native.t_adj,
+}
 CIRQ_GATES = {
     'TOFFOLI': pyqir._native.ccx,
     'CCX': pyqir._native.ccx,
@@ -27,25 +33,25 @@ CIRQ_GATES = {
     'CNOT': pyqir._native.cx,
     'CZ': pyqir._native.cz,
     'H': pyqir._native.h,
-    'S': pyqir._native.s,
     'SWAP': pyqir._native.swap,
-    'T': pyqir._native.t,
     'X': pyqir._native.x,
     'Y': pyqir._native.y,
-    'Z': pyqir._native.z,
+    # 'Z': pyqir._native.z
     }
 
 def get_callable_from_pyqir_name(op: cirq.Operation):
     """Get callable from pyqir name."""
+    if isinstance(op, cirq.ops.ZPowGate):
+        return ZPOWER_DICT[op.gate.exponent]
     return CIRQ_GATES[str(op.gate)]
 
 # some testcases for the above function
 circuit = cirq.Circuit()
-circuit.append(cirq.ops.CNOT(cirq.LineQubit(0), cirq.LineQubit(1)))
-circuit.append(cirq.ops.CNOT(cirq.LineQubit(1), cirq.LineQubit(2)))
-circuit.append(cirq.ops.CNOT(cirq.LineQubit(2), cirq.LineQubit(3)))
-circuit.append(cirq.ops.H(cirq.LineQubit(0)))
-circuit.append(cirq.ops.H(cirq.LineQubit(1)))
+# circuit.append(cirq.ops.Z(cirq.LineQubit(0)))
+# circuit.append(cirq.ops.CNOT(cirq.LineQubit(1), cirq.LineQubit(2)))
+# circuit.append(cirq.ops.CNOT(cirq.LineQubit(2), cirq.LineQubit(3)))
+# circuit.append(cirq.ops.H(cirq.LineQubit(0)))
+# circuit.append(cirq.ops.H(cirq.LineQubit(1)))
 
-for op in circuit.all_operations():
-    print(get_callable_from_pyqir_name(op))
+# for op in circuit.all_operations():
+#     print(isinstance(op.gate, cirq.ops.ZPowGate))
