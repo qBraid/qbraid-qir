@@ -39,7 +39,7 @@ _log = logging.getLogger(name=__name__)
 
 class CircuitElementVisitor(metaclass=ABCMeta):
     @abstractmethod
-    def visit_register(self, register):
+    def visit_register(self, qids):
         raise NotImplementedError
 
     @abstractmethod
@@ -57,7 +57,6 @@ class BasicQisVisitor(CircuitElementVisitor):
         self._entry_point = None
         self._qubit_labels = {}
         self._profile = profile
-        self._capabilities = self._map_profile_to_capabilities(profile)
         self._measured_qubits = {}
         self._record_output = kwargs.get("record_output", True)
 
@@ -112,9 +111,10 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         if not all(isinstance(x, cirq.Qid) for x in qids):
             raise TypeError("All elements in the list must be of type cirq.Qid.")
-            # self._qubit_labels[qid] = len(self._qubit_labels)
-        self._qubit_labels.update(
-            {bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)}
+
+        self._qubit_labels.update({bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)})
+        _log.debug(
+            f"Added label for qubits {qids}"
         )
         _log.debug(f"Added label for qubits {qids}")
 
@@ -122,7 +122,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         # e.g. operation.gate.sub_gate, this functionality might exist elsewhere.
         raise NotImplementedError
 
-    def visit_operation(self, operation: cirq.Operation, qids: FrozenSet[cirq.Qid]):
+    def visit_operation(self, operation: cirq.Operation, qids: list[cirq.Qid]):
         qlabels = [self._qubit_labels.get(bit) for bit in qids]
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in qlabels]
