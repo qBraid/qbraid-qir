@@ -115,6 +115,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         _log.debug(
             f"Added label for qubits {qids}"
         )
+        _log.debug(f"Added label for qubits {qids}")
 
     def process_composite_operation(self, operation: cirq.Operation):
         # e.g. operation.gate.sub_gate, this functionality might exist elsewhere.
