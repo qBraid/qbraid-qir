@@ -128,6 +128,9 @@ class BasicQisVisitor(CircuitElementVisitor):
         results = [pyqir.result(self._module.context, n) for n in qlabels]
         # call some function that depends on qubits and results
 
+        callable = get_callable_from_pyqir_name(operation)
+        callable(self._builder, *qubits, *results)
+
     def ir(self) -> str:
         return str(self._module)
 
