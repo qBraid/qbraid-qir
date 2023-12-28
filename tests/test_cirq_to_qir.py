@@ -49,6 +49,18 @@ def test_single_qubit_gates(circuit_name, request):
     assert len(func) == 3
 
 
+
+def test_cirq_workings():
+    circuit = cirq.Circuit()
+    qubits = cirq.LineQubit.range(3)
+    circuit.append(cirq.CX(qubits[0], qubits[1]))
+    circuit.append(cirq.measure(qubits[0]))
+    circuit.append(cirq.H(qubits[0]))
+    circuit.append(cirq.H(qubits[1]))
+    circuit.append(cirq.H(qubits[2]))
+    print(circuit)
+
+
 def test_verify_qir_bell_fixture(pyqir_bell):
     """Test that pyqir fixture generates code equal to test_qir_bell.ll file."""
     assert_equal_qir(pyqir_bell.ir(), "test_qir_bell")

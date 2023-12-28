@@ -36,7 +36,9 @@ CIRQ_GATES = {
     'SWAP': pyqir._native.swap,
     'X': pyqir._native.x,
     'Y': pyqir._native.y,
-    # 'Z': pyqir._native.z
+    'T': pyqir._native.t,
+    'Z': pyqir._native.z,
+    'S': pyqir._native.s,
     }
 
 def get_callable_from_pyqir_name(op: cirq.Operation):

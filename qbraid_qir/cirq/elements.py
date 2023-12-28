@@ -56,7 +56,7 @@ class _CircuitElement(metaclass=ABCMeta):
 
 class _Register(_CircuitElement):
     def __init__(self, register: FrozenSet[cirq.Qid]):
-        self._register: register
+        self._register = register
 
     def accept(self, visitor):
         visitor.visit_register(self._register)
@@ -104,7 +104,7 @@ class CirqModule:
         elements: List[_CircuitElement] = []
 
         # Register(s). Tentatively using cirq.Qid as input. Better approaches might exist tbd.
-        elements.append(_Register(circuit.all_qubits()))
+        elements.append(_Register(list(circuit.all_qubits())))
 
         # Operations
         for operation in circuit.all_operations():
