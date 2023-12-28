@@ -64,7 +64,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         _log.debug(f"Visiting Cirq module '{module.name}' ({module.num_qubits})")
         self._module = module.module
         context = self._module.context
-        entry = entry_point(self._module, module.name, module.num_qubits)
+        entry = entry_point(self._module, module.name, module.num_qubits, module.num_qubits) #Thids is a WA
 
         self._entry_point = entry.name
         self._builder = Builder(context)
@@ -92,17 +92,21 @@ class BasicQisVisitor(CircuitElementVisitor):
         # here we logically loop from n-1 to 0, decrementing in order to
         # invert the register output. The second parameter is an exclusive
         # range so we need to go to -1 instead of 0
-        logical_id_base = 0
-        for size in module.reg_sizes:
-            rt.array_record_output(
-                self._builder,
-                const(IntType(self._module.context, 64), size),
-                Constant.null(i8p),
-            )
-            for index in range(size - 1, -1, -1):
-                result_ref = pyqir.result(self._module.context, logical_id_base + index)
-                rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
-            logical_id_base += size
+        # logical_id_base = 0
+        # for size in module.reg_sizes:
+        #     rt.array_record_output(
+        #         self._builder,
+        #         const(IntType(self._module.context, 64), size),
+        #         Constant.null(i8p),
+        #     )
+        #     for index in range(size - 1, -1, -1):
+        #         result_ref = pyqir.result(self._module.context, logical_id_base + index)
+        #         rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
+        #     logical_id_base += size
+        for i in range(module.num_qubits):
+            result_ref = pyqir.result(self._module.context, i)
+            rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
+
 
     def visit_register(self, qids: List[cirq.Qid]):
         _log.debug(f"Visiting qid '{str(qids)}'")
@@ -122,14 +126,16 @@ class BasicQisVisitor(CircuitElementVisitor):
         # e.g. operation.gate.sub_gate, this functionality might exist elsewhere.
         raise NotImplementedError
 
-    def visit_operation(self, operation: cirq.Operation, qids: list[cirq.Qid]):
-        qlabels = [self._qubit_labels.get(bit) for bit in qids]
+    def visit_operation(self, operation: cirq.Operation):
+        # qubit_indices = [q.x for q in operation.qubits]
+        # print(self._qubit_labels)
+        qlabels = [self._qubit_labels.get(bit) for bit in operation.qubits]
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in qlabels]
         # call some function that depends on qubits and results
 
         callable = get_callable_from_pyqir_name(operation)
-        callable(self._builder, *qubits, *results)
+        callable(self._builder, *qubits)
 
     def ir(self) -> str:
         return str(self._module)
