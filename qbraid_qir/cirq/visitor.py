@@ -31,6 +31,7 @@ from pyqir import (
     entry_point,
 )
 
+from qbraid_qir.cirq.opsets import CIRQ_GATES, get_callable_from_pyqir_name
 from qbraid_qir.cirq.elements import CirqModule
 
 _log = logging.getLogger(name=__name__)
@@ -126,6 +127,9 @@ class BasicQisVisitor(CircuitElementVisitor):
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in qlabels]
         # call some function that depends on qubits and results
+
+        callable = get_callable_from_pyqir_name(operation)
+        callable(self._builder, *qubits, *results)
 
     def ir(self) -> str:
         return str(self._module)
