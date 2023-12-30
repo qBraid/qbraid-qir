@@ -14,8 +14,6 @@ Module containing Cirq to qBraid QIR conversion functions
 """
 from typing import Optional
 
-import numpy as np
-
 import cirq
 import qbraid.programs.cirq
 from pyqir import Context, Module, qir_module
@@ -23,7 +21,6 @@ from pyqir import Context, Module, qir_module
 from qbraid_qir.cirq.elements import CirqModule, generate_module_id
 from qbraid_qir.cirq.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
-from qbraid_qir.cirq.opsets import CIRQ_GATES, get_callable_from_pyqir_name
 
 
 def _preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
@@ -56,7 +53,7 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
         The QIR ``pyqir.Module`` representation of the input Cirq circuit.
 
     Raises:
-        TypeError: If the input is not a Cirq circuit.
+        TypeError: If the input is not a valid Cirq circuit.
         QirConversionError: If the conversion fails.
     """
     if not isinstance(circuit, cirq.Circuit):
@@ -65,25 +62,10 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
     if name is None:
         name = generate_module_id(circuit)
 
-    # create a variable for circuit.unitary that we will use to create assertions later
-    input_unitary = circuit.unitary()
-    
-    circuit = _preprocess_circuit(circuit)
-    
-    # according to the gateset in CIRQ_GATES, perform gate decomposition;
-    for moment in circuit:
-        for op in moment:
-            if str(op.gate) in CIRQ_GATES:
-                # i don't know what to do here
-                callable = get_callable_from_pyqir_name(op)
-            else:
-                raise QirConversionError(f"Unsupported gate {str(op.gate)} in circuit.")
-    
-    
-    # ensure that input/output circuit.unitary() are equivalent.
-    output_unitary = circuit.unitary()
-    if not np.allclose(input_unitary, output_unitary):
-        raise QirConversionError("Cirq circuit unitary changed during conversion.")
+    try:
+        circuit = _preprocess_circuit(circuit)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        raise QirConversionError("Failed to preprocess circuit.") from e
 
 
     llvm_module = qir_module(Context(), name)

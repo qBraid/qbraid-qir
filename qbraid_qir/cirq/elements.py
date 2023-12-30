@@ -82,7 +82,7 @@ class CirqModule:
         self._module = module
         self._elements = elements
         self._num_qubits = num_qubits
-        # reg_sizes?
+        self._num_clbits = num_qubits  # create one classical bit for each qubit
 
     @property
     def name(self) -> str:
@@ -95,6 +95,10 @@ class CirqModule:
     @property
     def num_qubits(self) -> int:
         return self._num_qubits
+    
+    @property
+    def num_clbits(self) -> int:
+        return self._num_clbits
 
     @classmethod
     def from_circuit(
