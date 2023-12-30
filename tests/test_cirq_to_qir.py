@@ -49,7 +49,6 @@ def test_single_qubit_gates(circuit_name, request):
     assert len(func) == 3
 
 
-
 def test_cirq_workings():
     circuit = cirq.Circuit()
     qubits = cirq.LineQubit.range(3)
