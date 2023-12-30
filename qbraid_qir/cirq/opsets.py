@@ -12,36 +12,70 @@
 Module mapping supported Cirq gates/operations to pyqir functions.
 
 """
-from typing import Callable
+import re
+from typing import Callable, Tuple
 
 import cirq
 import pyqir._native
 
-ZPOWER_DICT = {
-    1: pyqir._native.z,
-    0.5: pyqir._native.s,
-    0.25: pyqir._native.t,
-    -0.5: pyqir._native.s_adj,
-    -0.25: pyqir._native.t_adj,
-}
-CIRQ_GATES = {
-    "TOFFOLI": pyqir._native.ccx,
-    "CCX": pyqir._native.ccx,
-    "CCNOT": pyqir._native.ccx,
-    "CNOT": pyqir._native.cx,
-    "CZ": pyqir._native.cz,
+from qbraid_qir.exceptions import QirConversionError
+
+# NOTE: Upper/lower case matters here, and were set to
+# match the Cirq gate/op string representation.
+
+PYQIR_OP_MAP = {
+    # Single-Qubit Clifford Gates
     "H": pyqir._native.h,
-    "SWAP": pyqir._native.swap,
     "X": pyqir._native.x,
     "Y": pyqir._native.y,
-    "T": pyqir._native.t,
     "Z": pyqir._native.z,
+    # Single-Qubit Rotation Gates
+    "Rx": pyqir._native.rx,
+    "Ry": pyqir._native.ry,
+    "Rz": pyqir._native.rz,
+    # Single-Qubit Non-Clifford Gates
     "S": pyqir._native.s,
+    "T": pyqir._native.t,
+    "S**-1": pyqir._native.s_adj,
+    "T**-1": pyqir._native.t_adj,
+    # Two-Qubit Gates
+    "SWAP": pyqir._native.swap,
+    "CNOT": pyqir._native.cx,
+    # Three-Qubit Gates
+    "TOFFOLI": pyqir._native.ccx,
+    # Classical Gates/Operations
+    "MEASURE": pyqir._native.mz,
+    "reset": pyqir._native.reset,
 }
 
 
-def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Callable:
-    """Maps a Cirq operation to its corresponding PyQIR callable function."""
-    if isinstance(op, cirq.ops.ZPowGate):
-        return ZPOWER_DICT[op.gate.exponent]
-    return CIRQ_GATES[str(op.gate)]
+def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
+    """
+    Maps a Cirq operation to its corresponding PyQIR callable function.
+
+    Args:
+        op (cirq.Operation): The Cirq operation to map.
+
+    Returns:
+        Tuple[Callable, str]: Tuple containing the corresponding PyQIR callable function,
+                               and a string representing the gate/operation type.
+
+    Raises:
+        QirConversionError: If the operation or gate is not supported.
+    """
+    if isinstance(op, cirq.ops.GateOperation):
+        gate = op.gate
+
+        if isinstance(gate, cirq.ops.MeasurementGate):
+            op_name = "MEASURE"
+        elif isinstance(gate, (cirq.ops.Rx, cirq.ops.Ry, cirq.ops.Rz)):
+            op_name = re.search(r"([A-Za-z]+)\(", str(gate)).group(1)
+        else:
+            op_name = str(gate)
+    else:
+        op_name = str(op)
+
+    try:
+        return PYQIR_OP_MAP[op_name], op_name
+    except KeyError as err:
+        raise QirConversionError(f"Cirq gate {op} not supported.") from err

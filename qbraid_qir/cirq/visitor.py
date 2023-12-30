@@ -17,8 +17,11 @@ from abc import ABCMeta, abstractmethod
 from typing import List
 
 import cirq
+import numpy as np
 import pyqir
-from pyqir import BasicBlock, Builder, Constant, IntType, PointerType, rt
+import pyqir._native
+import pyqir.rt
+from pyqir import BasicBlock, Builder, Constant, IntType, PointerType
 
 from qbraid_qir.cirq.elements import CirqModule
 from qbraid_qir.cirq.opsets import map_cirq_op_to_pyqir_callable
@@ -60,7 +63,7 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         i8p = PointerType(IntType(context, 8))
         nullptr = Constant.null(i8p)
-        rt.initialize(self._builder, nullptr)
+        pyqir.rt.initialize(self._builder, nullptr)
 
     @property
     def entry_point(self) -> str:
@@ -77,7 +80,7 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         for i in range(module.num_qubits):
             result_ref = pyqir.result(self._module.context, i)
-            rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
+            pyqir.rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
 
     def visit_register(self, qids: List[cirq.Qid]) -> None:
         _log.debug("Visiting qids '%s'", str(qids))
@@ -98,11 +101,16 @@ class BasicQisVisitor(CircuitElementVisitor):
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in qlabels]
 
-        if isinstance(operation, cirq.ops.MeasurementGate):
+        pyqir_func, op_str = map_cirq_op_to_pyqir_callable(operation)
+
+        if op_str == "MEASURE":
+            # TODO: naive implementation, revisit and test
             _log.debug("Visiting measurement operation '%s'", str(operation))
-            raise NotImplementedError("Measurement operation not implemented yet.")
+            pyqir_func(self._builder, *qubits, *results)
+        elif op_str in ["Rx", "Ry", "Rz"]:
+            angle = operation.gate._rads * np.pi
+            pyqir_func(self._builder, angle, *qubits)
         else:
-            pyqir_func = map_cirq_op_to_pyqir_callable(operation)
             pyqir_func(self._builder, *qubits)
 
     def ir(self) -> str:
