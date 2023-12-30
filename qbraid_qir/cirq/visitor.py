@@ -12,27 +12,16 @@
 Module defining CirqVisitor.
 
 """
-# isort: skip_file
-
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import FrozenSet, List
+from typing import List
 
 import cirq
-import pyqir.rt as rt
 import pyqir
-from pyqir import (
-    BasicBlock,
-    Builder,
-    Constant,
-    IntType,
-    PointerType,
-    const,
-    entry_point,
-)
+from pyqir import BasicBlock, Builder, Constant, IntType, PointerType, rt
 
-from qbraid_qir.cirq.opsets import CIRQ_GATES, get_callable_from_pyqir_name
 from qbraid_qir.cirq.elements import CirqModule
+from qbraid_qir.cirq.opsets import map_cirq_op_to_pyqir_callable
 
 _log = logging.getLogger(name=__name__)
 
@@ -40,14 +29,11 @@ _log = logging.getLogger(name=__name__)
 class CircuitElementVisitor(metaclass=ABCMeta):
     @abstractmethod
     def visit_register(self, qids):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def visit_operation(self, operation):
-        raise NotImplementedError
-
-
-# NOTE: lots of boiler plate used from qiskit-qir that still needs to be worked through
+        pass
 
 
 class BasicQisVisitor(CircuitElementVisitor):
@@ -61,10 +47,12 @@ class BasicQisVisitor(CircuitElementVisitor):
         self._record_output = kwargs.get("record_output", True)
 
     def visit_cirq_module(self, module: CirqModule):
-        _log.debug(f"Visiting Cirq module '{module.name}' ({module.num_qubits})")
+        _log.debug("Visiting Cirq module '%s' (%d)", module.name, module.num_qubits)
         self._module = module.module
         context = self._module.context
-        entry = entry_point(self._module, module.name, module.num_qubits, module.num_qubits) #Thids is a WA
+        entry = pyqir.entry_point(
+            self._module, module.name, module.num_qubits, module.num_clbits
+        )
 
         self._entry_point = entry.name
         self._builder = Builder(context)
@@ -78,64 +66,44 @@ class BasicQisVisitor(CircuitElementVisitor):
     def entry_point(self) -> str:
         return self._entry_point
 
-    def finalize(self):
+    def finalize(self) -> None:
         self._builder.ret(None)
 
-    def record_output(self, module: CirqModule):
-        if self._record_output == False:
+    def record_output(self, module: CirqModule) -> None:
+        if self._record_output is False:
             return
 
         i8p = PointerType(IntType(self._module.context, 8))
 
-        # qiskit inverts the ordering of the results within each register
-        # but keeps the overall register ordering
-        # here we logically loop from n-1 to 0, decrementing in order to
-        # invert the register output. The second parameter is an exclusive
-        # range so we need to go to -1 instead of 0
-        # logical_id_base = 0
-        # for size in module.reg_sizes:
-        #     rt.array_record_output(
-        #         self._builder,
-        #         const(IntType(self._module.context, 64), size),
-        #         Constant.null(i8p),
-        #     )
-        #     for index in range(size - 1, -1, -1):
-        #         result_ref = pyqir.result(self._module.context, logical_id_base + index)
-        #         rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
-        #     logical_id_base += size
         for i in range(module.num_qubits):
             result_ref = pyqir.result(self._module.context, i)
             rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
 
+    def visit_register(self, qids: List[cirq.Qid]) -> None:
+        _log.debug("Visiting qids '%s'", str(qids))
 
-    def visit_register(self, qids: List[cirq.Qid]):
-        _log.debug(f"Visiting qid '{str(qids)}'")
         if not isinstance(qids, list):
             raise TypeError("Parameter is not a list.")
 
         if not all(isinstance(x, cirq.Qid) for x in qids):
             raise TypeError("All elements in the list must be of type cirq.Qid.")
 
-        self._qubit_labels.update({bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)})
-        _log.debug(
-            f"Added label for qubits {qids}"
+        self._qubit_labels.update(
+            {bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)}
         )
-        _log.debug(f"Added label for qubits {qids}")
-
-    def process_composite_operation(self, operation: cirq.Operation):
-        # e.g. operation.gate.sub_gate, this functionality might exist elsewhere.
-        raise NotImplementedError
+        _log.debug("Added labels for qubits %s", str(qids))
 
     def visit_operation(self, operation: cirq.Operation):
-        # qubit_indices = [q.x for q in operation.qubits]
-        # print(self._qubit_labels)
         qlabels = [self._qubit_labels.get(bit) for bit in operation.qubits]
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in qlabels]
-        # call some function that depends on qubits and results
 
-        callable = get_callable_from_pyqir_name(operation)
-        callable(self._builder, *qubits)
+        if isinstance(operation, cirq.ops.MeasurementGate):
+            _log.debug("Visiting measurement operation '%s'", str(operation))
+            raise NotImplementedError("Measurement operation not implemented yet.")
+        else:
+            pyqir_func = map_cirq_op_to_pyqir_callable(operation)
+            pyqir_func(self._builder, *qubits)
 
     def ir(self) -> str:
         return str(self._module)
