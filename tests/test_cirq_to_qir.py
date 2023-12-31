@@ -66,9 +66,9 @@ def test_verify_qir_bell_fixture(pyqir_bell):
     assert_equal_qir(pyqir_bell.ir(), "test_qir_bell")
 
 
-@pytest.mark.skip(reason="Not implemented yet")
+# @pytest.mark.skip(reason="Not implemented yet")
 def test_convert_bell_compare_file(cirq_bell):
     """Test converting Cirq bell circuit to QIR."""
     test_name = "test_qir_bell"
     generator = cirq_to_qir(cirq_bell, name=test_name)
-    assert_equal_qir(generator.ir(), test_name)
+    assert_equal_qir(str(generator), test_name)

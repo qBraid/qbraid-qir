@@ -21,4 +21,5 @@ def cirq_bell() -> cirq.Circuit:
     """Returns a Cirq bell circuit with measurement over two qubits."""
     q0, q1 = cirq.LineQubit.range(2)
     circuit = cirq.Circuit(cirq.H(q0), cirq.CNOT(q0, q1), cirq.measure(q0, q1))
+    # circuit = cirq.Circuit(cirq.H(q0), cirq.CNOT(q0, q1))
     return circuit

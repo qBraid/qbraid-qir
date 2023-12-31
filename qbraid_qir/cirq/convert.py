@@ -16,7 +16,7 @@ from typing import Optional
 
 import cirq
 import qbraid.programs.cirq
-from pyqir import Context, Module, qir_module
+from pyqir import Context, Module, qir_module, SimpleModule
 
 from qbraid_qir.cirq.elements import CirqModule, generate_module_id
 from qbraid_qir.cirq.visitor import BasicQisVisitor
@@ -64,7 +64,7 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
 
     try:
         circuit = _preprocess_circuit(circuit)
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:
         raise QirConversionError("Failed to preprocess circuit.") from e
 
 
