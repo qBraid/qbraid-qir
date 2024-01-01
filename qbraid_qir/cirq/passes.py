@@ -30,14 +30,6 @@ def _decompose_gate_op(op: cirq.GateOperation) -> List[cirq.OP_TREE]:
     except QirConversionError:
         pass
 
-    if isinstance(op.gate, cirq.CZPowGate):
-        control_qubit, target_qubit = op.qubits
-        return [
-            cirq.Z(target_qubit),
-            cirq.CNOT(control_qubit, target_qubit),
-            cirq.Z(target_qubit),
-        ]
-
     return cirq.decompose_once(op, flatten=True, default=[op])
 
 

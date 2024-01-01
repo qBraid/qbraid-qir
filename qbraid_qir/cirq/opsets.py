@@ -41,6 +41,7 @@ PYQIR_OP_MAP = {
     # Two-Qubit Gates
     "SWAP": pyqir._native.swap,
     "CNOT": pyqir._native.cx,
+    "CZ": pyqir._native.cz,
     # Three-Qubit Gates
     "TOFFOLI": pyqir._native.ccx,
     # Classical Gates/Operations

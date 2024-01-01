@@ -67,12 +67,3 @@ def test_custom_gate():
         is False
     )
     assert circuits_allclose(decomposed_circuit, circuit)
-
-
-def test_decompose_cz_gate_in_circuit():
-    q0, q1 = cirq.LineQubit.range(2)
-    original_circuit = cirq.Circuit(cirq.CZ(q0, q1))
-    decomposed_circuit = _decompose_unsupported_gates(original_circuit)
-    expected_circuit = cirq.Circuit([cirq.Z(q1), cirq.CNOT(q0, q1), cirq.Z(q1)])
-    assert decomposed_circuit == expected_circuit
-    assert circuits_allclose(decomposed_circuit, expected_circuit)

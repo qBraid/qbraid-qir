@@ -12,7 +12,7 @@
 Module containing Cirq to qBraid QIR conversion functions
 
 """
-from typing import Optional
+from typing import Optional, Tuple
 
 import cirq
 
@@ -24,7 +24,7 @@ from qbraid_qir.cirq.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
 
 
-def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
+def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Tuple[Module, str]:
     """
     Converts a Cirq circuit to a PyQIR module.
 
@@ -55,8 +55,9 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
 
     visitor = BasicQisVisitor(**kwargs)
     module.accept(visitor)
+    entry_point = visitor.entry_point
 
     err = llvm_module.verify()
     if err is not None:
         raise QirConversionError(err)
-    return llvm_module
+    return llvm_module, entry_point
