@@ -15,30 +15,13 @@ Module containing Cirq to qBraid QIR conversion functions
 from typing import Optional
 
 import cirq
-import qbraid.programs.cirq
+
 from pyqir import Context, Module, qir_module
 
+from qbraid_qir.cirq.passes import preprocess_circuit
 from qbraid_qir.cirq.elements import CirqModule, generate_module_id
 from qbraid_qir.cirq.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
-
-
-def _preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
-    """
-    Preprocesses a Cirq circuit to ensure that it is compatible with the QIR conversion.
-
-    Args:
-        circuit (cirq.Circuit): The Cirq circuit to preprocess.
-
-    Returns:
-        cirq.Circuit: The preprocessed Cirq circuit.
-
-    """
-    # circuit = cirq.contrib.qasm_import.circuit_from_qasm(circuit.to_qasm()) # decompose?
-    qprogram = qbraid.programs.cirq.CirqCircuit(circuit)
-    qprogram._convert_to_line_qubits()
-    cirq_circuit = qprogram.program
-    return cirq_circuit
 
 
 def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
@@ -63,7 +46,7 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
         name = generate_module_id(circuit)
 
     try:
-        circuit = _preprocess_circuit(circuit)
+        circuit = preprocess_circuit(circuit)
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise QirConversionError("Failed to preprocess circuit.") from e
 
