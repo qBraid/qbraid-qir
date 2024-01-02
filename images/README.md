@@ -4,7 +4,7 @@ Docker containers used for testing.
 
 ## QIR Runner
 
-The [Dockerfile.runner](Dockerfile.runner) image provides an environment for testing and executing QIR programs
+[Docker image](./qir_runner/Dockerfile) providing an environment for testing and executing QIR programs
 with the [qir-runner](https://github.com/qir-alliance/qir-runner/tree/main) package.
 
 ### Build & run image
@@ -12,7 +12,7 @@ with the [qir-runner](https://github.com/qir-alliance/qir-runner/tree/main) pack
 Build the QIR runner image:
 
 ```bash
-docker build -f Dockerfile.runner -t qbraid-test/qir-runner:latest .
+docker build -t qbraid-test/qir-runner:latest qir_runner
 ```
 
 Start the container running a Jupyter Server with the JupyterLab frontend and expose the container's internal port `8888` to port `8888` of the host machine:
@@ -73,5 +73,5 @@ print("Entry point:", entry_point)
 And then execute the QIR program:
 
 ```bash
-qir-runner -f <file_path> -e <entry_point>
+qir-runner -f bell.ll
 ```
