@@ -12,19 +12,18 @@
 Module containing Cirq to qBraid QIR conversion functions
 
 """
-from typing import Optional, Tuple
+from typing import Optional
 
 import cirq
-
 from pyqir import Context, Module, qir_module
 
-from qbraid_qir.cirq.passes import preprocess_circuit
 from qbraid_qir.cirq.elements import CirqModule, generate_module_id
+from qbraid_qir.cirq.passes import preprocess_circuit
 from qbraid_qir.cirq.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
 
 
-def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Tuple[Module, str]:
+def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
     """
     Converts a Cirq circuit to a PyQIR module.
 
@@ -32,15 +31,25 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
         circuit (cirq.Circuit): The Cirq circuit to convert.
         name (str, optional): Identifier for created QIR module. Auto-generated if not provided.
 
+    Keyword Args:
+        initialize_runtime (bool): Whether to perform quantum runtime environment initialization, default `True`.
+        record_output (bool): Whether to record output calls for registers, default `True`
+
     Returns:
         The QIR ``pyqir.Module`` representation of the input Cirq circuit.
 
     Raises:
         TypeError: If the input is not a valid Cirq circuit.
+        ValueError: If the input circuit is empty.
         QirConversionError: If the conversion fails.
     """
     if not isinstance(circuit, cirq.Circuit):
         raise TypeError("Input quantum program must be of type cirq.Circuit.")
+
+    if len(circuit) == 0:
+        raise ValueError(
+            "Input quantum circuit must consist of at least one operation."
+        )
 
     if name is None:
         name = generate_module_id(circuit)
@@ -55,9 +64,8 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
 
     visitor = BasicQisVisitor(**kwargs)
     module.accept(visitor)
-    entry_point = visitor.entry_point
 
     err = llvm_module.verify()
     if err is not None:
         raise QirConversionError(err)
-    return llvm_module, entry_point
+    return llvm_module

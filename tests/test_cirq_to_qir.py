@@ -17,7 +17,6 @@ import pytest
 
 import tests.test_utils as test_utils
 from qbraid_qir.cirq.convert import cirq_to_qir
-from qbraid_qir.exceptions import QirConversionError
 from tests.fixtures.basic_gates import single_op_tests
 
 from .qir_utils import assert_equal_qir
@@ -29,20 +28,19 @@ def test_cirq_to_qir_type_error():
         cirq_to_qir(None)
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 def test_cirq_to_qir_conversion_error():
     """Test raising exception for conversion error."""
     circuit = cirq.Circuit()
-    with pytest.raises(QirConversionError):
+    with pytest.raises(ValueError):
         cirq_to_qir(circuit)
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 @pytest.mark.parametrize("circuit_name", single_op_tests)
 def test_single_qubit_gates(circuit_name, request):
     qir_op, circuit = request.getfixturevalue(circuit_name)
-    generated_qir, _ = str(cirq_to_qir(circuit)[0]).splitlines()
-    func = test_utils.get_entry_point_body(generated_qir)
+    qir_module = cirq_to_qir(circuit, record_output=False)
+    qir_str = str(qir_module).splitlines()
+    func = test_utils.get_entry_point_body(qir_str)
     assert func[0] == test_utils.initialize_call_string()
     assert func[1] == test_utils.single_op_call_string(qir_op, 0)
     assert func[2] == test_utils.return_string()
@@ -54,9 +52,17 @@ def test_verify_qir_bell_fixture(pyqir_bell):
     assert_equal_qir(pyqir_bell.ir(), "test_qir_bell")
 
 
-@pytest.mark.skip(reason="Not implemented yet")
+def test_entry_point_name(cirq_bell):
+    """Test that entry point name is consistent with module ID."""
+    name = "quantum_123"
+    module = cirq_to_qir(cirq_bell, name=name)
+    assert module.source_filename == name
+
+
 def test_convert_bell_compare_file(cirq_bell):
     """Test converting Cirq bell circuit to QIR."""
     test_name = "test_qir_bell"
-    generator, _ = cirq_to_qir(cirq_bell, name=test_name)
-    assert_equal_qir(generator.ir(), test_name)
+    module = cirq_to_qir(
+        cirq_bell, name=test_name, initialize_runtime=False, record_output=False
+    )
+    assert_equal_qir(str(module), test_name)

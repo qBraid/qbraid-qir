@@ -40,16 +40,25 @@ class CircuitElementVisitor(metaclass=ABCMeta):
 
 
 class BasicQisVisitor(CircuitElementVisitor):
-    def __init__(self, profile: str = "AdaptiveExecution", **kwargs):
+    """A visitor for QIS (Quantum Instruction Set) basic elements.
+
+    This class is designed to traverse and interact with elements in a quantum circuit.
+
+    Args:
+        initialize_runtime (bool): If True, the quantum runtime will be initialized. Defaults to True.
+        record_output (bool): If True, the output of the circuit will be recorded. Defaults to True.
+    """
+
+    def __init__(self, initialize_runtime: bool = True, record_output: bool = True):
         self._module = None
         self._builder = None
         self._entry_point = None
         self._qubit_labels = {}
-        self._profile = profile
         self._measured_qubits = {}
-        self._record_output = kwargs.get("record_output", True)
+        self._initialize_runtime = initialize_runtime
+        self._record_output = record_output
 
-    def visit_cirq_module(self, module: CirqModule):
+    def visit_cirq_module(self, module: CirqModule) -> None:
         _log.debug("Visiting Cirq module '%s' (%d)", module.name, module.num_qubits)
         self._module = module.module
         context = self._module.context
@@ -61,9 +70,10 @@ class BasicQisVisitor(CircuitElementVisitor):
         self._builder = Builder(context)
         self._builder.insert_at_end(BasicBlock(context, "entry", entry))
 
-        i8p = PointerType(IntType(context, 8))
-        nullptr = Constant.null(i8p)
-        pyqir.rt.initialize(self._builder, nullptr)
+        if self._initialize_runtime is True:
+            i8p = PointerType(IntType(context, 8))
+            nullptr = Constant.null(i8p)
+            pyqir.rt.initialize(self._builder, nullptr)
 
     @property
     def entry_point(self) -> str:
@@ -96,7 +106,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         )
         _log.debug("Added labels for qubits %s", str(qids))
 
-    def visit_operation(self, operation: cirq.Operation):
+    def visit_operation(self, operation: cirq.Operation) -> None:
         qlabels = [self._qubit_labels.get(bit) for bit in operation.qubits]
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in qlabels]
@@ -104,9 +114,10 @@ class BasicQisVisitor(CircuitElementVisitor):
         pyqir_func, op_str = map_cirq_op_to_pyqir_callable(operation)
 
         if op_str == "MEASURE":
-            # TODO: naive implementation, revisit and test
             _log.debug("Visiting measurement operation '%s'", str(operation))
-            pyqir_func(self._builder, *qubits, *results)
+            for qubit, result in zip(qubits, results):
+                self._measured_qubits[pyqir.qubit_id(qubit)] = True
+                pyqir_func(self._builder, qubit, result)
         elif op_str in ["Rx", "Ry", "Rz"]:
             angle = operation.gate._rads * np.pi
             pyqir_func(self._builder, angle, *qubits)

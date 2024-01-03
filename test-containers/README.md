@@ -58,7 +58,7 @@ q0, q1 = cirq.LineQubit.range(2)
 circuit = cirq.Circuit(cirq.H(q0), cirq.CNOT(q0, q1), cirq.measure(q0, q1))
 
 # convert to QIR
-module, entry_point = cirq_to_qir(circuit)
+module = cirq_to_qir(circuit)
 
 # save to file
 file_path = os.path.join(os.path.dirname(__file__), "bell.ll")
@@ -67,7 +67,6 @@ with open(file_path, "w") as file:
     file.write(str(module))
 
 print("Saved to", file_path)
-print("Entry point:", entry_point)
 ```
 
 And then execute the QIR program:
