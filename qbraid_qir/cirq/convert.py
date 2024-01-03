@@ -15,30 +15,12 @@ Module containing Cirq to qBraid QIR conversion functions
 from typing import Optional
 
 import cirq
-import qbraid.programs.cirq
 from pyqir import Context, Module, qir_module
 
 from qbraid_qir.cirq.elements import CirqModule, generate_module_id
+from qbraid_qir.cirq.passes import preprocess_circuit
 from qbraid_qir.cirq.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
-
-
-def _preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
-    """
-    Preprocesses a Cirq circuit to ensure that it is compatible with the QIR conversion.
-
-    Args:
-        circuit (cirq.Circuit): The Cirq circuit to preprocess.
-
-    Returns:
-        cirq.Circuit: The preprocessed Cirq circuit.
-
-    """
-    # circuit = cirq.contrib.qasm_import.circuit_from_qasm(circuit.to_qasm()) # decompose?
-    qprogram = qbraid.programs.cirq.CirqCircuit(circuit)
-    qprogram._convert_to_line_qubits()
-    cirq_circuit = qprogram.program
-    return cirq_circuit
 
 
 def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
@@ -49,21 +31,32 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
         circuit (cirq.Circuit): The Cirq circuit to convert.
         name (str, optional): Identifier for created QIR module. Auto-generated if not provided.
 
+    Keyword Args:
+        initialize_runtime (bool): Whether to perform quantum runtime environment initialization,
+                                   default `True`.
+        record_output (bool): Whether to record output calls for registers, default `True`
+
     Returns:
         The QIR ``pyqir.Module`` representation of the input Cirq circuit.
 
     Raises:
         TypeError: If the input is not a valid Cirq circuit.
+        ValueError: If the input circuit is empty.
         QirConversionError: If the conversion fails.
     """
     if not isinstance(circuit, cirq.Circuit):
         raise TypeError("Input quantum program must be of type cirq.Circuit.")
 
+    if len(circuit) == 0:
+        raise ValueError(
+            "Input quantum circuit must consist of at least one operation."
+        )
+
     if name is None:
         name = generate_module_id(circuit)
 
     try:
-        circuit = _preprocess_circuit(circuit)
+        circuit = preprocess_circuit(circuit)
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise QirConversionError("Failed to preprocess circuit.") from e
 

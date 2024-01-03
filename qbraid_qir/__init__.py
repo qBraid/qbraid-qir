@@ -13,14 +13,6 @@ This top level module contains the main qBraid QIR functionality.
 
 .. currentmodule:: qbraid_qir
 
-Functions
------------
-
-.. autosummary::
-   :toctree: ../stubs/
-
-   cirq_to_qir
-
 Exceptions
 -----------
 

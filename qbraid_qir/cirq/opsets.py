@@ -41,6 +41,7 @@ PYQIR_OP_MAP = {
     # Two-Qubit Gates
     "SWAP": pyqir._native.swap,
     "CNOT": pyqir._native.cx,
+    "CZ": pyqir._native.cz,
     # Three-Qubit Gates
     "TOFFOLI": pyqir._native.ccx,
     # Classical Gates/Operations
@@ -69,7 +70,7 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
         if isinstance(gate, cirq.ops.MeasurementGate):
             op_name = "MEASURE"
         elif isinstance(gate, (cirq.ops.Rx, cirq.ops.Ry, cirq.ops.Rz)):
-            op_name = re.search(r"([A-Za-z]+)\(", str(gate)).group(1)
+            op_name = re.search(r"([Rx-z]+)\(", str(gate)).group(1)
         else:
             op_name = str(gate)
     else:

@@ -20,11 +20,10 @@ Convert a ``Cirq`` circuit to ``QIR`` code:
    circuit = cirq.Circuit(
        cirq.H(q0),
        cirq.CNOT(q0, q1),
-       cirq.measure(q0, key='result0'),
-       cirq.measure(q1, key='result1')
+       cirq.measure(q0, q1)
    )
 
-   qir_code = cirq_to_qir(circuit)
+   qir_code = cirq_to_qir(circuit, name="Bell")
 
    print(qir_code)
 
