@@ -21,13 +21,42 @@
   </a>
 </p>
 
+*Work in progress*
+
 qBraid-SDK extension providing support for QIR conversions.
 
-This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`.
+This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
 
-See: https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html
+## Getting started
 
-## Local install
+### Installation
+
+```bash
+pip install qbraid-qir
+```
+
+### Example
+
+```python
+import cirq
+from qbraid_qir import cirq_to_qir
+
+q0, q1 = cirq.LineQubit.range(2)
+
+circuit = cirq.Circuit(
+  cirq.H(q0),
+  cirq.CNOT(q0, q1),
+  cirq.measure(q0, q1)
+)
+
+module = cirq_to_qir(circuit, name="my-circuit")
+
+ir = str(module)
+```
+
+## Development
+
+### Install from source
 
 ```bash
 git clone https://github.com/qBraid/qbraid-qir.git
@@ -35,7 +64,7 @@ cd qbraid-qir
 pip install -e .
 ```
 
-## Run tests
+### Run tests
 
 ```bash
 pip install -r requirements-dev.txt
@@ -48,7 +77,7 @@ with coverage report
 pytest --cov=qbraid_qir --cov-report=term tests/
 ```
 
-## Build docs
+### Build docs
 
 ```bash
 cd docs
