@@ -63,7 +63,7 @@ def _generate_one_qubit_fixture(gate_name: str):
     @pytest.fixture()
     def test_fixture():
         circuit = cirq.Circuit()
-        q = cirq.NamedQubit("q")
+        q = cirq.NamedQubit("q0")
         circuit.append(getattr(cirq, gate_name)(q))
         return _map_gate_name(gate_name), circuit
 
@@ -80,7 +80,7 @@ def _generate_rotation_fixture(gate_name: str):
     @pytest.fixture()
     def test_fixture():
         circuit = cirq.Circuit()
-        q = cirq.NamedQubit("q")
+        q = cirq.NamedQubit("q0")
         circuit.append(getattr(cirq, gate_name)(rads=0.5)(q))
         return _map_gate_name(gate_name), circuit
 
@@ -157,7 +157,7 @@ def test_qft():
 
 @pytest.mark.parametrize("angle", np.linspace(0, 2 * np.pi, 5))
 def test_rx_gate(angle):
-    qubit = cirq.NamedQubit("q")
+    qubit = cirq.NamedQubit("q0")
     circuit = cirq.Circuit(cirq.rx(angle)(qubit))
     # Add assertions or checks for the rotation
 
