@@ -1,14 +1,17 @@
 # qbraid-qir
 
-<p align="left">
-  <a href="https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml">
-      <img src="https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml/badge.svg" alt="CI">
+<p align='left'>
+  <a href='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml'>
+      <img src='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml/badge.svg' alt='CI'>
   </a>
-  <a href="https://www.gnu.org/licenses/gpl-3.0.html">
-    <img src="https://img.shields.io/github/license/qBraid/qbraid.svg" alt="License"/>
+  <a href='https://docs.qbraid.com/projects/qir/en/latest/?badge=latest'>
+    <img src='https://readthedocs.com/projects/qbraid-qbraid-qir/badge/?version=latest&token=7656ee72b7a66dec6d78dda911ce808676dca55c3e86702d5e97191badfdf19c' alt='Documentation Status'/>
   </a>
-  <a href="https://discord.gg/TPBU2sa8Et">
-    <img src="https://img.shields.io/discord/771898982564626445.svg?color=pink" alt="Discord"/>
+  <a href='https://www.gnu.org/licenses/gpl-3.0.html'>
+    <img src='https://img.shields.io/github/license/qBraid/qbraid.svg' alt='License'/>
+  </a>
+  <a href='https://discord.gg/TPBU2sa8Et'>
+    <img src='https://img.shields.io/discord/771898982564626445.svg?color=pink' alt='Discord'/>
   </a>
 </p>
 
