@@ -45,8 +45,8 @@ class BasicQisVisitor(CircuitElementVisitor):
     This class is designed to traverse and interact with elements in a quantum circuit.
 
     Args:
-        initialize_runtime (bool): If True, the quantum runtime will be initialized. Defaults to True.
-        record_output (bool): If True, the output of the circuit will be recorded. Defaults to True.
+        initialize_runtime (bool): If True, quantum runtime will be initialized. Defaults to True.
+        record_output (bool): If True, output of the circuit will be recorded. Defaults to True.
     """
 
     def __init__(self, initialize_runtime: bool = True, record_output: bool = True):

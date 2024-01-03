@@ -32,7 +32,8 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
         name (str, optional): Identifier for created QIR module. Auto-generated if not provided.
 
     Keyword Args:
-        initialize_runtime (bool): Whether to perform quantum runtime environment initialization, default `True`.
+        initialize_runtime (bool): Whether to perform quantum runtime environment initialization,
+                                   default `True`.
         record_output (bool): Whether to record output calls for registers, default `True`
 
     Returns:
