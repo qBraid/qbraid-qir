@@ -1,6 +1,6 @@
-# qbraid-qir
+<img width="full" alt="qbraid-qir-header" src="https://github.com/qBraid/qbraid-qir/assets/46977852/39f921ae-c4bf-442a-b059-6b21abd2ae50">
 
-<p align='left'>
+<p align='center'>
   <a href='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml'>
       <img src='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml/badge.svg' alt='CI'>
   </a>
@@ -23,7 +23,7 @@
 
 qBraid-SDK extension providing support for QIR conversions.
 
-This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK hub and spokes [model](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`.
+This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`.
 
 See: https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html
 
