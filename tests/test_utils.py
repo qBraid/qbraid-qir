@@ -19,8 +19,7 @@ from pyqir import Context, Function, Module, is_entry_point
 def _qubit_string(qubit: int) -> str:
     if qubit == 0:
         return "%Qubit* null"
-    else:
-        return f"%Qubit* inttoptr (i64 {qubit} to %Qubit*)"
+    return f"%Qubit* inttoptr (i64 {qubit} to %Qubit*)"
 
 
 def initialize_call_string() -> str:

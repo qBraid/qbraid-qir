@@ -12,6 +12,7 @@
 Module defining Cirq basic gate fixtures for use in tests.
 
 """
+# pylint: skip-file
 
 import cirq
 import numpy as np

@@ -51,26 +51,23 @@ Convert a cirq program and save the output to a file
 
 ```python
 import cirq
-from qbraid_qir import cirq_to_qir
+
+from qbraid_qir import dumps
+from qbraid_qir.cirq import cirq_to_qir
 
 # create a test circuit
 q0, q1 = cirq.LineQubit.range(2)
 circuit = cirq.Circuit(cirq.H(q0), cirq.CNOT(q0, q1), cirq.measure(q0, q1))
 
 # convert to QIR
-module = cirq_to_qir(circuit)
+module = cirq_to_qir(circuit, name="bell")
 
-# save to file
-file_path = os.path.join(os.path.dirname(__file__), "bell.ll")
-
-with open(file_path, "w") as file:
-    file.write(str(module))
-
-print("Saved to", file_path)
+# saves to .ll and .bc files in working directory
+dumps(module)
 ```
 
 And then execute the QIR program:
 
 ```bash
-qir-runner -f bell.ll
+qir-runner -f bell.bc
 ```
