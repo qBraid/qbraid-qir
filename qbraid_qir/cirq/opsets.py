@@ -66,13 +66,6 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
     if isinstance(op, cirq.ops.GateOperation):
         gate = op.gate
 
-        op_name = str(gate)
-
-        func = PYQIR_OP_MAP.get(op_name, None)
-
-        if func is not None:
-            return func, op_name
-
         if isinstance(gate, cirq.ops.MeasurementGate):
             op_name = "MEASURE"
         elif isinstance(gate, (cirq.ops.Rx, cirq.ops.Ry, cirq.ops.Rz)):
@@ -82,19 +75,16 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
         elif isinstance(
             gate, (cirq.ops.XPowGate, cirq.ops.YPowGate, cirq.ops.ZPowGate)
         ):
-            if gate.exponent == 1:
-                op_name = gate.__class__.__name__[0]  # X, Y, Z
-            elif isinstance(gate, cirq.ZPowGate) and gate.exponent in [
-                0.25,
-                -0.25,
-                0.5,
-                -0.5,
-            ]:
-                op_name = str(gate)  # S, T, S**-1, T**-1
+            if gate.exponent == 1 or (
+                isinstance(gate, cirq.ZPowGate)
+                and gate.exponent in [0.25, -0.25, 0.5, -0.5]
+            ):
+                op_name = str(gate)  # X, Y, Z, S, T, S**-1, T**-1
             else:
-                op_name = f"R{gate.__class__.__name__[0].lower()}"
+                op_name = f"R{gate.__class__.__name__[0].lower()}"  # Rotations
         else:
             op_name = str(gate)
+
     else:
         op_name = str(op)
 

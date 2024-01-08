@@ -136,3 +136,13 @@ def test_convert_bell_compare_file(cirq_bell):
         cirq_bell, name=test_name, initialize_runtime=False, record_output=False
     )
     assert_equal_qir(str(module), test_name)
+
+
+@pytest.mark.skip(reason="Test case incomplete")
+def test_qft():
+    """Test converting Cirq QFT circuit to QIR."""
+    for n in range(2, 5):  # Test for different numbers of qubits
+        circuit = cirq.Circuit()
+        qubits = [cirq.NamedQubit(f"q{i}") for i in range(n)]
+        circuit.append(cirq.qft(*qubits))
+        # TODO Add assertions or checks here
