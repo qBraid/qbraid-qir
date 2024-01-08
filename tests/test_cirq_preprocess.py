@@ -19,6 +19,7 @@ from qbraid_qir.cirq.passes import preprocess_circuit
 
 # pylint: disable=redefined-outer-name
 
+
 @pytest.fixture
 def gridqubit_circuit():
     qubits = [cirq.GridQubit(x, 0) for x in range(4)]
@@ -57,3 +58,22 @@ def test_empty_circuit_conversion():
     assert (
         len(converted_circuit.all_qubits()) == 0
     ), "Converted empty circuit should have no qubits"
+
+
+# def test_preprocess_t_gate():
+#     pass
+
+
+circuit = cirq.Circuit(
+    [
+        cirq.Moment(
+            cirq.X(cirq.NamedQubit("q0")),
+        ),
+    ]
+)
+
+# circuit = cirq.Circuit([cirq.Moment(cirq.T(cirq.NamedQubit('q0')))])
+
+circuit = preprocess_circuit(circuit)
+
+print(circuit)

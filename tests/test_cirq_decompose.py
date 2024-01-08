@@ -81,6 +81,7 @@ def test_multiple_decomposes():
 
                 def _decompose_(self, qubits):
                     yield cirq.X(qubits[0])
+
             inner_custom_gate = InnerCustomGate()
             yield inner_custom_gate(qubits[0])
 

@@ -17,7 +17,6 @@ from abc import ABCMeta, abstractmethod
 from typing import List
 
 import cirq
-import numpy as np
 import pyqir
 import pyqir._native
 import pyqir.rt
