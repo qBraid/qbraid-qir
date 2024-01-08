@@ -14,10 +14,7 @@ Module containing unit tests for Cirq to QIR conversion functions.
 """
 import cirq
 import pytest
-import qiskit_qir
-from qiskit import QuantumRegister, QuantumCircuit, ClassicalRegister
 
-import qbraid_qir
 import tests.test_utils as test_utils
 from qbraid_qir.cirq.convert import cirq_to_qir
 from tests.fixtures.basic_gates import single_op_tests, rotation_tests, double_op_tests, \
