@@ -36,7 +36,7 @@ _rotations = {"Rx": "rx", "Ry": "ry", "Rz": "rz"}
 
 _two_qubit_gates = {"CX": "cnot", "CZ": "cz", "SWAP": "swap"}
 
-_three_qubit_gates = {"CCX": "ccx"}
+_three_qubit_gates = {"TOFFOLI": "ccx"}
 
 _measurements = {"measure": "mz"}
 
@@ -48,14 +48,14 @@ def _fixture_name(s: str) -> str:
 def _map_gate_name(gate_name: str) -> str:
     if gate_name in _one_qubit_gates:
         return _one_qubit_gates[gate_name]
-    elif gate in _measurements:
-        return _measurements[gate]
-    elif gate in _rotations:
-        return _rotations[gate]
-    elif gate in _two_qubit_gates:
-        return _two_qubit_gates[gate]
-    elif gate in _three_qubit_gates:
-        return _three_qubit_gates[gate]
+    elif gate_name in _measurements:
+        return _measurements[gate_name]
+    elif gate_name in _rotations:
+        return _rotations[gate_name]
+    elif gate_name in _two_qubit_gates:
+        return _two_qubit_gates[gate_name]
+    elif gate_name in _three_qubit_gates:
+        return _three_qubit_gates[gate_name]
 
     raise ValueError(f"Unknown Cirq gate {gate_name}")
 
@@ -98,10 +98,7 @@ def _generate_two_qubit_fixture(gate_name: str):
     @pytest.fixture()
     def test_fixture():
         circuit = cirq.Circuit()
-        q1 = cirq.NamedQubit("q1")
-        q2 = cirq.NamedQubit("q2")
-        circuit.append(getattr(cirq, gate_name)(q1, q2))
-        qs = cirq.LineQubit(2)
+        qs = [cirq.LineQubit(0), cirq.LineQubit(1)]
         circuit.append(getattr(cirq, gate_name)(qs[0], qs[1]))
         return _map_gate_name(gate_name), circuit
 
@@ -127,7 +124,7 @@ def _generate_three_qubit_fixture(gate_name: str):
     @pytest.fixture()
     def test_fixture():
         circuit = cirq.Circuit()
-        qs = cirq.LineQubit(3)
+        qs = [cirq.LineQubit(0), cirq.LineQubit(1), cirq.LineQubit(2)]
         circuit.append(getattr(cirq, gate_name)(qs[0], qs[1], qs[2]))
         return _map_gate_name(gate_name), circuit
 
