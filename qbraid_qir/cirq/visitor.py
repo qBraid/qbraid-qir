@@ -119,8 +119,7 @@ class BasicQisVisitor(CircuitElementVisitor):
                 self._measured_qubits[pyqir.qubit_id(qubit)] = True
                 pyqir_func(self._builder, qubit, result)
         elif op_str in ["Rx", "Ry", "Rz"]:
-            angle = operation.gate._rads * np.pi
-            pyqir_func(self._builder, angle, *qubits)
+            pyqir_func(self._builder, operation.gate._rads, *qubits)
         else:
             pyqir_func(self._builder, *qubits)
 

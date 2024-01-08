@@ -71,6 +71,9 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
             op_name = "MEASURE"
         elif isinstance(gate, (cirq.ops.Rx, cirq.ops.Ry, cirq.ops.Rz)):
             op_name = re.search(r"([Rx-z]+)\(", str(gate)).group(1)
+        elif isinstance(gate, (cirq.ops.XPowGate, cirq.ops.YPowGate, cirq.ops.ZPowGate)) and gate.exponent != 1.0:
+            pauli = re.search("([X-Z]).+", str(gate)).group(1)
+            op_name = f"R{pauli.lower()}"
         else:
             op_name = str(gate)
     else:
