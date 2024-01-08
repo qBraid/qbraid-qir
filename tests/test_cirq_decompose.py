@@ -67,3 +67,34 @@ def test_custom_gate():
         is False
     )
     assert circuits_allclose(decomposed_circuit, circuit)
+
+
+def test_multiple_decomposes():
+    class CustomGate(cirq.Gate):  # pylint: disable=abstract-method
+        def _num_qubits_(self):
+            return 1
+
+        def _decompose_(self, qubits):
+            class InnerCustomGate(cirq.Gate):  # pylint: disable=abstract-method
+                def _num_qubits_(self):
+                    return 1
+
+                def _decompose_(self, qubits):
+                    yield cirq.X(qubits[0])
+            inner_custom_gate = InnerCustomGate()
+            yield inner_custom_gate(qubits[0])
+
+    custom_gate = CustomGate()
+    qubit = cirq.LineQubit(0)
+    circuit = cirq.Circuit(custom_gate.on(qubit))
+    decomposed_circuit = _decompose_unsupported_gates(circuit)
+    assert decomposed_circuit != circuit
+    assert (
+        any(
+            isinstance(op.gate, CustomGate)
+            for moment in decomposed_circuit
+            for op in moment
+        )
+        is False
+    )
+    assert circuits_allclose(decomposed_circuit, circuit)
