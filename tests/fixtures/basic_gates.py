@@ -12,9 +12,7 @@
 Module defining Cirq basic gate fixtures for use in tests.
 
 """
-
 import cirq
-import numpy as np
 import pytest
 
 # All of the following dictionaries map from the names of methods on Cirq Circuit objects
@@ -47,13 +45,13 @@ def _fixture_name(s: str) -> str:
 def _map_gate_name(gate_name: str) -> str:
     if gate_name in _one_qubit_gates:
         return _one_qubit_gates[gate_name]
-    elif gate_name in _measurements:
+    if gate_name in _measurements:
         return _measurements[gate_name]
-    elif gate_name in _rotations:
+    if gate_name in _rotations:
         return _rotations[gate_name]
-    elif gate_name in _two_qubit_gates:
+    if gate_name in _two_qubit_gates:
         return _two_qubit_gates[gate_name]
-    elif gate_name in _three_qubit_gates:
+    if gate_name in _three_qubit_gates:
         return _three_qubit_gates[gate_name]
 
     raise ValueError(f"Unknown Cirq gate {gate_name}")
@@ -88,7 +86,7 @@ def _generate_rotation_fixture(gate_name: str):
 
 
 # Generate rotation gate fixtures
-for gate in _rotations.keys():
+for gate in _rotations:
     name = _fixture_name(gate)
     locals()[name] = _generate_rotation_fixture(gate)
 
@@ -114,7 +112,7 @@ def _generate_n_qubit_fixture(gate_name: str, n: int):
 
 
 # Generate double-qubit gate fixtures
-for gate in _two_qubit_gates.keys():
+for gate in _two_qubit_gates:
     name = _fixture_name(gate)
     locals()[name] = _generate_two_qubit_fixture(gate)
 
@@ -136,40 +134,18 @@ def _generate_complex_gate_fixture(gate_sequence):
     def test_fixture():
         circuit = cirq.Circuit()
         qubits = [cirq.NamedQubit(f"q{i}") for i in range(len(gate_sequence))]
-        for gate, qubit_indices in gate_sequence:
-            gates_to_apply = [getattr(cirq, gate)(qubits[i]) for i in qubit_indices]
+        for gate_op, qubit_indices in gate_sequence:
+            gates_to_apply = [getattr(cirq, gate_op)(qubits[i]) for i in qubit_indices]
             circuit.append(gates_to_apply)
         return circuit
 
     return test_fixture
 
 
-def test_qft():
-    for n in range(2, 5):  # Test for different numbers of qubits
-        circuit = cirq.Circuit()
-        qubits = [cirq.NamedQubit(f"q{i}") for i in range(n)]
-        circuit.append(cirq.qft(*qubits))
-        # Add assertions or checks here
-
-
-@pytest.mark.parametrize("angle", np.linspace(0, 2 * np.pi, 5))
-def test_rx_gate(angle):
-    qubit = cirq.NamedQubit("q0")
-    circuit = cirq.Circuit(cirq.rx(angle)(qubit))
-    # Add assertions or checks for the rotation
-
-
-def test_bell_state():
-    qubits = [cirq.NamedQubit(f"q{i}") for i in range(2)]
-    circuit = cirq.Circuit()
-    circuit.append([cirq.H(qubits[0]), cirq.CNOT(qubits[0], qubits[1])])
-    # Check if the circuit produces the correct entangled state
-
-
 single_op_tests = [_fixture_name(s) for s in _one_qubit_gates]
 
 # Generate three-qubit gate fixtures
-for gate in _three_qubit_gates.keys():
+for gate in _three_qubit_gates:
     name = _fixture_name(gate)
     locals()[name] = _generate_three_qubit_fixture(gate)
 
@@ -185,12 +161,12 @@ def _generate_measurement_fixture(gate_name: str):
     return test_fixture
 
 
-for gate in _measurements.keys():
+for gate in _measurements:
     name = _fixture_name(gate)
     locals()[name] = _generate_measurement_fixture(gate)
 
 single_op_tests = [_fixture_name(s) for s in _one_qubit_gates]
-rotation_tests = [_fixture_name(s) for s in _rotations.keys()]
-double_op_tests = [_fixture_name(s) for s in _two_qubit_gates.keys()]
-triple_op_tests = [_fixture_name(s) for s in _three_qubit_gates.keys()]
-measurement_tests = [_fixture_name(s) for s in _measurements.keys()]
+rotation_tests = [_fixture_name(s) for s in _rotations]
+double_op_tests = [_fixture_name(s) for s in _two_qubit_gates]
+triple_op_tests = [_fixture_name(s) for s in _three_qubit_gates]
+measurement_tests = [_fixture_name(s) for s in _measurements]

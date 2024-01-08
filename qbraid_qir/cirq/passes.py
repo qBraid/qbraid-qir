@@ -12,9 +12,8 @@
 Module for processing Cirq circuits before conversion to QIR.
 
 """
-
-from typing import List
 import itertools
+from typing import List
 
 import cirq
 import qbraid.programs.cirq
@@ -34,6 +33,7 @@ def _decompose_gate_op(op: cirq.GateOperation) -> List[cirq.OP_TREE]:
     if len(new_ops) == 1 and new_ops[0] == op:
         return [op]
     return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
+
 
 def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
     """

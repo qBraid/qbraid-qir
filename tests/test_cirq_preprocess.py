@@ -17,6 +17,8 @@ import pytest
 
 from qbraid_qir.cirq.passes import preprocess_circuit
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def gridqubit_circuit():

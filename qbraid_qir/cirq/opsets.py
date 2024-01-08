@@ -12,7 +12,6 @@
 Module mapping supported Cirq gates/operations to pyqir functions.
 
 """
-import re
 from typing import Callable, Tuple
 
 import cirq
@@ -70,12 +69,22 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
         if isinstance(gate, cirq.ops.MeasurementGate):
             op_name = "MEASURE"
         elif isinstance(gate, (cirq.ops.Rx, cirq.ops.Ry, cirq.ops.Rz)):
-            op_name = re.search(r"([Rx-z]+)\(", str(gate)).group(1)
-        elif isinstance(gate, (cirq.ops.XPowGate, cirq.ops.YPowGate, cirq.ops.ZPowGate)) and gate.exponent != 1.0:
-            pauli = re.search("([X-Z]).+", str(gate)).group(1)
-            op_name = f"R{pauli.lower()}"
+            op_name = gate.__class__.__name__
+        elif isinstance(gate, cirq.ops.Pauli):
+            op_name = gate.__class__.__name__[-1]  # X, Y, Z
+        elif isinstance(
+            gate, (cirq.ops.XPowGate, cirq.ops.YPowGate, cirq.ops.ZPowGate)
+        ):
+            if gate.exponent == 1 or (
+                isinstance(gate, cirq.ZPowGate)
+                and gate.exponent in [0.25, -0.25, 0.5, -0.5]
+            ):
+                op_name = str(gate)  # X, Y, Z, S, T, S**-1, T**-1
+            else:
+                op_name = f"R{gate.__class__.__name__[0].lower()}"  # Rotations
         else:
             op_name = str(gate)
+
     else:
         op_name = str(op)
 
