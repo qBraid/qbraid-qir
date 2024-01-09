@@ -15,7 +15,9 @@ import cirq
 import numpy as np
 import pytest
 
-from qbraid_qir.cirq.convert import _preprocess_circuit
+from qbraid_qir.cirq.passes import preprocess_circuit
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -33,7 +35,7 @@ def namedqubit_circuit():
 
 
 def test_convert_gridqubits_to_linequbits(gridqubit_circuit):
-    linequbit_circuit = _preprocess_circuit(gridqubit_circuit)
+    linequbit_circuit = preprocess_circuit(gridqubit_circuit)
     for qubit in linequbit_circuit.all_qubits():
         assert isinstance(qubit, cirq.LineQubit), "Qubit is not a LineQubit"
     assert np.allclose(
@@ -42,7 +44,7 @@ def test_convert_gridqubits_to_linequbits(gridqubit_circuit):
 
 
 def test_convert_namedqubits_to_linequbits(namedqubit_circuit):
-    linequbit_circuit = _preprocess_circuit(namedqubit_circuit)
+    linequbit_circuit = preprocess_circuit(namedqubit_circuit)
     for qubit in linequbit_circuit.all_qubits():
         assert isinstance(qubit, cirq.LineQubit), "Qubit is not a LineQubit"
     assert np.allclose(
@@ -52,7 +54,7 @@ def test_convert_namedqubits_to_linequbits(namedqubit_circuit):
 
 def test_empty_circuit_conversion():
     circuit = cirq.Circuit()
-    converted_circuit = _preprocess_circuit(circuit)
+    converted_circuit = preprocess_circuit(circuit)
     assert (
         len(converted_circuit.all_qubits()) == 0
     ), "Converted empty circuit should have no qubits"

@@ -31,7 +31,7 @@
 set -e
 
 # Constants
-PROJECT_NAME="qbraid/qir"
+PROJECT_NAME="qbraid_qir"
 VERSION_FILE_PATH="_version.py"
 TIMESTAMP_FORMAT="+%Y%m%d%H%M%S"
 

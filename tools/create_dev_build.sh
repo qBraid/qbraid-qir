@@ -40,7 +40,7 @@ OUT_DIR="${2}"
 
 # Constants
 REPO_DIR=$(git rev-parse --show-toplevel)
-VERSION_FILE="${REPO_DIR}/qbraid/_version.py"
+VERSION_FILE="${REPO_DIR}/qbraid_qir/_version.py"
 TMP_BRANCH="tmp_build_branch_$(date "+%Y%m%d%H%M%S")"
 
 # Cleanup function

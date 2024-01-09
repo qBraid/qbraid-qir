@@ -46,6 +46,16 @@ def should_skip(file_path, content):
     if os.path.basename(file_path) == "__init__.py":
         return not content.strip()
 
+    skip_header_tag = "# qbraid: skip-header"
+    line_number = 0
+
+    for line in content.splitlines():
+        line_number += 1
+        if 5 <= line_number <= 30 and skip_header_tag in line:
+            return True
+        if line_number > 30:
+            break
+
     return False
 
 
@@ -91,9 +101,29 @@ def process_files_in_directory(directory, fix=False):
     return count
 
 
+def display_help():
+    help_message = """
+    Usage: python verify_headers.py SRC [OPTIONS] ...
+
+    This script checks for copyright headers at the specified path.
+    If no flags are passed, it will indicate which files would be
+    modified without actually making any changes.
+    
+    Options:
+    --help      Display this help message and exit.
+    --fix       Adds/modifies file headers as necessary.
+    """
+    print(help_message)
+    sys.exit(0)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Please provide at least one directory as a command-line argument.")
+    if "--help" in sys.argv:
+        display_help()
+
+    # Check if at least two arguments are provided and the first argument is not a flag
+    if len(sys.argv) < 2 or sys.argv[1].startswith("--"):
+        print("Usage: python verify_headers.py SRC [OPTIONS] ...")
         sys.exit(1)
 
     script_directory = os.path.dirname(os.path.abspath(__file__))

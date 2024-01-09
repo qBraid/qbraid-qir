@@ -13,8 +13,8 @@ Fixtures imported/defined in this file can be used by any test in this directory
 without needing to import them (pytest will automatically discover them).
 
 """
-# pylint: disable=unused-import
+# pylint: disable=unused-import,wildcard-import,unused-wildcard-import
 
-from .fixtures.basic_gates import single_op_tests
-from .fixtures.cirq_circuits import cirq_bell
-from .fixtures.pyqir_circuits import pyqir_bell
+from .fixtures.basic_gates import *
+from .fixtures.cirq_circuits import *
+from .fixtures.pyqir_circuits import *
