@@ -22,6 +22,7 @@ from qbraid_qir.cirq.passes import preprocess_circuit
 from qbraid_qir.cirq.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
 
+
 def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
     """
     Converts a Cirq circuit to a PyQIR module.

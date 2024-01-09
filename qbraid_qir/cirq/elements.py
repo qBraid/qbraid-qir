@@ -117,10 +117,6 @@ class CirqModule:
     def num_qubits(self) -> int:
         """Returns the number of qubits in the circuit."""
         return self._num_qubits
-    
-    @property
-    def num_clbits(self) -> int:
-        return self._num_clbits
 
     @property
     def num_clbits(self) -> int:
