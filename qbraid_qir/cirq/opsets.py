@@ -12,12 +12,15 @@
 Module mapping supported Cirq gates/operations to pyqir functions.
 
 """
-import re
 from typing import Callable, Tuple
+
 import cirq
 import pyqir._native
+
 from qbraid_qir.exceptions import QirConversionError
 
+# NOTE: Upper/lower case matters here, and were set to
+# match the Cirq gate/op string representation.
 
 PYQIR_OP_MAP = {
     # Single-Qubit Clifford Gates
@@ -37,21 +40,26 @@ PYQIR_OP_MAP = {
     # Two-Qubit Gates
     "SWAP": pyqir._native.swap,
     "CNOT": pyqir._native.cx,
+    "CZ": pyqir._native.cz,
     # Three-Qubit Gates
     "TOFFOLI": pyqir._native.ccx,
     # Classical Gates/Operations
     "MEASURE": pyqir._native.mz,
     "reset": pyqir._native.reset,
-    }
+}
+
 
 def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
     """
     Maps a Cirq operation to its corresponding PyQIR callable function.
+
     Args:
         op (cirq.Operation): The Cirq operation to map.
+
     Returns:
         Tuple[Callable, str]: Tuple containing the corresponding PyQIR callable function,
                                and a string representing the gate/operation type.
+
     Raises:
         QirConversionError: If the operation or gate is not supported.
     """
@@ -61,9 +69,22 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
         if isinstance(gate, cirq.ops.MeasurementGate):
             op_name = "MEASURE"
         elif isinstance(gate, (cirq.ops.Rx, cirq.ops.Ry, cirq.ops.Rz)):
-            op_name = re.search(r"([A-Za-z]+)\(", str(gate)).group(1)
+            op_name = gate.__class__.__name__
+        elif isinstance(gate, cirq.ops.Pauli):
+            op_name = gate.__class__.__name__[-1]  # X, Y, Z
+        elif isinstance(
+            gate, (cirq.ops.XPowGate, cirq.ops.YPowGate, cirq.ops.ZPowGate)
+        ):
+            if gate.exponent == 1 or (
+                isinstance(gate, cirq.ZPowGate)
+                and gate.exponent in [0.25, -0.25, 0.5, -0.5]
+            ):
+                op_name = str(gate)  # X, Y, Z, S, T, S**-1, T**-1
+            else:
+                op_name = f"R{gate.__class__.__name__[0].lower()}"  # Rotations
         else:
             op_name = str(gate)
+
     else:
         op_name = str(op)
 
