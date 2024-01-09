@@ -122,14 +122,6 @@ def test_verify_qir_bell_fixture(pyqir_bell):
     assert_equal_qir(pyqir_bell.ir(), "test_qir_bell")
 
 
-<<<<<<< HEAD
-# @pytest.mark.skip(reason="Not implemented yet")
-def test_convert_bell_compare_file(cirq_bell):
-    """Test converting Cirq bell circuit to QIR."""
-    test_name = "test_qir_bell"
-    generator = cirq_to_qir(cirq_bell, name=test_name)
-    assert_equal_qir(str(generator), test_name)
-=======
 def test_entry_point_name(cirq_bell):
     """Test that entry point name is consistent with module ID."""
     name = "quantum_123"
@@ -154,4 +146,3 @@ def test_qft():
         qubits = [cirq.NamedQubit(f"q{i}") for i in range(n)]
         circuit.append(cirq.qft(*qubits))
         # TODO Add assertions or checks here
->>>>>>> b97e57fd717e1d2538039ef9eb18ea77b44f10ad

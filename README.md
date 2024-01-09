@@ -88,5 +88,3 @@ make html
 ## Architecture diagram
 
 ![architecture](https://github.com/qBraid/qbraid-qir/assets/46977852/64da00e3-ca11-443d-b9d0-66a2a71dca0f)
-
-## Running a Minimal Working Example

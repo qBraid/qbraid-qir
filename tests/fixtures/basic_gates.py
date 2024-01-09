@@ -13,10 +13,6 @@ Module defining Cirq basic gate fixtures for use in tests.
 
 """
 import cirq
-<<<<<<< HEAD
-import numpy as np
-=======
->>>>>>> b97e57fd717e1d2538039ef9eb18ea77b44f10ad
 import pytest
 
 # All of the following dictionaries map from the names of methods on Cirq Circuit objects
@@ -145,31 +141,6 @@ def _generate_complex_gate_fixture(gate_sequence):
 
     return test_fixture
 
-<<<<<<< HEAD
-
-def test_qft():
-    for n in range(2, 5):  # Test for different numbers of qubits
-        circuit = cirq.Circuit()
-        qubits = [cirq.NamedQubit(f"q{i}") for i in range(n)]
-        circuit.append(cirq.qft(*qubits))
-        # Add assertions or checks here
-
-
-@pytest.mark.parametrize("angle", np.linspace(0, 2 * np.pi, 5))
-def test_rx_gate(angle):
-    qubit = cirq.NamedQubit("q")
-    circuit = cirq.Circuit(cirq.rx(angle)(qubit))
-    # Add assertions or checks for the rotation
-
-
-def test_bell_state():
-    qubits = [cirq.NamedQubit(f"q{i}") for i in range(2)]
-    circuit = cirq.Circuit()
-    circuit.append([cirq.H(qubits[0]), cirq.CNOT(qubits[0], qubits[1])])
-    # Check if the circuit produces the correct entangled state
-=======
->>>>>>> b97e57fd717e1d2538039ef9eb18ea77b44f10ad
-
 
 single_op_tests = [_fixture_name(s) for s in _one_qubit_gates]
 
@@ -195,14 +166,7 @@ for gate in _measurements:
     locals()[name] = _generate_measurement_fixture(gate)
 
 single_op_tests = [_fixture_name(s) for s in _one_qubit_gates]
-<<<<<<< HEAD
-rotation_tests = [_fixture_name(s) for s in _rotations.keys()]
-double_op_tests = [_fixture_name(s) for s in _two_qubit_gates.keys()]
-triple_op_tests = [_fixture_name(s) for s in _three_qubit_gates.keys()]
-measurement_tests = [_fixture_name(s) for s in _measurements.keys()]
-=======
 rotation_tests = [_fixture_name(s) for s in _rotations]
 double_op_tests = [_fixture_name(s) for s in _two_qubit_gates]
 triple_op_tests = [_fixture_name(s) for s in _three_qubit_gates]
 measurement_tests = [_fixture_name(s) for s in _measurements]
->>>>>>> b97e57fd717e1d2538039ef9eb18ea77b44f10ad
