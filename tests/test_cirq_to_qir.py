@@ -12,15 +12,33 @@
 Module containing unit tests for Cirq to QIR conversion functions.
 
 """
+# isort: skip_file
+
 import cirq
 import pytest
 
-import tests.test_utils as test_utils
-from qbraid_qir.cirq.convert import cirq_to_qir, generate_module_id
-from qbraid_qir.exceptions import QirConversionError
-from tests.fixtures.basic_gates import single_op_tests
+from qbraid_qir.cirq.convert import cirq_to_qir
+from tests.fixtures.basic_gates import (
+    double_op_tests,
+    measurement_tests,
+    rotation_tests,
+    single_op_tests,
+    triple_op_tests,
+)
 
 from .qir_utils import assert_equal_qir
+from .test_utils import (
+    check_attributes,
+    double_op_call_string,
+    generic_op_call_string,
+    get_entry_point_body,
+    initialize_call_string,
+    measure_call_string,
+    result_record_output_string,
+    return_string,
+    rotation_call_string,
+    single_op_call_string,
+)
 
 
 def test_cirq_to_qir_type_error():
@@ -29,36 +47,74 @@ def test_cirq_to_qir_type_error():
         cirq_to_qir(None)
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 def test_cirq_to_qir_conversion_error():
     """Test raising exception for conversion error."""
     circuit = cirq.Circuit()
-    with pytest.raises(QirConversionError):
+    with pytest.raises(ValueError):
         cirq_to_qir(circuit)
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 @pytest.mark.parametrize("circuit_name", single_op_tests)
 def test_single_qubit_gates(circuit_name, request):
     qir_op, circuit = request.getfixturevalue(circuit_name)
-    generated_qir = str(cirq_to_qir(circuit)[0]).splitlines()
-    func = test_utils.get_entry_point_body(generated_qir)
-    assert func[0] == test_utils.initialize_call_string()
-    assert func[1] == test_utils.single_op_call_string(qir_op, 0)
-    assert func[2] == test_utils.return_string()
+    qir_module = cirq_to_qir(circuit, record_output=False)
+    qir_str = str(qir_module).splitlines()
+    func = get_entry_point_body(qir_str)
+    assert func[0] == initialize_call_string()
+    assert func[1] == single_op_call_string(qir_op, 0)
+    assert func[2] == return_string()
     assert len(func) == 3
 
 
+@pytest.mark.parametrize("circuit_name", rotation_tests)
+def test_rotation_gates(circuit_name, request):
+    qir_op, circuit = request.getfixturevalue(circuit_name)
+    generated_qir = str(cirq_to_qir(circuit)).splitlines()
+    check_attributes(generated_qir, 1, 1)
+    func = get_entry_point_body(generated_qir)
+    assert func[0] == initialize_call_string()
+    assert func[1] == rotation_call_string(qir_op, 0.5, 0)
+    assert func[3] == return_string()
+    assert len(func) == 4
 
-def test_cirq_workings():
-    circuit = cirq.Circuit()
-    qubits = cirq.LineQubit.range(3)
-    circuit.append(cirq.CX(qubits[0], qubits[1]))
-    circuit.append(cirq.measure(qubits[0]))
-    circuit.append(cirq.H(qubits[0]))
-    circuit.append(cirq.H(qubits[1]))
-    circuit.append(cirq.H(qubits[2]))
-    print(circuit)
+
+@pytest.mark.parametrize("circuit_name", double_op_tests)
+def test_double_qubit_gates(circuit_name, request):
+    qir_op, circuit = request.getfixturevalue(circuit_name)
+    generated_qir = str(cirq_to_qir(circuit)).splitlines()
+    check_attributes(generated_qir, 2, 2)
+    func = get_entry_point_body(generated_qir)
+    assert func[0] == initialize_call_string()
+    assert func[1] == double_op_call_string(qir_op, 0, 1)
+    assert func[4] == return_string()
+    assert len(func) == 5
+
+
+@pytest.mark.parametrize("circuit_name", triple_op_tests)
+def test_triple_qubit_gates(circuit_name, request):
+    qir_op, circuit = request.getfixturevalue(circuit_name)
+    generated_qir = str(cirq_to_qir(circuit)).splitlines()
+    check_attributes(generated_qir, 3, 3)
+    func = get_entry_point_body(generated_qir)
+    assert func[0] == initialize_call_string()
+    assert func[1] == generic_op_call_string(qir_op, [0, 1, 2])
+    assert func[5] == return_string()
+    assert len(func) == 6
+
+
+@pytest.mark.parametrize("circuit_name", measurement_tests)
+def test_measurement(circuit_name, request):
+    qir_op, circuit = request.getfixturevalue(circuit_name)
+    module = cirq_to_qir(circuit)
+    generated_qir = str(module).splitlines()
+    check_attributes(generated_qir, 1, 1)
+    func = get_entry_point_body(generated_qir)
+
+    assert func[0] == initialize_call_string()
+    assert func[1] == measure_call_string(qir_op, 0, 0)
+    assert func[2] == result_record_output_string(0)
+    assert func[3] == return_string()
+    assert len(func) == 4
 
 
 def test_verify_qir_bell_fixture(pyqir_bell):
@@ -66,9 +122,36 @@ def test_verify_qir_bell_fixture(pyqir_bell):
     assert_equal_qir(pyqir_bell.ir(), "test_qir_bell")
 
 
+<<<<<<< HEAD
 # @pytest.mark.skip(reason="Not implemented yet")
 def test_convert_bell_compare_file(cirq_bell):
     """Test converting Cirq bell circuit to QIR."""
     test_name = "test_qir_bell"
     generator = cirq_to_qir(cirq_bell, name=test_name)
     assert_equal_qir(str(generator), test_name)
+=======
+def test_entry_point_name(cirq_bell):
+    """Test that entry point name is consistent with module ID."""
+    name = "quantum_123"
+    module = cirq_to_qir(cirq_bell, name=name)
+    assert module.source_filename == name
+
+
+def test_convert_bell_compare_file(cirq_bell):
+    """Test converting Cirq bell circuit to QIR."""
+    test_name = "test_qir_bell"
+    module = cirq_to_qir(
+        cirq_bell, name=test_name, initialize_runtime=False, record_output=False
+    )
+    assert_equal_qir(str(module), test_name)
+
+
+@pytest.mark.skip(reason="Test case incomplete")
+def test_qft():
+    """Test converting Cirq QFT circuit to QIR."""
+    for n in range(2, 5):  # Test for different numbers of qubits
+        circuit = cirq.Circuit()
+        qubits = [cirq.NamedQubit(f"q{i}") for i in range(n)]
+        circuit.append(cirq.qft(*qubits))
+        # TODO Add assertions or checks here
+>>>>>>> b97e57fd717e1d2538039ef9eb18ea77b44f10ad

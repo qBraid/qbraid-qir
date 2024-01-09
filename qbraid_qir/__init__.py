@@ -19,7 +19,7 @@ Functions
 .. autosummary::
    :toctree: ../stubs/
 
-   cirq_to_qir
+   dumps
 
 Exceptions
 -----------
@@ -33,3 +33,4 @@ Exceptions
 from ._version import __version__
 from .cirq import cirq_to_qir
 from .exceptions import QirConversionError
+from .serialization import dumps

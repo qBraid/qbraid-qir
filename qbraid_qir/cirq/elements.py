@@ -71,6 +71,25 @@ class _Operation(_CircuitElement):
 
 
 class CirqModule:
+    """
+    A module representing a quantum circuit in Cirq using QIR.
+
+    This class encapsulates a quantum circuit from Cirq and translates it into QIR format,
+    maintaining information about quantum operations, qubits, and classical bits. It provides
+    methods to interact with the underlying QIR module and circuit elements.
+
+    Args:
+        name (str): Name of the module.
+        module (Module): QIR Module instance.
+        num_qubits (int): Number of qubits in the circuit.
+        elements (List[_CircuitElement]): List of circuit elements.
+
+    Example:
+        >>> circuit = cirq.Circuit()
+        >>> cirq_module = CirqModule.from_circuit(circuit)
+        >>> print(cirq_module.num_qubits)
+    """
+
     def __init__(
         self,
         name: str,
@@ -86,25 +105,34 @@ class CirqModule:
 
     @property
     def name(self) -> str:
+        """Returns the name of the module."""
         return self._name
 
     @property
     def module(self) -> Module:
+        """Returns the QIR Module instance."""
         return self._module
 
     @property
     def num_qubits(self) -> int:
+        """Returns the number of qubits in the circuit."""
         return self._num_qubits
     
     @property
     def num_clbits(self) -> int:
         return self._num_clbits
 
+    @property
+    def num_clbits(self) -> int:
+        """Returns the number of classical bits in the circuit."""
+        return self._num_clbits
+
     @classmethod
     def from_circuit(
         cls, circuit: cirq.Circuit, module: Optional[Module] = None
     ) -> "CirqModule":
-        """Create a new CirqModule from a cirq.Circuit object."""
+        """Class method. Constructs a CirqModule from a given cirq.Circuit object
+        and an optional QIR Module."""
         elements: List[_CircuitElement] = []
 
         # Register(s). Tentatively using cirq.Qid as input. Better approaches might exist tbd.
@@ -117,7 +145,7 @@ class CirqModule:
         if module is None:
             module = Module(Context(), generate_module_id(circuit))
         return cls(
-            name=module.source_filename,
+            name="main",
             module=module,
             num_qubits=len(circuit.all_qubits()),
             elements=elements,

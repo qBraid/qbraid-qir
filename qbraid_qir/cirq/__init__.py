@@ -21,5 +21,17 @@ Functions
 
    cirq_to_qir
 
+
+Classes
+---------
+
+.. autosummary::
+   :toctree: ../stubs/
+
+   CirqModule
+   BasicQisVisitor
+
 """
 from .convert import cirq_to_qir
+from .elements import CirqModule
+from .visitor import BasicQisVisitor
