@@ -12,8 +12,11 @@
 Module defining exceptions for errors raised by qBraid.
 
 """
-from qbraid.exceptions import QbraidError
 
 
-class QirConversionError(QbraidError):
+class QbraidQirError(Exception):
+    """Base class for errors raised by qbraid-qir."""
+
+
+class QirConversionError(QbraidQirError):
     """Class for errors raised when converting quantum program to QIR."""
