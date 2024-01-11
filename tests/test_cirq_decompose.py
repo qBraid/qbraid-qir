@@ -15,7 +15,7 @@ Test functions that decompose unsupported Cirq gates before conversion to QIR.
 
 import cirq
 import numpy as np
-from qbraid.programs.testing import circuits_allclose
+from qbraid.interface import circuits_allclose
 
 from qbraid_qir.cirq.passes import _decompose_unsupported_gates
 
