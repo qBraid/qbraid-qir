@@ -16,7 +16,6 @@ import itertools
 from typing import List
 
 import cirq
-import qbraid.programs.cirq
 
 from qbraid_qir.cirq.opsets import map_cirq_op_to_pyqir_callable
 from qbraid_qir.exceptions import QirConversionError
@@ -70,8 +69,8 @@ def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
         cirq.Circuit: The preprocessed Cirq circuit.
 
     """
-    circuit = _decompose_unsupported_gates(circuit)
-    qprogram = qbraid.programs.cirq.CirqCircuit(circuit)
-    qprogram._convert_to_line_qubits()
-    cirq_circuit = qprogram.program
-    return cirq_circuit
+    qubit_map = {
+        qubit: cirq.LineQubit(i) for i, qubit in enumerate(circuit.all_qubits())
+    }
+    line_qubit_circuit = circuit.transform_qubits(lambda q: qubit_map[q])
+    return _decompose_unsupported_gates(line_qubit_circuit)
