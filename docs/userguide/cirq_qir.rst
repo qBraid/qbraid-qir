@@ -11,26 +11,25 @@ Convert a ``Cirq`` circuit to ``QIR`` code:
 .. code-block:: python
 
    import cirq
+   from qbraid_qir import dumps
    from qbraid_qir.cirq import cirq_to_qir
 
-   # Create two qubits
+   # create a test circuit
    q0, q1 = cirq.LineQubit.range(2)
+   circuit = cirq.Circuit(cirq.H(q0), cirq.CNOT(q0, q1), cirq.measure(q0, q1))
+   
+   # convert to QIR
+   module = cirq_to_qir(circuit, name="bell")
 
-   # Create bell circuit
-   circuit = cirq.Circuit(
-       cirq.H(q0),
-       cirq.CNOT(q0, q1),
-       cirq.measure(q0, q1)
-   )
+   # saves to .ll and .bc files in working directory
+   dumps(module)
 
-   qir_code = cirq_to_qir(circuit, name="Bell")
-
-   print(qir_code)
+   print(module)
 
 .. code-block:: none
 
-   ; ModuleID = 'Bell'
-   source_filename = "Bell"
+   ; ModuleID = 'bell'
+   source_filename = "bell"
 
    %Qubit = type opaque
    %Result = type opaque
@@ -56,3 +55,21 @@ Convert a ``Cirq`` circuit to ``QIR`` code:
    !1 = !{i32 7, !"qir_minor_version", i32 0}
    !2 = !{i32 1, !"dynamic_qubit_management", i1 false}
    !3 = !{i32 1, !"dynamic_result_management", i1 false}
+
+
+.. note::
+
+   Circuits constructed using qubits of type ``cirq.NameQubit`` or ``cirq.GridQubit``
+   will be transformed to type ``cirq.LineQubit`` before conversion to ``QIR``.
+
+
+Execute the QIR program using the `qir-runner <https://github.com/qir-alliance/qir-runner>`_ command line tool:
+
+.. code-block:: bash
+
+   $ qir-runner -f bell.bc
+
+
+.. seealso::
+
+   https://github.com/qBraid/qbraid-qir/tree/main/test-containers
