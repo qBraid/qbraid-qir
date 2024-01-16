@@ -12,10 +12,14 @@
 Module containing unit tests for Cirq to QIR conversion functions.
 
 """
+from pathlib import Path
+
 # isort: skip_file
 
 import cirq
 import pytest
+import pyqir
+import os
 
 from qbraid_qir.cirq.convert import cirq_to_qir
 from tests.fixtures.basic_gates import (
@@ -39,6 +43,14 @@ from .test_utils import (
     rotation_call_string,
     single_op_call_string,
 )
+
+def compare_reference_ir(generated_bitcode: bytes, name: str) -> None:
+    module = pyqir.Module.from_bitcode(pyqir.Context(), generated_bitcode, f"{name}")
+    ir = str(module)
+
+    file = os.path.join(os.path.dirname(__file__), f"resources/{name}.ll")
+    expected = Path(file).read_text()
+    assert ir == expected
 
 
 def test_cirq_to_qir_type_error():
@@ -64,6 +76,33 @@ def test_single_qubit_gates(circuit_name, request):
     assert func[1] == single_op_call_string(qir_op, 0)
     assert func[2] == return_string()
     assert len(func) == 3
+
+def test_conditional_gates():
+    qubits = [cirq.LineQubit(i) for i in range(3)]
+    circuit = cirq.Circuit()
+
+    circuit.append([cirq.H(qubits[0]), cirq.H(qubits[1])])
+
+    circuit.append(cirq.measure(qubits[0]))
+    circuit.append(cirq.measure(qubits[1]))
+
+    sub_operation = cirq.Z(qubits[2])
+
+    # This Z gate on qubit 2 will only be executed if the measurement on 0 and 1 qubit is True
+    controlled_op = cirq.ClassicallyControlledOperation(sub_operation, conditions=["0", "1"])
+
+    circuit.append(controlled_op)
+
+
+    new_circuit = cirq_to_qir(circuit)
+    generated_qir = str(new_circuit).splitlines()
+    compare_reference_ir(new_circuit.bitcode, "test_conditional_gates")
+    func = get_entry_point_body(generated_qir)
+    assert func[0] == initialize_call_string()
+    assert func[1] == single_op_call_string("h", 0)
+    assert func[2] == single_op_call_string("h", 1)
+
+    print(new_circuit)
 
 
 @pytest.mark.parametrize("circuit_name", rotation_tests)

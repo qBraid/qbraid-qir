@@ -110,6 +110,12 @@ class BasicQisVisitor(CircuitElementVisitor):
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in qlabels]
 
+        def handle_measurement(pyqir_func):
+            _log.debug("Visiting measurement operation '%s'", str(operation))
+            for qubit, result in zip(qubits, results):
+                self._measured_qubits[pyqir.qubit_id(qubit)] = True
+                pyqir_func(self._builder, qubit, result)
+
         # dealing with conditional gates
         if isinstance(operation, cirq.ClassicallyControlledOperation):
             op_conds = operation._conditions # list of measurement keys
@@ -118,27 +124,27 @@ class BasicQisVisitor(CircuitElementVisitor):
                         for i in range(len(op_conds))
                     ]
             regular_op = operation.without_classical_controls()
-            pyqir_func, op_str = map_cirq_op_to_pyqir_callable(regular_op)
-            def _branch(conds):
+            temp_pyqir_func, op_str = map_cirq_op_to_pyqir_callable(regular_op)
+            if op_str == "MEASURE":
+                pyqir_func = lambda: handle_measurement(temp_pyqir_func)
+            elif op_str in ["Rx", "Ry", "Rz"]:
+                pyqir_func = lambda: temp_pyqir_func(self._builder, operation.gate._rads, *qubits)
+            else:
+                pyqir_func = lambda: temp_pyqir_func(self._builder, *qubits)
+
+            def _branch(conds, pyqir_func):
                 if len(conds) == 0:
-                    temp_pyqir_func, temp_op_str = map_cirq_op_to_pyqir_callable(cirq.I)
-                    passable_pyqir_func = lambda: temp_pyqir_func(self._builder, *qubits)
-                    return passable_pyqir_func
+                    temp_Id, _ = map_cirq_op_to_pyqir_callable(cirq.I)
+                    passable_Id = lambda: temp_Id(self._builder, *qubits)
+                    return passable_Id
                 else:
-                    temp_pyqir_func, temp_op_str = map_cirq_op_to_pyqir_callable(regular_op)
-                    passable_pyqir_func = lambda: temp_pyqir_func(self._builder, regular_op.gate._rads, *qubits) if temp_op_str in ["Rx", "Ry", "Rz"] else lambda: temp_pyqir_func(self._builder, *qubits)
-                    passable_pyqir_func()
-                    # pyqir._native.if_result(self._builder, conds[0], zero=passable_pyqir_func, one=_branch(conds[1:]))
-                    # pyqir._native.if_result(self._builder, conds[0], zero=passable_pyqir_func, one=passable_pyqir_func)
-            _branch(conditions)
-        else:       
+                    pyqir._native.if_result(self._builder, conds[0], zero=_branch(conds[1:], pyqir_func), one=pyqir_func)
+            _branch(conditions, pyqir_func)
+        else:
             pyqir_func, op_str = map_cirq_op_to_pyqir_callable(operation)
 
             if op_str == "MEASURE":
-                _log.debug("Visiting measurement operation '%s'", str(operation))
-                for qubit, result in zip(qubits, results):
-                    self._measured_qubits[pyqir.qubit_id(qubit)] = True
-                    pyqir_func(self._builder, qubit, result)
+                handle_measurement(pyqir_func)
             elif op_str in ["Rx", "Ry", "Rz"]:
                 pyqir_func(self._builder, operation.gate._rads, *qubits)
             else:
