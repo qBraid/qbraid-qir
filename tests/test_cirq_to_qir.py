@@ -44,6 +44,7 @@ from .test_utils import (
     single_op_call_string,
 )
 
+
 def compare_reference_ir(generated_bitcode: bytes, name: str) -> None:
     module = pyqir.Module.from_bitcode(pyqir.Context(), generated_bitcode, f"{name}")
     ir = str(module)
@@ -77,6 +78,7 @@ def test_single_qubit_gates(circuit_name, request):
     assert func[2] == return_string()
     assert len(func) == 3
 
+
 def test_conditional_gates():
     qubits = [cirq.LineQubit(i) for i in range(3)]
     circuit = cirq.Circuit()
@@ -89,10 +91,11 @@ def test_conditional_gates():
     sub_operation = cirq.Z(qubits[2])
 
     # This Z gate on qubit 2 will only be executed if the measurement on 0 and 1 qubit is True
-    controlled_op = cirq.ClassicallyControlledOperation(sub_operation, conditions=["0", "1"])
+    controlled_op = cirq.ClassicallyControlledOperation(
+        sub_operation, conditions=["0", "1"]
+    )
 
     circuit.append(controlled_op)
-
 
     new_circuit = cirq_to_qir(circuit)
     generated_qir = str(new_circuit).splitlines()

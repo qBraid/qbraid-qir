@@ -17,14 +17,17 @@ from typing import Callable, Tuple
 import cirq
 import pyqir._native
 
-from qbraid_qir.exceptions import QirConversionError
 from qbraid_qir.cirq.elements import CirqModule
+from qbraid_qir.exceptions import QirConversionError
+
 
 # NOTE: Upper/lower case matters here, and were set to
 # match the Cirq gate/op string representation.
 def i(builder, qubits):
     pyqir._native.x(builder, qubits)
     pyqir._native.x(builder, qubits)
+
+
 PYQIR_OP_MAP = {
     # Identity Gate
     "I": i,
