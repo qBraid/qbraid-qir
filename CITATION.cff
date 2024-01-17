@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+title: >-
+  qBraid-QIR: Python package for generating QIR programs from Cirq.
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Samuel
+    family-names: Kushnir
+    affiliation: University of Maryland
+  - given-names: Rohan
+    family-names: Jain
+    affiliation: Carnegie Mellon University
+  - given-names: Priyansh
+    family-names: Parakh
+    affiliation: University of Toronto
+  - given-names: Ryan James
+    family-names: Hill
+    affiliation: qBraid Co.
+repository-code: 'https://github.com/qBraid/qbraid-qir'
+url: 'https://docs.qbraid.com/projects/qir/en/v0.1.0/'
+repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.1.0'
+keywords:
+  - python
+  - quantum-computing
+  - qir
+  - llvm
+  - cirq
+license: GPL-3.0
+version: 0.1.0
+date-released: '2024-01-12'

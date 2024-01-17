@@ -56,7 +56,7 @@ jobs:
           pip install dist/*.whl
       - name: Install pytest
         run: |
-          pip install pytest
+          pip install pytest qbraid
       - name: Run tests
         run: |
           pytest tests

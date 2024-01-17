@@ -27,10 +27,11 @@ Exceptions
 .. autosummary::
    :toctree: ../stubs/
 
+   QbraidQirError
    QirConversionError
 
 """
 from ._version import __version__
 from .cirq import cirq_to_qir
-from .exceptions import QirConversionError
+from .exceptions import QbraidQirError, QirConversionError
 from .serialization import dumps
