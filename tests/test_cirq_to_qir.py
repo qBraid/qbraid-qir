@@ -100,12 +100,6 @@ def test_conditional_gates():
     new_circuit = cirq_to_qir(circuit)
     generated_qir = str(new_circuit).splitlines()
     compare_reference_ir(new_circuit.bitcode, "test_conditional_gates")
-    func = get_entry_point_body(generated_qir)
-    assert func[0] == initialize_call_string()
-    assert func[1] == single_op_call_string("h", 0)
-    assert func[2] == single_op_call_string("h", 1)
-
-    print(new_circuit)
 
 
 @pytest.mark.parametrize("circuit_name", rotation_tests)

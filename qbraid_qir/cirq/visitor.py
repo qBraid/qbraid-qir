@@ -139,10 +139,10 @@ class BasicQisVisitor(CircuitElementVisitor):
             def _branch(conds, pyqir_func):
                 if len(conds) == 0:
                     temp_id, _ = map_cirq_op_to_pyqir_callable(cirq.I)
-                    passable_id = lambda: temp_id(self._builder, *qubits)
-                    return passable_id
+                    passable_identity = lambda: temp_id(self._builder, *qubits)
+                    return passable_identity
                 else:
-                    pyqir._native.if_result(
+                    return pyqir._native.if_result(
                         self._builder,
                         conds[0],
                         zero=_branch(conds[1:], pyqir_func),
