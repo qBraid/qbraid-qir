@@ -17,12 +17,20 @@ from typing import Callable, Tuple
 import cirq
 import pyqir._native
 
+from qbraid_qir.cirq.elements import CirqModule
 from qbraid_qir.exceptions import QirConversionError
+
 
 # NOTE: Upper/lower case matters here, and were set to
 # match the Cirq gate/op string representation.
+def i(builder, qubits):
+    pyqir._native.x(builder, qubits)
+    pyqir._native.x(builder, qubits)
+
 
 PYQIR_OP_MAP = {
+    # Identity Gate
+    "I": i,
     # Single-Qubit Clifford Gates
     "H": pyqir._native.h,
     "X": pyqir._native.x,
@@ -84,7 +92,15 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
                 op_name = f"R{gate.__class__.__name__[0].lower()}"  # Rotations
         else:
             op_name = str(gate)
-
+    # elif isinstance(op, cirq.ops.ClassicallyControlledOperation):
+    #     op_name = "if_result"
+    #     op_conds = op._conditions # list of measurement keys
+    #     conditions = [
+    #                 pyqir.result(module.context, int(op_conds[i].keys[0].name))
+    #                 for i in range(len(op_conds))
+    #             ]
+    #     regular_op = op.without_classical_controls()
+    #     def branch(conds):
     else:
         op_name = str(op)
 
