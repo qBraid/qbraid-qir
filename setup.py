@@ -64,5 +64,9 @@ docs_requires = read_requirements(os.path.join(here, "docs", "requirements.txt")
 setup(
     version=version,
     install_requires=install_requires,
-    extras_require={"dev": dev_requires, "docs": docs_requires},
+    extras_require={
+        "cirq": ["cirq-core>=1.3.0,<1.4.0"],
+        "qasm3": ["openqasm3[parser]>=0.4.0,<0.6.0"],
+        "dev": dev_requires + docs_requires,
+    },
 )
