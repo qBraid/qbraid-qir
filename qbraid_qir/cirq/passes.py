@@ -51,6 +51,8 @@ def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
             if isinstance(op, cirq.GateOperation):
                 decomposed_ops = _decompose_gate_op(op)
                 new_ops.extend(decomposed_ops)
+            elif isinstance(op, cirq.ClassicallyControlledOperation):
+                new_ops.append(op)
             else:
                 new_ops.append(op)
 
