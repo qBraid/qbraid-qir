@@ -17,7 +17,7 @@ from typing import Optional
 import openqasm3
 from pyqir import Context, Module, qir_module
 
-# from qbraid_qir.qasm3.elements import Qasm3Module
+from qbraid_qir.qasm3.elements import Qasm3Module
 # from qbraid_qir.qasm3.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
 
@@ -38,10 +38,10 @@ def qasm3_to_qir(
         record_output (bool): Whether to record output calls for registers, default `True`
 
     Returns:
-        The QIR ``pyqir.Module`` representation of the input Cirq circuit.
+        The QIR ``pyqir.Module`` representation of the input OpenQASM 3 program.
 
     Raises:
-        TypeError: If the input is not a valid Cirq circuit.
+        TypeError: If the input is not a valid OpenQASM 3 program.
         QirConversionError: If the conversion fails.
     """
     if not isinstance(program, openqasm3.ast.Program):
@@ -49,8 +49,8 @@ def qasm3_to_qir(
 
     # TODO: Implement this function
 
-    # llvm_module = qir_module(Context(), name)
-    # module = Qasm3Module.from_circuit(program, llvm_module)
+    llvm_module = qir_module(Context(), name)
+    module = Qasm3Module.from_circuit(program, llvm_module)
 
     # visitor = BasicQisVisitor(**kwargs)
     # module.accept(visitor)
