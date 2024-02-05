@@ -12,24 +12,24 @@
 Module containing OpenQASM to QIR conversion functions
 
 """
-from typing import Optional
+from typing import Optional, Union
 
 import openqasm3
 from pyqir import Context, Module, qir_module
 
-from qbraid_qir.qasm3.elements import Qasm3Module
-# from qbraid_qir.qasm3.visitor import BasicQisVisitor
 from qbraid_qir.exceptions import QirConversionError
+from qbraid_qir.qasm3.elements import Qasm3Module
+from qbraid_qir.qasm3.visitor import BasicQisVisitor
 
 
 def qasm3_to_qir(
-    program: openqasm3.ast.Program, name: Optional[str] = None, **kwargs
+    program: Union[openqasm3.ast.Program, str], name: Optional[str] = None, **kwargs
 ) -> Module:
     """
     Converts an OpenQASM 3 program to a PyQIR module.
 
     Args:
-        program (openqasm3.ast.Program): The OpenQASM 3 program to convert.
+        program (openqasm3.ast.Program or str): The OpenQASM 3 program to convert.
         name (str, optional): Identifier for created QIR module. Auto-generated if not provided.
 
     Keyword Args:
@@ -44,18 +44,21 @@ def qasm3_to_qir(
         TypeError: If the input is not a valid OpenQASM 3 program.
         QirConversionError: If the conversion fails.
     """
-    if not isinstance(program, openqasm3.ast.Program):
-        raise TypeError("Input quantum program must be of type openqasm3.ast.Program.")
+    if isinstance(program, str):
+        program = openqasm3.parse(program)
 
-    # TODO: Implement this function
+    elif not isinstance(program, openqasm3.ast.Program):
+        raise TypeError(
+            "Input quantum program must be of type openqasm3.ast.Program or str."
+        )
 
     llvm_module = qir_module(Context(), name)
-    module = Qasm3Module.from_circuit(program, llvm_module)
+    module = Qasm3Module.from_program(program, llvm_module)
 
-    # visitor = BasicQisVisitor(**kwargs)
-    # module.accept(visitor)
+    visitor = BasicQisVisitor(**kwargs)
+    module.accept(visitor)
 
-    # err = llvm_module.verify()
-    # if err is not None:
-    #     raise QirConversionError(err)
-    # return llvm_module
+    err = llvm_module.verify()
+    if err is not None:
+        raise QirConversionError(err)
+    return llvm_module

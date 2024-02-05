@@ -28,10 +28,10 @@ Classes
 .. autosummary::
    :toctree: ../stubs/
 
-   QasmModule
+   Qasm3Module
    BasicQisVisitor
 
 """
 from .convert import qasm3_to_qir
-from .elements import QasmModule
-# from .visitor import BasicQisVisitor
+from .elements import Qasm3Module
+from .visitor import BasicQisVisitor
