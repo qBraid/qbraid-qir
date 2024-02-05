@@ -91,7 +91,7 @@ class BasicQisVisitor(CircuitElementVisitor):
     def visit_register(self, **kwargs) -> None:
         raise NotImplementedError
 
-    def visit_operation(self, **kwargs) -> None:
+    def visit_statement(self, **kwargs) -> None:
         raise NotImplementedError
 
     def ir(self) -> str:
