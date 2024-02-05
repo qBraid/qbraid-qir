@@ -33,6 +33,5 @@ Classes
 
 """
 from .convert import qasm3_to_qir
-
 from .elements import QasmModule
 # from .visitor import BasicQisVisitor
