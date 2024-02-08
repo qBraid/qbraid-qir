@@ -9,6 +9,7 @@ RUN apt-get update --yes && apt-get install --yes --no-install-recommends \
     vim \
     git \
     curl \
+    jq \
     pkg-config \
     lsb-release \
     wget \
@@ -78,5 +79,17 @@ RUN cargo install llvmenv && \
     cargo build --release
 
 ENV PATH="/opt/qir-runner/target/release:${PATH}"
+
+USER root
+
+COPY get-wheel.sh ./
+
+RUN chmod +x ./get-wheel.sh
+
+RUN ./get-wheel.sh
+
+USER $NB_UID
+
+RUN pip install *.whl
 
 WORKDIR $HOME
