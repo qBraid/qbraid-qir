@@ -24,5 +24,4 @@ jobs:
         python3 -m pip install -e .
     - name: Build docs
       run: |
-        cd docs
         sphinx-build -W -b html docs docs/build/html

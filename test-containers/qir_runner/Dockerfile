@@ -80,16 +80,4 @@ RUN cargo install llvmenv && \
 
 ENV PATH="/opt/qir-runner/target/release:${PATH}"
 
-USER root
-
-COPY get-wheel.sh ./
-
-RUN chmod +x ./get-wheel.sh
-
-RUN ./get-wheel.sh
-
-USER $NB_UID
-
-RUN pip install *.whl
-
 WORKDIR $HOME
