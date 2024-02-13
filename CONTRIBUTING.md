@@ -12,9 +12,17 @@ Before you start working on a new feature or a fix, here's how you can contribut
 4. **Push to Your Fork**: Push your changes to your forked repository on GitHub.
 5. **Create a Pull Request**: Go to the original project repository and click on "Pull Requests", then click the "New Pull Request" button
 
+### Development install
+
+```bash
+git clone https://github.com/qBraid/qbraid-qir.git
+cd qbraid-qir
+pip install -e '.[dev]'
+```
+
 ## Pull request checklist
 
-### Unit tests
+### Run tests
 
 Workflow: [`main.yml`](.github/workflows/main.yml)
 
@@ -24,7 +32,7 @@ Workflow: [`main.yml`](.github/workflows/main.yml)
 Install pytest:
 
 ```bash
-pip install pytest pytest-cov
+pip install qbraid pytest pytest-cov
 ```
 
 Run unit tests:
@@ -39,7 +47,7 @@ Generate a coverage report and verify that project and diff ``codecov`` are both
 pytest --cov=qbraid_qir --cov-report=term tests/
 ```
 
-### Docs
+### Build docs
 
 Workflow: [`docs.yml`](.github/workflows/docs.yml)
 
@@ -59,7 +67,13 @@ Install sphinx and other docs requirements:
 pip install -r docs/requirements.txt
 ```
 
-Build docs:
+or
+
+```bash
+pip install -e '.[docs]'
+```
+
+Then, build docs with:
 
 ```bash
 cd docs
@@ -72,7 +86,7 @@ View docs in local browser window:
 open build/html/index.html
 ```
 
-### Code Style
+### Code style
 
 Workflow: [`format.yml`](.github/workflows/format.yml)
 
