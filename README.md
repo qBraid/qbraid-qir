@@ -21,8 +21,6 @@
   </a>
 </p>
 
-*Work in progress*
-
 qBraid-SDK extension providing support for QIR conversions.
 
 This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
@@ -31,11 +29,32 @@ This project aims to make [QIR](https://www.qir-alliance.org/) representations a
 
 ### Installation
 
-```bash
+qBraid-QIR requires Python 3.8 or greater, and can be installed with pip as follows:
+
+```shell
 pip install qbraid-qir
 ```
 
-### Example
+You can also install from source by cloning this repository and running a pip install command
+in the root directory of the repository:
+
+```shell
+git clone https://github.com/qBraid/qbraid-qir.git
+cd qbraid-qir
+pip install .
+```
+
+### Check version
+
+You can view the version of qbraid-qir you have installed within a Python shell as follows:
+
+```python
+In [1]: import qbraid_qir
+
+In [2]: qbraid_qir.__version__
+```
+
+### Usage Example
 
 ```python
 import cirq
@@ -54,37 +73,22 @@ module = cirq_to_qir(circuit, name="my-circuit")
 ir = str(module)
 ```
 
-## Development
-
-### Install from source
-
-```bash
-git clone https://github.com/qBraid/qbraid-qir.git
-cd qbraid-qir
-pip install -e .
-```
-
-### Run tests
-
-```bash
-pip install -r requirements-dev.txt
-pytest tests
-```
-
-with coverage report
-
-```bash
-pytest --cov=qbraid_qir --cov-report=term tests/
-```
-
-### Build docs
-
-```bash
-cd docs
-pip install -r requirements.txt
-make html
-```
-
 ## Architecture diagram
 
 ![architecture](https://github.com/qBraid/qbraid-qir/assets/46977852/64da00e3-ca11-443d-b9d0-66a2a71dca0f)
+
+## Contributing
+
+- Interested in contributing code, or making a PR? See
+  [CONTRIBUTING.md](CONTRIBUTING.md)
+- For feature requests and bug reports:
+  [Submit an issue](https://github.com/qBraid/qbraid-qir/issues)
+- For discussions, and specific questions about the qBraid-SDK, qBraid-QIR, or
+  other topics, [join our discord community](https://discord.gg/TPBU2sa8Et)
+- For questions that are more suited for a forum, post to
+  [Quantum Computing Stack Exchange](https://quantumcomputing.stackexchange.com/)
+  with the [`qbraid`](https://quantumcomputing.stackexchange.com/questions/tagged/qbraid) tag.
+
+## License
+
+[GNU General Public License v3.0](LICENSE)
