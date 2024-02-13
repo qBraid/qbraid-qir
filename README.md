@@ -59,6 +59,7 @@ In [2]: qbraid_qir.__version__
 - [User Guide](https://docs.qbraid.com/projects/qir/)
 - [API Reference](https://docs.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html)
 - [Example Notebooks](examples)
+- [Test Containers](test-containers)
 
 ### Usage Example
 
