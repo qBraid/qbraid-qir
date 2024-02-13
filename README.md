@@ -54,6 +54,12 @@ In [1]: import qbraid_qir
 In [2]: qbraid_qir.__version__
 ```
 
+### Resources
+
+- [User Guide](https://docs.qbraid.com/projects/qir/)
+- [API Reference](https://docs.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html)
+- [Example Notebooks](examples)
+
 ### Usage Example
 
 ```python
@@ -71,6 +77,21 @@ circuit = cirq.Circuit(
 module = cirq_to_qir(circuit, name="my-circuit")
 
 ir = str(module)
+```
+
+### Add QIR node to qBraid conversion graph
+
+```python
+from qbraid_qir.cirq import cirq_to_qir
+from qbraid.transpiler import Conversion, ConversionGraph
+
+graph = ConversionGraph()
+
+conversion = Conversion("cirq", "qir", cirq_to_qir)
+
+graph.add_conversion(conversion)
+
+graph.plot()
 ```
 
 ## Architecture diagram

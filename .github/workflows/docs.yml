@@ -25,4 +25,4 @@ jobs:
     - name: Build docs
       run: |
         cd docs
-        sphinx-build -W -b html . build/html
+        sphinx-build -W -b html docs docs/build/html
