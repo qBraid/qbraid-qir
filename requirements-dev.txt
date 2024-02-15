@@ -8,6 +8,6 @@ pytest
 pytest-cov
 
 # formatting
-black
+black[jupyter]
 isort
 pylint

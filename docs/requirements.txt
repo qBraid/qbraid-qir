@@ -1,4 +1,4 @@
 sphinx~=7.2.6
-sphinx-autodoc-typehints>=1.24,<1.26
+sphinx-autodoc-typehints>=1.24,<2.1
 sphinx-rtd-theme~=2.0.0
 docutils<0.21

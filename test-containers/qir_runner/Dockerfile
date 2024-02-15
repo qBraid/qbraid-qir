@@ -9,6 +9,7 @@ RUN apt-get update --yes && apt-get install --yes --no-install-recommends \
     vim \
     git \
     curl \
+    jq \
     pkg-config \
     lsb-release \
     wget \

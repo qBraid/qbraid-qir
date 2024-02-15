@@ -21,8 +21,6 @@
   </a>
 </p>
 
-*Work in progress*
-
 qBraid-SDK extension providing support for QIR conversions.
 
 This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
@@ -31,11 +29,39 @@ This project aims to make [QIR](https://www.qir-alliance.org/) representations a
 
 ### Installation
 
-```bash
+qBraid-QIR requires Python 3.8 or greater, and can be installed with pip as follows:
+
+```shell
 pip install qbraid-qir
 ```
 
-### Example
+You can also install from source by cloning this repository and running a pip install command
+in the root directory of the repository:
+
+```shell
+git clone https://github.com/qBraid/qbraid-qir.git
+cd qbraid-qir
+pip install .
+```
+
+### Check version
+
+You can view the version of qbraid-qir you have installed within a Python shell as follows:
+
+```python
+In [1]: import qbraid_qir
+
+In [2]: qbraid_qir.__version__
+```
+
+### Resources
+
+- [User Guide](https://docs.qbraid.com/projects/qir/)
+- [API Reference](https://docs.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html)
+- [Example Notebooks](examples)
+- [Test Containers](test-containers)
+
+### Usage Example
 
 ```python
 import cirq
@@ -54,37 +80,39 @@ module = cirq_to_qir(circuit, name="my-circuit")
 ir = str(module)
 ```
 
-## Development
+### Add QIR node to qBraid conversion graph
 
-### Install from source
+```python
+from qbraid_qir.cirq import cirq_to_qir
+from qbraid.transpiler import Conversion, ConversionGraph
 
-```bash
-git clone https://github.com/qBraid/qbraid-qir.git
-cd qbraid-qir
-pip install -e .
-```
+graph = ConversionGraph()
 
-### Run tests
+conversion = Conversion("cirq", "qir", cirq_to_qir)
 
-```bash
-pip install -r requirements-dev.txt
-pytest tests
-```
+graph.add_conversion(conversion)
 
-with coverage report
-
-```bash
-pytest --cov=qbraid_qir --cov-report=term tests/
-```
-
-### Build docs
-
-```bash
-cd docs
-pip install -r requirements.txt
-make html
+graph.plot()
 ```
 
 ## Architecture diagram
 
-![architecture](https://github.com/qBraid/qbraid-qir/assets/46977852/64da00e3-ca11-443d-b9d0-66a2a71dca0f)
+qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/en/latest/sdk/transpiler.html#architecture) with qbraid-qir integration (left) mapped to language specific conversion step in QIR abstraction [layers](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html) (right).
+
+<img width="full" alt="architecture" src="https://github.com/qBraid/qbraid-qir/assets/46977852/36644614-2715-4f08-8a8c-8a2e61aebf38">
+
+## Contributing
+
+- Interested in contributing code, or making a PR? See
+  [CONTRIBUTING.md](CONTRIBUTING.md)
+- For feature requests and bug reports:
+  [Submit an issue](https://github.com/qBraid/qbraid-qir/issues)
+- For discussions, and specific questions about the qBraid-SDK, qBraid-QIR, or
+  other topics, [join our discord community](https://discord.gg/TPBU2sa8Et)
+- For questions that are more suited for a forum, post to
+  [Quantum Computing Stack Exchange](https://quantumcomputing.stackexchange.com/)
+  with the [`qbraid`](https://quantumcomputing.stackexchange.com/questions/tagged/qbraid) tag.
+
+## License
+
+[GNU General Public License v3.0](LICENSE)
