@@ -1,18 +1,28 @@
+# Copyright (C) 2023 qBraid
+#
+# This file is part of the qBraid-SDK
+#
+# The qBraid-SDK is free software released under the GNU General Public License v3
+# or later. You can redistribute and/or modify it under the terms of the GPL v3.
+# See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
+#
+# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+
+"""
+Module defining Qasm3 Converter elements.
+
+"""
+
 import uuid
 from abc import ABCMeta, abstractmethod
 from typing import List, Optional, Tuple
 
-from openqasm3.ast import (
-    BitType,
-    ClassicalDeclaration,
-    Program,
-    QubitDeclaration,
-    Statement,
-)
+from openqasm3.ast import (BitType, ClassicalDeclaration, Program,
+                           QubitDeclaration, Statement)
 from pyqir import Context, Module
 
 
-def generate_module_id(program: Program) -> str:
+def generate_module_id() -> str:
     """
     Generates a QIR module ID from a given openqasm3 program.
     """
@@ -33,11 +43,15 @@ class _ProgramElement(metaclass=ABCMeta):
 
 
 class _Register(_ProgramElement):
-    def __init__(self, register: Tuple(str, Optional[int])):
+    def __init__(self, register: Tuple[str, Optional[int]], is_qubit: bool = True):
         self._register = register
+        self._is_qubit = is_qubit
 
     def accept(self, visitor):
-        visitor.visit_register(self._register)
+        visitor.visit_register(self._register, self._is_qubit)
+
+    def __str__(self) -> str:
+        return f"Register({self._register}, is_qubit = {self._is_qubit})"
 
 
 class _Statement(_ProgramElement):
@@ -46,6 +60,9 @@ class _Statement(_ProgramElement):
 
     def accept(self, visitor):
         visitor.visit_statement(self._statement)
+
+    def __str__(self) -> str:
+        return f"Statement({self._statement})"
 
 
 class Qasm3Module:
@@ -97,16 +114,15 @@ class Qasm3Module:
         """
         elements: List[Statement] = []
 
-        qubits = []
-        clbits = []
         num_qubits = 0
         num_clbits = 0
         for statement in program.statements:
             if isinstance(statement, QubitDeclaration):
                 name = statement.qubit.name
                 size = None if statement.size is None else statement.size.value
-                qubits.append((name, size))
                 num_qubits += 1 if size is None else size
+                elements.append(_Register((name, size), True))
+
             elif isinstance(statement, ClassicalDeclaration) and isinstance(
                 statement.type, BitType
             ):
@@ -114,13 +130,16 @@ class Qasm3Module:
                 size = (
                     None if statement.type.size is None else statement.type.size.value
                 )
-                clbits.append((name, size))
                 num_clbits += 1 if size is None else size
-            elements.append(statement)
+                elements.append(_Register((name, size), False))
+            else:
+                elements.append(_Statement(statement))
 
         if module is None:
             module = Module(Context(), generate_module_id(program))
 
+        # for element in elements:
+        #     print(element,"\n")
         return cls(
             name="main",
             module=module,

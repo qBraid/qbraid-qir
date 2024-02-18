@@ -22,7 +22,7 @@ import pyqir
 import os
 
 from qbraid_qir.cirq.convert import cirq_to_qir
-from tests.fixtures.basic_gates import (
+from tests.cirq_qir.fixtures.basic_gates import (
     double_op_tests,
     measurement_tests,
     rotation_tests,
@@ -30,8 +30,8 @@ from tests.fixtures.basic_gates import (
     triple_op_tests,
 )
 
-from .qir_utils import assert_equal_qir
-from .test_utils import (
+from tests.qir_utils import assert_equal_qir
+from tests.test_utils import (
     check_attributes,
     double_op_call_string,
     generic_op_call_string,

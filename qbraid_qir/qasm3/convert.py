@@ -16,9 +16,11 @@ from typing import Optional, Union
 
 import openqasm3
 from pyqir import Context, Module, qir_module
+from qiskit.qasm3 import loads
+from qiskit.qasm3.exporter import Exporter
 
 from qbraid_qir.exceptions import QirConversionError
-from qbraid_qir.qasm3.elements import Qasm3Module
+from qbraid_qir.qasm3.elements import Qasm3Module, generate_module_id
 from qbraid_qir.qasm3.visitor import BasicQisVisitor
 
 
@@ -45,12 +47,25 @@ def qasm3_to_qir(
         QirConversionError: If the conversion fails.
     """
     if isinstance(program, str):
+        # Supported conversions qasm3 -> qiskit :
+        # https://github.com/Qiskit/qiskit-qasm3-import/blob/main/src/qiskit_qasm3_import/converter.py
+
+        # PROPOSED SEMANTIC + DECOMPOSITION PASS
+        # qiskit_circuit = loads(program).decompose(reps=3)
+        # decomposed_qasm = Exporter().dumps(qiskit_circuit)
+        # PROPOSED SEMANTIC + DECOMPOSITION PASS
+
+        # program = openqasm3.parse(decomposed_qasm)
+
         program = openqasm3.parse(program)
 
     elif not isinstance(program, openqasm3.ast.Program):
         raise TypeError(
             "Input quantum program must be of type openqasm3.ast.Program or str."
         )
+
+    if name is None:
+        name = generate_module_id()
 
     llvm_module = qir_module(Context(), name)
     module = Qasm3Module.from_program(program, llvm_module)

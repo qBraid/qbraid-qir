@@ -10,7 +10,6 @@
 
 """
 Module defining Cirq LLVM Module elements.
-
 """
 
 import hashlib

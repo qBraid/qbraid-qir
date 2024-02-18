@@ -31,6 +31,10 @@ def _qubit_string(qubit: int) -> str:
     return f"%Qubit* inttoptr (i64 {qubit} to %Qubit*)"
 
 
+def _barrier_string() -> str:
+    return "call void @__quantum__qis__barrier__body()"
+
+
 def _result_string(res: int) -> str:
     if res == 0:
         return "%Result* null"
@@ -65,6 +69,10 @@ def array_record_output_string(num_elements: int) -> str:
 
 def result_record_output_string(res: str) -> str:
     return f"call void @__quantum__rt__result_record_output({_result_string(res)}, i8* null)"
+
+
+def reset_call_string(qb: int) -> str:
+    return f"call void @__quantum__qis__reset__body({_qubit_string(qb)})"
 
 
 def generic_op_call_string(name: str, qbs: List[int]) -> str:
@@ -116,3 +124,69 @@ def check_attributes(
     func = next(filter(is_entry_point, mod.functions))
 
     check_attributes_on_entrypoint(func, expected_qubits, expected_results)
+
+
+def check_resets(qir: List[str], expected_resets: int, qubit_list: List[int]):
+    entry_body = get_entry_point_body(qir)
+    reset_count = 0
+    for line in entry_body:
+        if line.strip().startswith("call") and "qis__reset" in line:
+            expected_reset = reset_call_string(qubit_list[reset_count])
+            assert (
+                line.strip() == expected_reset.strip()
+            ), f"Incorrect reset call: {expected_reset} expected, {line} actual"
+            reset_count += 1
+        if reset_count == expected_resets:
+            break
+
+    if reset_count != expected_resets:
+        assert (
+            False
+        ), f"Incorrect reset count: {expected_resets} expected, {reset_count} actual"
+
+
+def check_barrier(qir: List[str], expected_barriers: int):
+    entry_body = get_entry_point_body(qir)
+    barrier_count = 0
+    for line in entry_body:
+        if line.strip().startswith("call") and "qis__barrier" in line:
+            assert (
+                line.strip() == _barrier_string()
+            ), f"Incorrect barrier call in qir - {line}"
+            barrier_count += 1
+        if barrier_count == expected_barriers:
+            break
+
+    if barrier_count != expected_barriers:
+        assert (
+            False
+        ), f"Incorrect barrier count: {expected_barriers} expected, {barrier_count} actual"
+
+
+def check_measure_op(
+    qir: List[str], expected_ops: int, qubit_list: List[int], bit_list: List[int]
+):
+    entry_body = get_entry_point_body(qir)
+    measure_count = 0
+    q_id, b_id = 0, 0
+
+    assert len(qubit_list) == len(
+        bit_list
+    ), "Qubit list and bit list should be of same sizes"
+
+    for line in entry_body:
+        if line.strip().startswith("call") and "qis__mz" in line:
+            assert line.strip() == measure_call_string(
+                "mz", bit_list[b_id], qubit_list[q_id]
+            ), f"Incorrect measure call in qir - {line}"
+            measure_count += 1
+            q_id += 1
+            b_id += 1
+
+        if measure_count == expected_ops:
+            break
+
+    if measure_count != expected_ops:
+        assert (
+            False
+        ), f"Incorrect barrier count: {expected_ops} expected, {measure_count} actual"

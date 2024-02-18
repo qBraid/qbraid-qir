@@ -24,7 +24,7 @@ def assert_equal_qir(given_qir: str, filename: str) -> None:
     """
     current_dir = os.path.dirname(__file__)
 
-    resources_file = os.path.join(current_dir, "resources", f"{filename}.ll")
+    resources_file = os.path.join(current_dir, "cirq_qir/resources", f"{filename}.ll")
 
     with open(resources_file, encoding="utf-8") as f:
         file_data = f.read().strip()
