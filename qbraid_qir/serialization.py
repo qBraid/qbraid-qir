@@ -17,6 +17,8 @@ import os
 import pathlib
 from typing import TYPE_CHECKING, Optional
 
+from .exceptions import QbraidQirError
+
 if TYPE_CHECKING:
     import pyqir
 
@@ -33,7 +35,7 @@ def dumps(module: "pyqir.Module", output_dir: Optional[str] = None) -> None:
                                     working directory.
 
     Raises:
-        Exception: If there's an error in writing the files.
+        QbraidQirError: If there's an error in writing the files.
     """
     # Determine the filename prefix from the module's source filename
     filename_prefix = os.path.splitext(os.path.basename(module.source_filename))[0]
@@ -59,6 +61,6 @@ def dumps(module: "pyqir.Module", output_dir: Optional[str] = None) -> None:
             file.write(str(module))
         logging.info("Saved to %s", ll_file)
 
-    except Exception as err:
+    except (FileNotFoundError, PermissionError, OSError) as err:
         logging.error("An error occurred: %s", err)
-        raise
+        raise QbraidQirError("Failed to write files") from err

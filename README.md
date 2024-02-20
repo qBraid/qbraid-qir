@@ -4,6 +4,9 @@
   <a href='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml'>
       <img src='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml/badge.svg' alt='CI'>
   </a>
+  <a href="https://codecov.io/gh/qBraid/qbraid-qir" >
+    <img src="https://codecov.io/gh/qBraid/qbraid-qir/graph/badge.svg?token=GUQ3EN8DGI"/>
+  </a>
   <a href='https://docs.qbraid.com/projects/qir/en/latest/?badge=latest'>
     <img src='https://readthedocs.com/projects/qbraid-qbraid-qir/badge/?version=latest&token=7656ee72b7a66dec6d78dda911ce808676dca55c3e86702d5e97191badfdf19c' alt='Documentation Status'/>
   </a>
@@ -24,6 +27,8 @@
 qBraid-SDK extension providing support for QIR conversions.
 
 This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
+
+[<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com?gitHubUrl=https://github.com/qBraid/qbraid-qir.git)
 
 ## Getting started
 
