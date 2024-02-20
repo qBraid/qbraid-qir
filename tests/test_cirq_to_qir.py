@@ -12,14 +12,12 @@
 Module containing unit tests for Cirq to QIR conversion functions.
 
 """
+import os
 from pathlib import Path
 
-# isort: skip_file
-
 import cirq
-import pytest
 import pyqir
-import os
+import pytest
 
 from qbraid_qir.cirq.convert import cirq_to_qir
 from tests.fixtures.basic_gates import (

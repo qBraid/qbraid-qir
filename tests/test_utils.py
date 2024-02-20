@@ -11,7 +11,6 @@
 Module containing unit tests Cirq to QIR utility/helper functions
 
 """
-# isort: skip_file
 
 from typing import List
 
