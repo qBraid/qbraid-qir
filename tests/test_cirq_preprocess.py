@@ -55,6 +55,4 @@ def test_convert_namedqubits_to_linequbits(namedqubit_circuit):
 def test_empty_circuit_conversion():
     circuit = cirq.Circuit()
     converted_circuit = preprocess_circuit(circuit)
-    assert (
-        len(converted_circuit.all_qubits()) == 0
-    ), "Converted empty circuit should have no qubits"
+    assert len(converted_circuit.all_qubits()) == 0, "Converted empty circuit should have no qubits"

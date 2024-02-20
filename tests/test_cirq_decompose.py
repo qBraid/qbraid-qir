@@ -59,11 +59,7 @@ def test_custom_gate():
     decomposed_circuit = _decompose_unsupported_gates(circuit)
     assert decomposed_circuit != circuit
     assert (
-        any(
-            isinstance(op.gate, CustomGate)
-            for moment in decomposed_circuit
-            for op in moment
-        )
+        any(isinstance(op.gate, CustomGate) for moment in decomposed_circuit for op in moment)
         is False
     )
     assert circuits_allclose(decomposed_circuit, circuit)
@@ -91,11 +87,7 @@ def test_multiple_decomposes():
     decomposed_circuit = _decompose_unsupported_gates(circuit)
     assert decomposed_circuit != circuit
     assert (
-        any(
-            isinstance(op.gate, CustomGate)
-            for moment in decomposed_circuit
-            for op in moment
-        )
+        any(isinstance(op.gate, CustomGate) for moment in decomposed_circuit for op in moment)
         is False
     )
     assert circuits_allclose(decomposed_circuit, circuit)

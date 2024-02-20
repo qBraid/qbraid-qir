@@ -50,15 +50,15 @@ def dumps(module: "pyqir.Module", output_dir: Optional[str] = None) -> None:
 
     try:
         # Save bitcode file (does not require an encoding)
-        with open(bc_file, "wb") as f:  # pylint: disable=unspecified-encoding
-            f.write(module.bitcode)
+        with open(bc_file, "wb") as file:  # pylint: disable=unspecified-encoding
+            file.write(module.bitcode)
         logging.info("Saved to %s", bc_file)
 
         # Save LLVM IR file (default python encoding)
-        with open(ll_file, "w", encoding="utf-8") as f:
-            f.write(str(module))
+        with open(ll_file, "w", encoding="utf-8") as file:
+            file.write(str(module))
         logging.info("Saved to %s", ll_file)
 
-    except Exception as e:
-        logging.error("An error occurred: %s", e)
+    except Exception as err:
+        logging.error("An error occurred: %s", err)
         raise

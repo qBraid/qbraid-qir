@@ -124,9 +124,7 @@ class CirqModule:
         return self._num_clbits
 
     @classmethod
-    def from_circuit(
-        cls, circuit: cirq.Circuit, module: Optional[Module] = None
-    ) -> "CirqModule":
+    def from_circuit(cls, circuit: cirq.Circuit, module: Optional[Module] = None) -> "CirqModule":
         """Class method. Constructs a CirqModule from a given cirq.Circuit object
         and an optional QIR Module."""
         elements: List[_CircuitElement] = []

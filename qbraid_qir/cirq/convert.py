@@ -48,17 +48,15 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
         raise TypeError("Input quantum program must be of type cirq.Circuit.")
 
     if len(circuit) == 0:
-        raise ValueError(
-            "Input quantum circuit must consist of at least one operation."
-        )
+        raise ValueError("Input quantum circuit must consist of at least one operation.")
 
     if name is None:
         name = generate_module_id(circuit)
 
     try:
         circuit = preprocess_circuit(circuit)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        raise QirConversionError("Failed to preprocess circuit.") from e
+    except Exception as err:  # pylint: disable=broad-exception-caught
+        raise QirConversionError("Failed to preprocess circuit.") from err
 
     llvm_module = qir_module(Context(), name)
     module = CirqModule.from_circuit(circuit, llvm_module)

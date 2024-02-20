@@ -17,7 +17,6 @@ from typing import Callable, Tuple
 import cirq
 import pyqir._native
 
-from qbraid_qir.cirq.elements import CirqModule
 from qbraid_qir.exceptions import QirConversionError
 
 
@@ -57,12 +56,12 @@ PYQIR_OP_MAP = {
 }
 
 
-def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
+def map_cirq_op_to_pyqir_callable(operation: cirq.Operation) -> Tuple[Callable, str]:
     """
     Maps a Cirq operation to its corresponding PyQIR callable function.
 
     Args:
-        op (cirq.Operation): The Cirq operation to map.
+        operation (cirq.Operation): The Cirq operation to map.
 
     Returns:
         Tuple[Callable, str]: Tuple containing the corresponding PyQIR callable function,
@@ -71,8 +70,8 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
     Raises:
         QirConversionError: If the operation or gate is not supported.
     """
-    if isinstance(op, cirq.ops.GateOperation):
-        gate = op.gate
+    if isinstance(operation, cirq.ops.GateOperation):
+        gate = operation.gate
 
         if isinstance(gate, cirq.ops.MeasurementGate):
             op_name = "MEASURE"
@@ -80,31 +79,19 @@ def map_cirq_op_to_pyqir_callable(op: cirq.Operation) -> Tuple[Callable, str]:
             op_name = gate.__class__.__name__
         elif isinstance(gate, cirq.ops.Pauli):
             op_name = gate.__class__.__name__[-1]  # X, Y, Z
-        elif isinstance(
-            gate, (cirq.ops.XPowGate, cirq.ops.YPowGate, cirq.ops.ZPowGate)
-        ):
+        elif isinstance(gate, (cirq.ops.XPowGate, cirq.ops.YPowGate, cirq.ops.ZPowGate)):
             if gate.exponent == 1 or (
-                isinstance(gate, cirq.ZPowGate)
-                and gate.exponent in [0.25, -0.25, 0.5, -0.5]
+                isinstance(gate, cirq.ZPowGate) and gate.exponent in [0.25, -0.25, 0.5, -0.5]
             ):
                 op_name = str(gate)  # X, Y, Z, S, T, S**-1, T**-1
             else:
                 op_name = f"R{gate.__class__.__name__[0].lower()}"  # Rotations
         else:
             op_name = str(gate)
-    # elif isinstance(op, cirq.ops.ClassicallyControlledOperation):
-    #     op_name = "if_result"
-    #     op_conds = op._conditions # list of measurement keys
-    #     conditions = [
-    #                 pyqir.result(module.context, int(op_conds[i].keys[0].name))
-    #                 for i in range(len(op_conds))
-    #             ]
-    #     regular_op = op.without_classical_controls()
-    #     def branch(conds):
     else:
-        op_name = str(op)
+        op_name = str(operation)
 
     try:
         return PYQIR_OP_MAP[op_name], op_name
     except KeyError as err:
-        raise QirConversionError(f"Cirq gate {op} not supported.") from err
+        raise QirConversionError(f"Cirq gate {operation} not supported.") from err
