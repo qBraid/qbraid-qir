@@ -99,13 +99,13 @@ and [black](https://github.com/psf/black). Specific configurations for these too
 Install linters:
 
 ```bash
-pip install black isort pylint
+pip install 'black[jupyter]' isort pylint
 ```
 
 Run the following and make changes as needed to satisfy format checks:
 
 ```bash
-black qbraid_qir tests
+black qbraid_qir tests examples
 isort qbraid_qir tests
 pylint qbraid_qir tests
 ```
