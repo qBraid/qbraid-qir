@@ -62,22 +62,8 @@ jobs:
       - name: Run tests with coverage
         run: |
           pytest --cov=qbraid_qir tests/
-      - name: Upload coverage report
-        if: matrix.python-version == '3.11'
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-report
-          path: coverage.xml
-
-  upload-coverage:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download coverage report
-        uses: actions/download-artifact@v3
-        with:
-          name: coverage-report
       - name: Upload coverage reports to Codecov
+        if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v4.0.1
         with:
           fail_ci_if_error: false

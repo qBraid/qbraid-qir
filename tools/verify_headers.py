@@ -128,9 +128,7 @@ if __name__ == "__main__":
 
     script_directory = os.path.dirname(os.path.abspath(__file__))
     project_directory = os.path.abspath(os.path.join(script_directory, ".."))
-    skip_files = [
-        os.path.join(project_directory, file_path) for file_path in skip_files
-    ]
+    skip_files = [os.path.join(project_directory, file_path) for file_path in skip_files]
 
     fix = "--fix" in sys.argv
     directories = [arg for arg in sys.argv[1:] if arg != "--fix"]
@@ -163,6 +161,4 @@ if __name__ == "__main__":
         s_fixed = "" if num_fixed == 1 else "s"
         s_ok = "" if num_ok == 1 else "s"
         print("\nAll done! ✨ 🚀 ✨")
-        print(
-            f"{num_fixed} header{s_fixed} fixed, {num_ok} header{s_ok} left unchanged."
-        )
+        print(f"{num_fixed} header{s_fixed} fixed, {num_ok} header{s_ok} left unchanged.")
