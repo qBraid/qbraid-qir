@@ -58,9 +58,7 @@ def measure_call_string(name: str, res: str, qb: int) -> str:
 
 
 def array_record_output_string(num_elements: int) -> str:
-    return (
-        f"call void @__quantum__rt__array_record_output(i64 {num_elements}, i8* null)"
-    )
+    return f"call void @__quantum__rt__array_record_output(i64 {num_elements}, i8* null)"
 
 
 def result_record_output_string(res: str) -> str:
@@ -108,9 +106,7 @@ def check_attributes_on_entrypoint(
     ), f"Incorrect result count: {expected_results} expected, {actual_results} actual"
 
 
-def check_attributes(
-    qir: List[str], expected_qubits: int = 0, expected_results: int = 0
-) -> None:
+def check_attributes(qir: List[str], expected_qubits: int = 0, expected_results: int = 0) -> None:
     x = "\n".join(qir)
     mod = Module.from_ir(Context(), x)
     func = next(filter(is_entry_point, mod.functions))

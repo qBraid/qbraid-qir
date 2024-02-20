@@ -91,9 +91,7 @@ def test_conditional_gates():
     sub_operation = cirq.Z(qubits[2])
 
     # This Z gate on qubit 2 will only be executed if the measurement on 0 and 1 qubit is True
-    controlled_op = cirq.ClassicallyControlledOperation(
-        sub_operation, conditions=["0", "1"]
-    )
+    controlled_op = cirq.ClassicallyControlledOperation(sub_operation, conditions=["0", "1"])
 
     circuit.append(controlled_op)
 
@@ -168,9 +166,7 @@ def test_entry_point_name(cirq_bell):
 def test_convert_bell_compare_file(cirq_bell):
     """Test converting Cirq bell circuit to QIR."""
     test_name = "test_qir_bell"
-    module = cirq_to_qir(
-        cirq_bell, name=test_name, initialize_runtime=False, record_output=False
-    )
+    module = cirq_to_qir(cirq_bell, name=test_name, initialize_runtime=False, record_output=False)
     assert_equal_qir(str(module), test_name)
 
 
