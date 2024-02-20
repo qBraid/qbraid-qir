@@ -58,9 +58,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         _log.debug("Visiting Qasm3 module '%s' (%d)", module.name, module.num_qubits)
         self._module = module.module
         context = self._module.context
-        entry = pyqir.entry_point(
-            self._module, module.name, module.num_qubits, module.num_clbits
-        )
+        entry = pyqir.entry_point(self._module, module.name, module.num_qubits, module.num_clbits)
 
         self._entry_point = entry.name
         self._builder = Builder(context)

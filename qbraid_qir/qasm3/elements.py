@@ -2,13 +2,7 @@ import uuid
 from abc import ABCMeta, abstractmethod
 from typing import List, Optional, Tuple
 
-from openqasm3.ast import (
-    BitType,
-    ClassicalDeclaration,
-    Program,
-    QubitDeclaration,
-    Statement,
-)
+from openqasm3.ast import BitType, ClassicalDeclaration, Program, QubitDeclaration, Statement
 from pyqir import Context, Module
 
 
@@ -60,9 +54,7 @@ class Qasm3Module:
         elements (List[Statement]): List of openqasm3 Statements.
     """
 
-    def __init__(
-        self, name: str, module: Module, num_qubits: int, num_clbits: int, elements
-    ):
+    def __init__(self, name: str, module: Module, num_qubits: int, num_clbits: int, elements):
         self._name = name
         self._module = module
         self._num_qubits = num_qubits
@@ -111,9 +103,7 @@ class Qasm3Module:
                 statement.type, BitType
             ):
                 name = statement.identifier.name
-                size = (
-                    None if statement.type.size is None else statement.type.size.value
-                )
+                size = None if statement.type.size is None else statement.type.size.value
                 clbits.append((name, size))
                 num_clbits += 1 if size is None else size
             elements.append(statement)

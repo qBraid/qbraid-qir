@@ -48,9 +48,7 @@ def qasm3_to_qir(
         program = openqasm3.parse(program)
 
     elif not isinstance(program, openqasm3.ast.Program):
-        raise TypeError(
-            "Input quantum program must be of type openqasm3.ast.Program or str."
-        )
+        raise TypeError("Input quantum program must be of type openqasm3.ast.Program or str.")
 
     llvm_module = qir_module(Context(), name)
     module = Qasm3Module.from_program(program, llvm_module)
