@@ -26,9 +26,13 @@
 
 qBraid-SDK extension providing support for QIR conversions.
 
-This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
-
 [<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com?gitHubUrl=https://github.com/qBraid/qbraid-qir.git)
+
+## Motivation
+
+<img align="right" width="100" alt="qir" src="docs/_static/pkg-logos/qir.png">
+
+This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
 
 ## Getting started
 
@@ -117,6 +121,31 @@ qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/en/l
 - For questions that are more suited for a forum, post to
   [Quantum Computing Stack Exchange](https://quantumcomputing.stackexchange.com/)
   with the [`qbraid`](https://quantumcomputing.stackexchange.com/questions/tagged/qbraid) tag.
+- By participating, you are expected to uphold our [code of conduct](CODE_OF_CONDUCT).
+
+## Citation
+
+If you use qBraid-QIR in your research, we kindly request that you cite it appropriately.
+The BibTeX entry below is aligned with the latest stable release. For the most up-to-date
+citation details, please refer to [CITATION.cff](CITATION.cff).
+
+```tex
+@software{Kushnir_qBraid-QIR_Python_package_2024,
+author = {Kushnir, Samuel and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
+license = {GPL-3.0},
+month = jan,
+title = {{qBraid-QIR: Python package for generating QIR programs from Cirq.}},
+url = {https://github.com/qBraid/qbraid-qir},
+version = {0.1.0},
+year = {2024}
+}
+```
+
+## Acknowledgements
+
+This project was conceived in cooperation with the Quantum Open Source Foundation ([QOSF](https://qosf.org/)).
+
+<a href="https://qosf.org/"><img src="docs/_static/pkg-logos/qosf.png" width="100px" style="vertical-align: middle;" /></a>
 
 ## License
 
