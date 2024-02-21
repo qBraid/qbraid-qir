@@ -30,38 +30,9 @@ qBraid-SDK extension providing support for QIR conversions.
 
 ## Motivation
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Two Column Layout</title>
-    <style>
-        .container {
-            display: flex;
-            justify-content: space-between;
-        }
-        .left-column {
-            width: 90%;
-        }
-        .right-column {
-            width: 10%;
-            text-align: right; /* Adjusts alignment of content in the right column */
-        }
-        .right-column img {
-            width: 100px; /* Adjust image width as needed */
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="left-column">
-            This project aims to make <a href="https://www.qir-alliance.org/">QIR</a> representations accessible via the qBraid-SDK <a href="#architecture-diagram">transpiler</a>, and by doing so, open the door to language-specific conversions from any and all high-level quantum languages <a href="https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends">supported</a> by <code>qbraid</code>. See QIR Alliance: <a href="https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html">why do we need it?</a>.
-        </div>
-        <div class="right-column">
-            <a href="https://www.qir-alliance.org/"><img src="docs/_static/pkg-logos/qir.png" style="vertical-align: middle;" /></a>
-        </div>
-    </div>
-</body>
-</html>
+<img align="right" width="100" alt="qir" src="docs/_static/pkg-logos/qir.png">
+
+This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
 
 ## Getting started
 
@@ -155,7 +126,7 @@ qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/en/l
 ## Citation
 
 If you use qBraid-QIR in your research, we kindly request that you cite it appropriately.
-The bibtex entry below is aligned with the latest stable release. For the most up-to-date
+The BibTeX entry below is aligned with the latest stable release. For the most up-to-date
 citation details, please refer to [CITATION.cff](CITATION.cff).
 
 ```tex
