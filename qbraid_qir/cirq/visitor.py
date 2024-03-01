@@ -123,10 +123,8 @@ class BasicQisVisitor(CircuitElementVisitor):
             temp_pyqir_func, op_str = map_cirq_op_to_pyqir_callable(regular_op)
 
             # pylint: disable=unnecessary-lambda-assignment
-            if op_str == "MEASURE":
-                pyqir_func = lambda: handle_measurement(temp_pyqir_func)
-            elif op_str in ["Rx", "Ry", "Rz"]:
-                pyqir_func = lambda: temp_pyqir_func(self._builder, operation.gate._rads, *qubits)
+            if op_str in ["Rx", "Ry", "Rz"]:
+                pyqir_func = lambda: temp_pyqir_func(self._builder, operation._sub_operation.gate._rads, *qubits)
             else:
                 pyqir_func = lambda: temp_pyqir_func(self._builder, *qubits)
 

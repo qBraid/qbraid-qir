@@ -67,5 +67,5 @@ def test_save_qir_custom_directory(tmp_path, mock_module):
 
 def test_save_qir_with_exception(mock_module):
     """Test exception handling"""
-    with pytest.raises(Exception):
+    with pytest.raises(OSError):
         dumps(mock_module, output_dir="/non/existent/path")
