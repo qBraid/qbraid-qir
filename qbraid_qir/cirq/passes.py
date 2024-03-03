@@ -39,7 +39,7 @@ def _decompose_gate_op(operation: cirq.GateOperation) -> List[cirq.OP_TREE]:
         pass
     new_ops = cirq.decompose_once(operation, flatten=True, default=[operation])
     if len(new_ops) == 1 and new_ops[0] == operation:
-        return [operation]
+        raise QirConversionError("Couldn't convert circuit to QIR gate set.")
     return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
 
 

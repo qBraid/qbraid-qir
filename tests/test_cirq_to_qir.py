@@ -57,9 +57,11 @@ def test_cirq_to_qir_type_error():
     with pytest.raises(TypeError):
         cirq_to_qir(None)
 
+
 def test_cirq_qir_conversion_error():
     with pytest.raises(TypeError):
         cirq_to_qir(None)
+
 
 def test_cirq_to_qir_conversion_error():
     """Test raising exception for conversion error."""

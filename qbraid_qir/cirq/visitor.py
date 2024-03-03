@@ -124,7 +124,9 @@ class BasicQisVisitor(CircuitElementVisitor):
 
             # pylint: disable=unnecessary-lambda-assignment
             if op_str in ["Rx", "Ry", "Rz"]:
-                pyqir_func = lambda: temp_pyqir_func(self._builder, operation._sub_operation.gate._rads, *qubits)
+                pyqir_func = lambda: temp_pyqir_func(
+                    self._builder, operation._sub_operation.gate._rads, *qubits
+                )
             else:
                 pyqir_func = lambda: temp_pyqir_func(self._builder, *qubits)
 

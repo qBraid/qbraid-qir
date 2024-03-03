@@ -17,6 +17,7 @@ import shutil
 
 import pytest
 
+from qbraid_qir import QbraidQirError
 from qbraid_qir.serialization import dumps
 
 # pylint: disable=redefined-outer-name,too-few-public-methods
@@ -67,5 +68,5 @@ def test_save_qir_custom_directory(tmp_path, mock_module):
 
 def test_save_qir_with_exception(mock_module):
     """Test exception handling"""
-    with pytest.raises(OSError):
+    with pytest.raises(QbraidQirError):
         dumps(mock_module, output_dir="/non/existent/path")
