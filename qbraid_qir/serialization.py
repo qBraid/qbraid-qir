@@ -46,8 +46,8 @@ def dumps(module: "pyqir.Module", output_dir: Optional[str] = None) -> None:
     # Create the directory if it doesn't exist
     try:
         os.makedirs(file_dir, exist_ok=True)
-    except OSError:
-        raise QbraidQirError("Failed to create file_dir")
+    except OSError as err:
+        raise QbraidQirError("Failed to create target directory") from err
 
     # Construct file paths
     bc_file = os.path.join(file_dir, f"{filename_prefix}.bc")

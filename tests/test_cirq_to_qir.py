@@ -48,7 +48,7 @@ def compare_reference_ir(generated_bitcode: bytes, name: str) -> None:
     module = pyqir.Module.from_bitcode(pyqir.Context(), generated_bitcode, f"{name}")
     ir = str(module)
     file = os.path.join(os.path.dirname(__file__), f"resources/{name}.ll")
-    expected = Path(file).read_text()
+    expected = Path(file).read_text(encoding="utf-8")
     assert ir == expected
 
 
@@ -103,7 +103,6 @@ def test_conditional_gates():
     circuit.append(controlled_op_2)
 
     new_circuit = cirq_to_qir(circuit)
-    generated_qir = str(new_circuit).splitlines()
     compare_reference_ir(new_circuit.bitcode, "test_conditional_gates")
 
 

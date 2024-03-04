@@ -153,7 +153,7 @@ class BasicQisVisitor(CircuitElementVisitor):
             else:
                 pyqir_func(self._builder, *qubits)
 
-    def ir(self) -> str:  # pylint: disable=invalid-name
+    def ir(self) -> str:
         return str(self._module)
 
     def bitcode(self) -> bytes:
