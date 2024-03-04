@@ -46,6 +46,10 @@ def initialize_call_string() -> str:
 
 
 def single_op_call_string(name: str, qb: int) -> str:
+    if "dg" in name: #stands for dagger representation
+        name = name.removesuffix("dg") + "__adj"
+        return f"call void @__quantum__qis__{name}({_qubit_string(qb)})"
+    
     return f"call void @__quantum__qis__{name}__body({_qubit_string(qb)})"
 
 
@@ -190,3 +194,103 @@ def check_measure_op(
         assert (
             False
         ), f"Incorrect barrier count: {expected_ops} expected, {measure_count} actual"
+
+def check_single_qubit_gate_op(
+    qir: List[str], expected_ops: int, qubit_list: List[int], gate_name: str
+):
+    entry_body = get_entry_point_body(qir)
+    op_count = 0
+    q_id = 0
+
+    for line in entry_body:
+        gate_call_id = f"qis__{gate_name}" if "dg" not in gate_name else f"qis__{gate_name.removesuffix('dg')}"
+        print(gate_call_id)
+        if line.strip().startswith("call") and gate_call_id in line:
+            assert line.strip() == single_op_call_string(
+                gate_name, qubit_list[q_id]
+            ), f"Incorrect single qubit gate call in qir - {line}"
+            op_count += 1
+            q_id += 1
+
+        if op_count == expected_ops:
+            break
+
+    if op_count != expected_ops:
+        assert (
+            False
+        ), f"Incorrect single qubit gate count: {expected_ops} expected, {op_count} actual"
+
+
+def check_two_qubit_gate_op(
+        qir: List[str], expected_ops: int, qubit_lists: List[int], gate_name: str
+):
+    entry_body = get_entry_point_body(qir)
+    op_count = 0
+    q_id = 0
+
+    for line in entry_body:
+
+        if gate_name.lower() == "cx":
+            gate_name = "cnot" # cnot is used in qir
+
+        if line.strip().startswith("call") and f"qis__{gate_name}" in line:
+            assert line.strip() == double_op_call_string(
+                gate_name, qubit_lists[q_id][0], qubit_lists[q_id][1]
+            ), f"Incorrect two qubit gate call in qir - {line}"
+            op_count += 1
+            q_id += 1
+
+        if op_count == expected_ops:
+            break
+    
+    if op_count != expected_ops:
+        assert (
+            False
+        ), f"Incorrect two qubit gate count: {expected_ops} expected, {op_count} actual"
+
+
+def check_single_qubit_rotation_op(
+    qir: List[str], expected_ops: int, qubit_list: List[int], param_list: List[float], gate_name: str
+):
+    entry_body = get_entry_point_body(qir)
+    op_count = 0
+    q_id = 0
+
+    for line in entry_body:
+        if line.strip().startswith("call") and f"qis__{gate_name}" in line:
+            assert line.strip() == rotation_call_string(
+                gate_name, param_list[q_id], qubit_list[q_id]
+            ), f"Incorrect rotation gate call in qir - {line}"
+            op_count += 1
+            q_id += 1
+
+        if op_count == expected_ops:
+            break
+    
+    if op_count != expected_ops:
+        assert (
+            False
+        ), f"Incorrect rotation gate count: {expected_ops} expected, {op_count} actual"
+
+def check_three_qubit_gate_op(
+    qir: List[str], expected_ops: int, qubit_lists: List[int], gate_name: str
+):
+    entry_body = get_entry_point_body(qir)
+    op_count = 0
+    q_id = 0
+
+    for line in entry_body:
+        if line.strip().startswith("call") and f"qis__{gate_name}" in line:
+            assert line.strip() == generic_op_call_string(
+                gate_name, qubit_lists[q_id]
+            ), f"Incorrect three qubit gate call in qir - {line}"
+            op_count += 1
+            q_id += 1
+
+        if op_count == expected_ops:
+            break
+    
+    if op_count != expected_ops:
+        assert (
+            False
+        ), f"Incorrect three qubit gate count: {expected_ops} expected, {op_count} actual"

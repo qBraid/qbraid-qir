@@ -359,7 +359,7 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         if len(op_qubits) % op_qubit_count != 0:
             raise ValueError(
-                f"Invalid number of qubits {op_qubits} for operation {operation}"
+                f"Invalid number of qubits {len(op_qubits)} for operation {operation}"
             )
 
         if self._is_parametric_gate(operation):
@@ -387,18 +387,18 @@ class BasicQisVisitor(CircuitElementVisitor):
             None
         """
         _log.debug("Visiting statement '%s'", str(statement))
-        # start simple, only handling measurement for now
-        # print(statement, "\n")
+        
         if isinstance(statement, QuantumMeasurementStatement):
             self._visit_measurement(statement)
         elif isinstance(statement, QuantumReset):
             self._visit_reset(statement)
         elif isinstance(statement, QuantumBarrier):
             self._visit_barrier(statement)
-        # elif isinstance(statement, )
         elif isinstance(statement, QuantumGate):
             self._visit_gate_operation(statement)
-
+        else:
+            pass 
+        
     def ir(self) -> str:
         return str(self._module)
 

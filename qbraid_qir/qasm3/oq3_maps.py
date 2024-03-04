@@ -29,19 +29,18 @@ PYQIR_ONE_QUBIT_OP_MAP = {
     "x": pyqir._native.x,
     "y": pyqir._native.y,
     "z": pyqir._native.z,
+    
     # Single-Qubit Non-Clifford Gates
     "s": pyqir._native.s,
     "t": pyqir._native.t,
     "sdg": pyqir._native.s_adj,
     "tdg": pyqir._native.t_adj,
-    # Single-Qubit Rotation Gates
+}
+
+PYQIR_ONE_QUBIT_ROTATION_MAP = {
     "rx": pyqir._native.rx,
     "ry": pyqir._native.ry,
     "rz": pyqir._native.rz,
-    
-    # Classical Gates/Operations
-    "measure": pyqir._native.mz,
-    "reset": pyqir._native.reset,
 }
 
 PYQIR_TWO_QUBIT_OP_MAP = {
@@ -58,6 +57,10 @@ PYQIR_THREE_QUBIT_OP_MAP = {
 def map_qasm_op_to_pyqir_callable(op_name: str):
     try:
         return PYQIR_ONE_QUBIT_OP_MAP[op_name], 1
+    except KeyError:
+        pass
+    try:
+        return PYQIR_ONE_QUBIT_ROTATION_MAP[op_name], 1
     except KeyError:
         pass
     try:
