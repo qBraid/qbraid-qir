@@ -1,5 +1,5 @@
 # unit tests
-qbraid~=0.5.0
+qbraid==0.5.2.dev20240304162946
 pytest
 pytest-cov
 

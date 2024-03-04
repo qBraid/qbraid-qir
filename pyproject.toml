@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 100
-disable = "W0511, W0212, I1101, C0115, C0116"
+disable = "C0103, C0115, C0116, I1101, R0903, W0212, W0511"
 
 [tool.black]
 line-length = 100
@@ -19,6 +19,7 @@ line_length = 100
 
 [tool.coverage.report]
 exclude_lines = [
+  "pass",
   "raise NotImplementedError",
   "return NotImplemented",
   "def __repr__",
