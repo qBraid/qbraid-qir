@@ -14,7 +14,7 @@ Before you start working on a new feature or a fix, here's how you can contribut
 
 ### Development install
 
-```bash
+```shell
 git clone https://github.com/qBraid/qbraid-qir.git
 cd qbraid-qir
 pip install -e '.[dev]'
@@ -31,13 +31,13 @@ Workflow: [`main.yml`](.github/workflows/main.yml)
 
 Install pytest:
 
-```bash
+```shell
 pip install qbraid pytest pytest-cov
 ```
 
 Run unit tests:
 
-```bash
+```shell
 pytest tests
 ```
 
@@ -63,26 +63,26 @@ to specify attributes, arguments, exceptions, returns, and other related info. T
 
 Install sphinx and other docs requirements:
 
-```bash
+```shell
 pip install -r docs/requirements.txt
 ```
 
 or
 
-```bash
+```shell
 pip install -e '.[docs]'
 ```
 
 Then, build docs with:
 
-```bash
+```shell
 cd docs
 make html
 ```
 
 View docs in local browser window:
 
-```bash
+```shell
 open build/html/index.html
 ```
 
@@ -98,13 +98,13 @@ and [black](https://github.com/psf/black). Specific configurations for these too
 
 Install linters:
 
-```bash
+```shell
 pip install 'black[jupyter]' isort pylint
 ```
 
 Run the following and make changes as needed to satisfy format checks:
 
-```bash
+```shell
 black qbraid_qir tests examples
 isort qbraid_qir tests
 pylint qbraid_qir tests
@@ -112,6 +112,6 @@ pylint qbraid_qir tests
 
 Add licensing headers to all files:
 
-```bash
+```shell
 python3 tools/verify_headers.py --fix
 ```

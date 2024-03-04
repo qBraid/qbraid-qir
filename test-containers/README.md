@@ -11,13 +11,13 @@ with the [qir-runner](https://github.com/qir-alliance/qir-runner/tree/main) pack
 
 Build the QIR runner image:
 
-```bash
+```shell
 docker build -t qbraid-test/qir-runner:latest qir_runner
 ```
 
 Start the container running a Jupyter Server with the JupyterLab frontend and expose the container's internal port `8888` to port `8888` of the host machine:
 
-```bash
+```shell
 docker run -p 8888:8888 qbraid-test/qir-runner:latest
 ```
 
@@ -28,7 +28,7 @@ Visiting `http://<hostname>:8888/?token=<token>` in a browser will launch Jupyte
 
 Alternatively, you can open a shell inside the running container directly:
 
-```bash
+```shell
 docker exec -it <container_name> /bin/bash
 ```
 
@@ -36,7 +36,7 @@ docker exec -it <container_name> /bin/bash
 
 Once inside the container, the `qir-runner` executable is accessible via command-line:
 
-```bash
+```shell
 Usage: qir-runner [OPTIONS] --file <PATH>
 
 Options:
@@ -68,6 +68,6 @@ dumps(module)
 
 And then execute the QIR program:
 
-```bash
+```shell
 qir-runner -f bell.bc
 ```
