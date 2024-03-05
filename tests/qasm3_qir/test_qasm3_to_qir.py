@@ -21,7 +21,7 @@ from tests.qasm3_qir.fixtures.basic_gates import (
     single_op_tests,
     triple_op_tests,
 )
-from tests.test_utils import (
+from tests.qir_utils import (
     check_attributes,
     check_barrier,
     check_measure_op,
@@ -189,9 +189,7 @@ def test_incorrect_barrier():
     barrier q1[:4];
     """
 
-    with pytest.raises(
-        ValueError, match="Index 3 out of range for register of size 2 in qubit"
-    ):
+    with pytest.raises(ValueError, match="Index 3 out of range for register of size 2 in qubit"):
         _ = qasm3_to_qir(out_of_bounds)
 
     duplicate = """
@@ -410,9 +408,7 @@ def test_incorrect_single_qubit_gates():
         )
 
     # Invalid application of gate according to register size
-    with pytest.raises(
-        ValueError, match=r"Invalid number of qubits 3 for operation .*"
-    ):
+    with pytest.raises(ValueError, match=r"Invalid number of qubits 3 for operation .*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -425,9 +421,7 @@ def test_incorrect_single_qubit_gates():
 
     # Invalid use of variables in gate application
 
-    with pytest.raises(
-        ValueError, match=r"Unsupported parameter type .* for operation .*"
-    ):
+    with pytest.raises(ValueError, match=r"Unsupported parameter type .* for operation .*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;

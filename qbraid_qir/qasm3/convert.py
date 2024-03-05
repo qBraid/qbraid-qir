@@ -60,9 +60,7 @@ def qasm3_to_qir(
         program = openqasm3.parse(program)
 
     elif not isinstance(program, openqasm3.ast.Program):
-        raise TypeError(
-            "Input quantum program must be of type openqasm3.ast.Program or str."
-        )
+        raise TypeError("Input quantum program must be of type openqasm3.ast.Program or str.")
 
     if name is None:
         name = generate_module_id()

@@ -19,10 +19,10 @@ from typing import Any, List, Optional, Tuple, Union
 import pyqir
 import pyqir._native
 import pyqir.rt
+from openqasm3.ast import BoolType  # Types
 from openqasm3.ast import (
     AngleType,
     BitType,
-    BoolType,  # Types
     ClassicalDeclaration,
     ClassicalType,
     ComplexType,
@@ -93,9 +93,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         _log.debug("Visiting Qasm3 module '%s' (%d)", module.name, module.num_qubits)
         self._module = module.module
         context = self._module.context
-        entry = pyqir.entry_point(
-            self._module, module.name, module.num_qubits, module.num_clbits
-        )
+        entry = pyqir.entry_point(self._module, module.name, module.num_qubits, module.num_clbits)
 
         self._entry_point = entry.name
         self._builder = Builder(context)
@@ -123,9 +121,7 @@ class BasicQisVisitor(CircuitElementVisitor):
             result_ref = pyqir.result(self._module.context, i)
             pyqir.rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
 
-    def visit_register(
-        self, register: Tuple[str, Optional[int]], is_qubit: bool
-    ) -> None:
+    def visit_register(self, register: Tuple[str, Optional[int]], is_qubit: bool) -> None:
         """Visit a register element.
 
         Args:
@@ -187,9 +183,7 @@ class BasicQisVisitor(CircuitElementVisitor):
 
                 if isinstance(qubit.indices[0][0], RangeDefinition):
                     start_qid = (
-                        0
-                        if qubit.indices[0][0].start is None
-                        else qubit.indices[0][0].start.value
+                        0 if qubit.indices[0][0].start is None else qubit.indices[0][0].start.value
                     )
                     end_qid = (
                         qreg_size
@@ -199,8 +193,7 @@ class BasicQisVisitor(CircuitElementVisitor):
                     self._validate_index(start_qid, qreg_size, qubit=True)
                     self._validate_index(end_qid - 1, qreg_size, qubit=True)
                     qreg_qids = [
-                        self._qubit_labels[f"{qreg_name}_{i}"]
-                        for i in range(start_qid, end_qid)
+                        self._qubit_labels[f"{qreg_name}_{i}"] for i in range(start_qid, end_qid)
                     ]
                 else:
                     qid = qubit.indices[0][0].value
@@ -214,9 +207,7 @@ class BasicQisVisitor(CircuitElementVisitor):
                         f"Missing register declaration for {qreg_name} in operation {operation}"
                     )
                 qreg_size = self._qreg_size_map[qreg_name]
-                qreg_qids = [
-                    self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)
-                ]
+                qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)]
             for qid in qreg_qids:
                 if qid in visited_qubits:
                     raise ValueError(f"Duplicate qubit {qreg_name}[{qid}] argument")
@@ -243,18 +234,14 @@ class BasicQisVisitor(CircuitElementVisitor):
         if isinstance(source, IndexedIdentifier):
             source_name = source.name.name
             if isinstance(source.indices[0][0], RangeDefinition):
-                raise ValueError(
-                    f"Range based measurement {statement} not supported at the moment"
-                )
+                raise ValueError(f"Range based measurement {statement} not supported at the moment")
             source_id = source.indices[0][0].value
 
         target_name = target.name
         if isinstance(target, IndexedIdentifier):
             target_name = target.name.name
             if isinstance(target.indices[0][0], RangeDefinition):
-                raise ValueError(
-                    f"Range based measurement {statement} not supported at the moment"
-                )
+                raise ValueError(f"Range based measurement {statement} not supported at the moment")
             target_id = target.indices[0][0].value
 
         if source_name not in self._qreg_size_map:
@@ -285,24 +272,16 @@ class BasicQisVisitor(CircuitElementVisitor):
                 _build_qir_measurement(source_name, i, target_name, i)
 
         elif source_id is not None and target_id is not None:
-            self._validate_index(
-                source_id, self._qreg_size_map[source_name], qubit=True
-            )
-            self._validate_index(
-                target_id, self._creg_size_map[target_name], qubit=False
-            )
+            self._validate_index(source_id, self._qreg_size_map[source_name], qubit=True)
+            self._validate_index(target_id, self._creg_size_map[target_name], qubit=False)
             _build_qir_measurement(source_name, source_id, target_name, target_id)
         elif source_id is not None and target_id is None:
             # is it fine to record qubit measurement in the first clbit? or should we throw an error?
-            self._validate_index(
-                source_id, self._qreg_size_map[source_name], qubit=True
-            )
+            self._validate_index(source_id, self._qreg_size_map[source_name], qubit=True)
             _build_qir_measurement(source_name, source_id, target_name, 0)
         elif source_id is None and target_id is not None:
             # is it fine to just then record first measurement of source qubit?
-            self._validate_index(
-                target_id, self._creg_size_map[target_name], qubit=False
-            )
+            self._validate_index(target_id, self._creg_size_map[target_name], qubit=False)
             _build_qir_measurement(source_name, 0, target_name, target_id)
 
     def _visit_reset(self, statement: QuantumReset) -> None:
@@ -338,9 +317,7 @@ class BasicQisVisitor(CircuitElementVisitor):
             qubit_ids = [self._qubit_labels[f"{qreg_name}_{qubit_id}"]]
         else:
             qreg_size = self._qreg_size_map[qreg_name]
-            qubit_ids = [
-                self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)
-            ]
+            qubit_ids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)]
 
         # generate pyqir reset equivalent
         for qid in qubit_ids:
@@ -386,9 +363,7 @@ class BasicQisVisitor(CircuitElementVisitor):
             param_list.append(float(param.value))
 
         if len(param_list) > 1:
-            raise ValueError(
-                f"Parameterized gate {operation} with > 1 params not supported"
-            )
+            raise ValueError(f"Parameterized gate {operation} with > 1 params not supported")
 
         return param_list
 
@@ -410,9 +385,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         op_parameters = None
 
         if len(op_qubits) % op_qubit_count != 0:
-            raise ValueError(
-                f"Invalid number of qubits {len(op_qubits)} for operation {operation}"
-            )
+            raise ValueError(f"Invalid number of qubits {len(op_qubits)} for operation {operation}")
 
         if self._is_parametric_gate(operation):
             op_parameters = self._get_op_parameters(operation)

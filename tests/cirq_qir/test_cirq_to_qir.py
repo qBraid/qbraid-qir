@@ -28,9 +28,8 @@ from tests.cirq_qir.fixtures.basic_gates import (
     single_op_tests,
     triple_op_tests,
 )
-
-from tests.qir_utils import assert_equal_qir
-from tests.test_utils import (
+from tests.qir_utils import (
+    assert_equal_qir,
     check_attributes,
     double_op_call_string,
     generic_op_call_string,
@@ -42,6 +41,12 @@ from tests.test_utils import (
     rotation_call_string,
     single_op_call_string,
 )
+
+RESOURCES_DIR = os.path.join(os.path.dirname(__file__), "resources")
+
+
+def resources_file(filename: str) -> str:
+    return os.path.join(RESOURCES_DIR, f"{filename}.ll")
 
 
 def compare_reference_ir(generated_bitcode: bytes, name: str) -> None:
@@ -159,7 +164,9 @@ def test_measurement(circuit_name, request):
 
 def test_verify_qir_bell_fixture(pyqir_bell):
     """Test that pyqir fixture generates code equal to test_qir_bell.ll file."""
-    assert_equal_qir(pyqir_bell.ir(), "test_qir_bell")
+    test_name = "test_qir_bell"
+    filepath = resources_file(test_name)
+    assert_equal_qir(pyqir_bell.ir(), filepath)
 
 
 def test_entry_point_name(cirq_bell):
@@ -172,8 +179,9 @@ def test_entry_point_name(cirq_bell):
 def test_convert_bell_compare_file(cirq_bell):
     """Test converting Cirq bell circuit to QIR."""
     test_name = "test_qir_bell"
+    filepath = resources_file(test_name)
     module = cirq_to_qir(cirq_bell, name=test_name, initialize_runtime=False, record_output=False)
-    assert_equal_qir(str(module), test_name)
+    assert_equal_qir(str(module), filepath)
 
 
 @pytest.mark.skip(reason="Test case incomplete")
