@@ -16,12 +16,13 @@ from typing import Optional, Union
 
 import openqasm3
 from pyqir import Context, Module, qir_module
-from qiskit.qasm3 import loads
-from qiskit.qasm3.exporter import Exporter
 
 from qbraid_qir.exceptions import QirConversionError
 from qbraid_qir.qasm3.elements import Qasm3Module, generate_module_id
 from qbraid_qir.qasm3.visitor import BasicQisVisitor
+
+# from qiskit.qasm3 import loads
+# from qiskit.qasm3.exporter import Exporter
 
 
 def qasm3_to_qir(
