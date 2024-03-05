@@ -1,7 +1,12 @@
-# Use this for qasm3 equivalent too.
-# custom gate definitions should be decomposed into the basic gates
-# supported by the QIR conversion.
-# The supported gates are defined in the opsets module.
+# Copyright (C) 2023 qBraid
+#
+# This file is part of the qBraid-SDK
+#
+# The qBraid-SDK is free software released under the GNU General Public License v3
+# or later. You can redistribute and/or modify it under the terms of the GPL v3.
+# See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
+#
+# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 
 # can use this -
