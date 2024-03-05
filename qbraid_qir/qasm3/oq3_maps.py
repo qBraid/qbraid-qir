@@ -29,7 +29,6 @@ PYQIR_ONE_QUBIT_OP_MAP = {
     "x": pyqir._native.x,
     "y": pyqir._native.y,
     "z": pyqir._native.z,
-    
     # Single-Qubit Non-Clifford Gates
     "s": pyqir._native.s,
     "t": pyqir._native.t,
@@ -45,7 +44,7 @@ PYQIR_ONE_QUBIT_ROTATION_MAP = {
 
 PYQIR_TWO_QUBIT_OP_MAP = {
     "cx": pyqir._native.cx,
-    "CX" : pyqir._native.cx,
+    "CX": pyqir._native.cx,
     "cz": pyqir._native.cz,
     "swap": pyqir._native.swap,
 }
@@ -53,6 +52,7 @@ PYQIR_TWO_QUBIT_OP_MAP = {
 PYQIR_THREE_QUBIT_OP_MAP = {
     "ccx": pyqir._native.ccx,
 }
+
 
 def map_qasm_op_to_pyqir_callable(op_name: str):
     try:

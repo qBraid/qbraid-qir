@@ -19,9 +19,27 @@ from typing import Any, List, Optional, Tuple, Union
 import pyqir
 import pyqir._native
 import pyqir.rt
-from openqasm3.ast import (FloatLiteral, Identifier, IndexedIdentifier, IntegerLiteral,
-                           QuantumBarrier,QuantumGate, QuantumMeasurementStatement,
-                           QuantumReset, RangeDefinition, Statement)
+from openqasm3.ast import (
+    AngleType,
+    BitType,
+    BoolType,  # Types
+    ClassicalDeclaration,
+    ClassicalType,
+    ComplexType,
+    FloatLiteral,
+    FloatType,
+    Identifier,
+    IndexedIdentifier,
+    IntegerLiteral,
+    IntType,
+    QuantumBarrier,
+    QuantumGate,
+    QuantumMeasurementStatement,
+    QuantumReset,
+    RangeDefinition,
+    Statement,
+    UintType,
+)
 from pyqir import BasicBlock, Builder, Constant, IntType, PointerType
 
 from qbraid_qir.qasm3.elements import Qasm3Module
@@ -63,6 +81,15 @@ class BasicQisVisitor(CircuitElementVisitor):
         self._record_output = record_output
 
     def visit_qasm3_module(self, module: Qasm3Module) -> None:
+        """
+        Visit a Qasm3 module.
+
+        Args:
+            module (Qasm3Module): The module to visit.
+
+        Returns:
+            None
+        """
         _log.debug("Visiting Qasm3 module '%s' (%d)", module.name, module.num_qubits)
         self._module = module.module
         context = self._module.context
@@ -124,13 +151,29 @@ class BasicQisVisitor(CircuitElementVisitor):
                 self._clbit_labels[f"{register_name}_{i}"] = current_size + i
         _log.debug("Added labels for register '%s'", str(register))
 
-    def _validate_index(self, index: int, size: int, qubit: bool = False):
+    def _validate_index(self, index: int, size: int, qubit: bool = False) -> None:
+        """Validate the index for a register.
+
+        Args:
+            index (int): The index to validate.
+            size (int): The size of the register.
+            qubit (bool): Whether the register is a qubit register.
+        """
+
         if index < 0 or index >= size:
             raise ValueError(
                 f"Index {index} out of range for register of size {size} in {'qubit' if qubit else 'clbit'}"
             )
 
-    def _get_op_qubits(self, operation: Any):
+    def _get_op_qubits(self, operation: Any) -> List[pyqir.qubit]:
+        """Get the qubits for the operation.
+
+        Args:
+            operation (Any): The operation to get qubits for.
+
+        Returns:
+            List[pyqir.qubit]: The qubits for the operation.
+        """
         op_qubits = []
         visited_qubits = set()
         for qubit in operation.qubits:
@@ -326,6 +369,14 @@ class BasicQisVisitor(CircuitElementVisitor):
         return len(operation.arguments) > 0
 
     def _get_op_parameters(self, operation: QuantumGate) -> List[float]:
+        """Get the parameters for the operation.
+
+        Args:
+            operation (QuantumGate): The operation to get parameters for.
+
+        Returns:
+            List[float]: The parameters for the operation.
+        """
         param_list = []
         for param in operation.arguments:
             if not isinstance(param, (FloatLiteral, IntegerLiteral)):
@@ -335,10 +386,11 @@ class BasicQisVisitor(CircuitElementVisitor):
             param_list.append(float(param.value))
 
         if len(param_list) > 1:
-            raise ValueError(f"Parameterized gate {operation} with > 1 params not supported")
-        
+            raise ValueError(
+                f"Parameterized gate {operation} with > 1 params not supported"
+            )
+
         return param_list
-        
 
     def _visit_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a gate operation element.
@@ -370,12 +422,36 @@ class BasicQisVisitor(CircuitElementVisitor):
                 qubit_subset = op_qubits[i : i + op_qubit_count]
                 qir_func(self._builder, *op_parameters, *qubit_subset)
         else:
-            # we have a linear application of the gate 
+            # we have a linear application of the gate
             # first act on the first op_qubit_count qubits, then the next op_qubit_count and so on
             for i in range(0, len(op_qubits), op_qubit_count):
                 qubit_subset = op_qubits[i : i + op_qubit_count]
                 qir_func(self._builder, *qubit_subset)
 
+    def _visit_classical_operation(self, statement: ClassicalDeclaration) -> None:
+        """Visit a classical operation element.
+
+        Args:
+            statement (ClassicalType): The classical operation to visit.
+
+        Returns:
+            None
+        """
+        decl_type = statement.type
+
+        if isinstance(decl_type, (IntType, UintType, FloatType)):
+            size = decl_type.size if decl_type.size is not None else 1
+
+            # we only support static integer sizes
+            if isinstance(size, IntegerLiteral):
+                value = size.value
+            else:
+                raise ValueError(f"Unsupported integer size {size} in {statement}")
+            var_name = statement.identifier.name
+
+            # how to add this in the QIR???
+        else:
+            raise ValueError(f"Unsupported classical type {decl_type} in {statement}")
 
     def visit_statement(self, statement: Statement) -> None:
         """Visit a statement element.
@@ -387,7 +463,7 @@ class BasicQisVisitor(CircuitElementVisitor):
             None
         """
         _log.debug("Visiting statement '%s'", str(statement))
-        
+
         if isinstance(statement, QuantumMeasurementStatement):
             self._visit_measurement(statement)
         elif isinstance(statement, QuantumReset):
@@ -396,9 +472,11 @@ class BasicQisVisitor(CircuitElementVisitor):
             self._visit_barrier(statement)
         elif isinstance(statement, QuantumGate):
             self._visit_gate_operation(statement)
+        elif isinstance(statement, ClassicalDeclaration):
+            self._visit_classical_operation(statement)
         else:
-            pass 
-        
+            pass
+
     def ir(self) -> str:
         return str(self._module)
 

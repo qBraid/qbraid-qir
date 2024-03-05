@@ -17,8 +17,13 @@ import uuid
 from abc import ABCMeta, abstractmethod
 from typing import List, Optional, Tuple
 
-from openqasm3.ast import (BitType, ClassicalDeclaration, Program,
-                           QubitDeclaration, Statement)
+from openqasm3.ast import (
+    BitType,
+    ClassicalDeclaration,
+    Program,
+    QubitDeclaration,
+    Statement,
+)
 from pyqir import Context, Module
 
 

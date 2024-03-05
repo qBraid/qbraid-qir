@@ -14,11 +14,15 @@ Module defining Cirq basic gate fixtures for use in tests.
 """
 import pytest
 
-from qbraid_qir.qasm3.oq3_maps import PYQIR_ONE_QUBIT_OP_MAP, PYQIR_ONE_QUBIT_ROTATION_MAP, PYQIR_TWO_QUBIT_OP_MAP, PYQIR_THREE_QUBIT_OP_MAP
+from qbraid_qir.qasm3.oq3_maps import (
+    PYQIR_ONE_QUBIT_OP_MAP,
+    PYQIR_ONE_QUBIT_ROTATION_MAP,
+    PYQIR_THREE_QUBIT_OP_MAP,
+    PYQIR_TWO_QUBIT_OP_MAP,
+)
 
 # All of the following dictionaries map from the names of methods on Cirq Circuit objects
 # to the name of the equivalent pyqir BasicQisBuilder method
-
 
 
 def _fixture_name(s: str) -> str:
@@ -27,7 +31,7 @@ def _fixture_name(s: str) -> str:
 
 def _validate_gate_name(gate_name: str) -> str:
     if gate_name in PYQIR_ONE_QUBIT_OP_MAP:
-        return True 
+        return True
     if gate_name in PYQIR_TWO_QUBIT_OP_MAP:
         return True
     if gate_name in PYQIR_ONE_QUBIT_ROTATION_MAP:
@@ -35,6 +39,7 @@ def _validate_gate_name(gate_name: str) -> str:
     if gate_name in PYQIR_THREE_QUBIT_OP_MAP:
         return True
     return False
+
 
 def _generate_one_qubit_fixture(gate_name: str):
     @pytest.fixture()
@@ -66,7 +71,7 @@ def _generate_rotation_fixture(gate_name: str):
     def test_fixture():
         if not _validate_gate_name(gate_name):
             raise ValueError(f"Unknown qasm3 gate {gate_name}")
-        
+
         qasm3_string = f"""
         OPENQASM 3;
         include "stdgates.inc";
@@ -114,7 +119,7 @@ def _generate_two_qubit_fixture(gate_name: str):
 
 
 # Generate double-qubit gate fixtures
-for gate in  PYQIR_TWO_QUBIT_OP_MAP:
+for gate in PYQIR_TWO_QUBIT_OP_MAP:
     name = _fixture_name(gate)
     locals()[name] = _generate_two_qubit_fixture(gate)
 
@@ -157,7 +162,7 @@ for gate in PYQIR_THREE_QUBIT_OP_MAP:
     locals()[name] = _generate_three_qubit_fixture(gate)
 
 single_op_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_OP_MAP]
-single_op_tests.remove("Fixture_id") # as we have already tested x gate
+single_op_tests.remove("Fixture_id")  # as we have already tested x gate
 
 rotation_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_ROTATION_MAP]
 double_op_tests = [_fixture_name(s) for s in PYQIR_TWO_QUBIT_OP_MAP]
