@@ -44,9 +44,6 @@ def generate_module_id(circuit: cirq.Circuit) -> str:
 
 
 class _CircuitElement(metaclass=ABCMeta):
-    @classmethod
-    def from_element_list(cls, elements):
-        return [cls(elem) for elem in elements]
 
     @abstractmethod
     def accept(self, visitor):
@@ -123,9 +120,7 @@ class CirqModule:
         return self._num_clbits
 
     @classmethod
-    def from_circuit(
-        cls, circuit: cirq.Circuit, module: Optional[Module] = None
-    ) -> "CirqModule":
+    def from_circuit(cls, circuit: cirq.Circuit, module: Optional[Module] = None) -> "CirqModule":
         """Class method. Constructs a CirqModule from a given cirq.Circuit object
         and an optional QIR Module."""
         elements: List[_CircuitElement] = []

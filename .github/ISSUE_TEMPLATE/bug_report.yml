@@ -1,37 +1,41 @@
-name: Bug Report
-description: Report a Bug 🪳
-labels: ["type: bug"]
+name: Bug report 🚩
+description: Create a report to help us improve
+title: "[BUG] "
+labels: [bug]
 
 body:
   - type: markdown
     attributes:
-      value: Before submitting, please ensure that this issue has not already been reported by checking existing issues.
+      value: "Thanks for taking the time to fill out our bug report form."
 
   - type: textarea
     attributes:
       label: Environment
-      description: Please provide details about your environment to help us understand the context of the bug.
       value: |
+        - **qBraid-QIR version**:
         - **Python version**:
         - **Operating system**:
     validations:
       required: true
-
+  
   - type: textarea
     attributes:
-      label: What Happened?
-      description: Provide a brief description of the issue and steps to reproduce it.
+      label: What happened?
+      description: Please provide a detailed description of the bug, accompanied by a minimal code example that demonstrates how the error(s) can be reproduced.
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: Expected Outcome
-      description: Describe what you expected to happen instead of the bug.
+      label: Suggestions (Optional)
+      description: We warmly welcome any recommendations on potential fixes, insights, or considerations that contributors should keep in mind when working to resolve this issue.
     validations:
-      required: true
+      required: false
 
-  - type: textarea
+  - type: checkboxes
+    id: agreement
     attributes:
-      label: Suggestions for Resolution
-      description: If you have any suggestions for resolving the issue, please share them here. Your input is valuable, but not required.
+      label: 'Please confirm the following:'
+      options:
+        - label: 'I have searched the existing issues and confirm this is a new bug report.'
+          required: true

@@ -21,16 +21,25 @@ from qbraid_qir.cirq.opsets import map_cirq_op_to_pyqir_callable
 from qbraid_qir.exceptions import QirConversionError
 
 
-def _decompose_gate_op(op: cirq.GateOperation) -> List[cirq.OP_TREE]:
+def _decompose_gate_op(operation: cirq.GateOperation) -> List[cirq.OP_TREE]:
+    """Decomposes a single Cirq gate operation into a sequence of operations
+    that are directly supported by PyQIR.
+
+    Args:
+        operation (cirq.GateOperation): The gate operation to decompose.
+
+    Returns:
+        List[cirq.OP_TREE]: A list of decomposed gate operations.
+    """
     try:
         # Try converting to PyQIR. If successful, keep the operation.
-        _ = map_cirq_op_to_pyqir_callable(op)
-        return [op]
+        _ = map_cirq_op_to_pyqir_callable(operation)
+        return [operation]
     except QirConversionError:
         pass
-    new_ops = cirq.decompose_once(op, flatten=True, default=[op])
-    if len(new_ops) == 1 and new_ops[0] == op:
-        return [op]
+    new_ops = cirq.decompose_once(operation, flatten=True, default=[operation])
+    if len(new_ops) == 1 and new_ops[0] == operation:
+        raise QirConversionError("Couldn't convert circuit to QIR gate set.")
     return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
 
 
@@ -47,14 +56,14 @@ def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
     new_circuit = cirq.Circuit()
     for moment in circuit:
         new_ops = []
-        for op in moment:
-            if isinstance(op, cirq.GateOperation):
-                decomposed_ops = _decompose_gate_op(op)
+        for operation in moment:
+            if isinstance(operation, cirq.GateOperation):
+                decomposed_ops = _decompose_gate_op(operation)
                 new_ops.extend(decomposed_ops)
-            elif isinstance(op, cirq.ClassicallyControlledOperation):
-                new_ops.append(op)
+            elif isinstance(operation, cirq.ClassicallyControlledOperation):
+                new_ops.append(operation)
             else:
-                new_ops.append(op)
+                new_ops.append(operation)
 
         new_circuit.append(new_ops)
     return new_circuit
@@ -71,8 +80,6 @@ def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
         cirq.Circuit: The preprocessed Cirq circuit.
 
     """
-    qubit_map = {
-        qubit: cirq.LineQubit(i) for i, qubit in enumerate(circuit.all_qubits())
-    }
+    qubit_map = {qubit: cirq.LineQubit(i) for i, qubit in enumerate(circuit.all_qubits())}
     line_qubit_circuit = circuit.transform_qubits(lambda q: qubit_map[q])
     return _decompose_unsupported_gates(line_qubit_circuit)

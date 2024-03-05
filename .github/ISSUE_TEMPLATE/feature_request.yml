@@ -1,21 +1,34 @@
-name: Feature Request
-description: Suggest a New Feature! 💡
-labels: ["type: feature request"]
+name: Feature request 💡
+description: Suggest an idea for this project
+title: "[FEATURE] "
+labels: [enhancement]
 
 body:
   - type: markdown
     attributes:
-      value: Before submitting your feature request, please ensure it hasn't already been suggested by checking existing issues.
+      value: "Thank you for taking the time to suggest a feature. Please fill out the details below to help us understand your idea better."
 
   - type: textarea
+    id: feature-description
     attributes:
       label: Feature Description
-      description: Clearly describe the feature you would like to see added. Explain why this feature would be beneficial.
+      description: "Describe the feature you'd like and the problem it solves. Include any specific use cases that illustrate its benefits."
+      placeholder: "Please describe the feature in detail."
     validations:
       required: true
-
+  
   - type: textarea
     attributes:
-      label: Proposed Implementation
-      description: |
-        Do you have a specific implementation in mind for this feature? Please share your ideas or any relevant details here. Your suggestions are greatly appreciated, but not mandatory.
+      label: Implementation (Optional)
+      description: "Do you have an idea for how this could be implemented? Please include those details here."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: agreement
+    attributes:
+      label: 'Please confirm the following:'
+      description: 'Understanding that feature requests are evaluated for their applicability and benefit to the community, and not all requests may be implemented.'
+      options:
+        - label: 'I have searched the existing issues and confirm this is a new feature request.'
+          required: true

@@ -61,9 +61,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         _log.debug("Visiting Cirq module '%s' (%d)", module.name, module.num_qubits)
         self._module = module.module
         context = self._module.context
-        entry = pyqir.entry_point(
-            self._module, module.name, module.num_qubits, module.num_clbits
-        )
+        entry = pyqir.entry_point(self._module, module.name, module.num_qubits, module.num_clbits)
 
         self._entry_point = entry.name
         self._builder = Builder(context)
@@ -100,9 +98,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         if not all(isinstance(x, cirq.Qid) for x in qids):
             raise TypeError("All elements in the list must be of type cirq.Qid.")
 
-        self._qubit_labels.update(
-            {bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)}
-        )
+        self._qubit_labels.update({bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)})
         _log.debug("Added labels for qubits %s", str(qids))
 
     def visit_operation(self, operation: cirq.Operation) -> None:
@@ -127,11 +123,9 @@ class BasicQisVisitor(CircuitElementVisitor):
             temp_pyqir_func, op_str = map_cirq_op_to_pyqir_callable(regular_op)
 
             # pylint: disable=unnecessary-lambda-assignment
-            if op_str == "MEASURE":
-                pyqir_func = lambda: handle_measurement(temp_pyqir_func)
-            elif op_str in ["Rx", "Ry", "Rz"]:
+            if op_str in ["Rx", "Ry", "Rz"]:
                 pyqir_func = lambda: temp_pyqir_func(
-                    self._builder, operation.gate._rads, *qubits
+                    self._builder, operation._sub_operation.gate._rads, *qubits
                 )
             else:
                 pyqir_func = lambda: temp_pyqir_func(self._builder, *qubits)
@@ -141,13 +135,12 @@ class BasicQisVisitor(CircuitElementVisitor):
                     temp_id, _ = map_cirq_op_to_pyqir_callable(cirq.I)
                     passable_identity = lambda: temp_id(self._builder, *qubits)
                     return passable_identity
-                else:
-                    return pyqir._native.if_result(
-                        self._builder,
-                        conds[0],
-                        zero=_branch(conds[1:], pyqir_func),
-                        one=pyqir_func,
-                    )
+                return pyqir._native.if_result(
+                    self._builder,
+                    conds[0],
+                    zero=_branch(conds[1:], pyqir_func),
+                    one=pyqir_func,
+                )
 
             _branch(conditions, pyqir_func)
         else:
