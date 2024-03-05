@@ -131,16 +131,19 @@ if __name__ == "__main__":
     skip_files = [os.path.join(project_directory, file_path) for file_path in skip_files]
 
     fix = "--fix" in sys.argv
-    directories = [arg for arg in sys.argv[1:] if arg != "--fix"]
+    files_and_dirs = [arg for arg in sys.argv[1:] if arg != "--fix"]
 
     checked = 0
-    for directory in directories:
-        full_directory_path = os.path.join(project_directory, directory)
-        if os.path.isdir(full_directory_path):
-            checked += process_files_in_directory(full_directory_path, fix)
+    for item in files_and_dirs:
+        full_path = os.path.join(project_directory, item)
+        if os.path.isdir(full_path):
+            checked += process_files_in_directory(full_path, fix)
+        elif os.path.isfile(full_path) and full_path.endswith(".py"):
+            replace_or_add_header(full_path, fix)
+            checked += 1
         else:
-            failed_headers.append(full_directory_path)
-            print(f"Directory not found: {full_directory_path}")
+            failed_headers.append(full_path)
+            print(f"Directory not found: {full_path}")
 
     if not fix:
         if failed_headers:

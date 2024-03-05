@@ -19,8 +19,8 @@ authors:
     family-names: Hill
     affiliation: qBraid Co.
 repository-code: 'https://github.com/qBraid/qbraid-qir'
-url: 'https://docs.qbraid.com/projects/qir/en/v0.1.0/'
-repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.1.0'
+url: 'https://docs.qbraid.com/projects/qir/en/v0.1.1/'
+repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.1.1'
 keywords:
   - python
   - quantum-computing
@@ -28,5 +28,5 @@ keywords:
   - llvm
   - cirq
 license: GPL-3.0
-version: 0.1.0
-date-released: '2024-01-12'
+version: 0.1.1
+date-released: '2024-03-04'

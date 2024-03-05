@@ -1,6 +1,6 @@
 # Copyright (C) 2024 qBraid Development Team.
 # Distributed under terms of the GNU General Public License v3.
-FROM jupyter/minimal-notebook:latest
+FROM jupyter/minimal-notebook:x86_64-python-3.11.6
 
 USER root
 
@@ -79,5 +79,7 @@ RUN cargo install llvmenv && \
     cargo build --release
 
 ENV PATH="/opt/qir-runner/target/release:${PATH}"
+
+RUN pip install --no-cache-dir qbraid-qir cirq
 
 WORKDIR $HOME
