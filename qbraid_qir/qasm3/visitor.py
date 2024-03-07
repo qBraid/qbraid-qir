@@ -14,18 +14,13 @@ Module defining Qasm3 Visitor.
 """
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple
 
 import pyqir
 import pyqir._native
 import pyqir.rt
-from openqasm3.ast import BoolType  # Types
 from openqasm3.ast import (
-    AngleType,
-    BitType,
     ClassicalDeclaration,
-    ClassicalType,
-    ComplexType,
     FloatLiteral,
     FloatType,
     Identifier,
@@ -34,6 +29,7 @@ from openqasm3.ast import (
     IntType,
     QuantumBarrier,
     QuantumGate,
+    QuantumGateDefinition,
     QuantumMeasurementStatement,
     QuantumReset,
     RangeDefinition,
@@ -76,6 +72,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         self._clbit_labels = {}
         self._qreg_size_map = {}
         self._creg_size_map = {}
+        self._custom_gates = {}
         self._measured_qubits = {}
         self._initialize_runtime = initialize_runtime
         self._record_output = record_output
@@ -367,7 +364,13 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         return param_list
 
-    def _visit_gate_operation(self, operation: QuantumGate) -> None:
+    def _visit_gate_definition(self, definition: QuantumGateDefinition) -> None:
+        gate_name = definition.name.name
+        if gate_name in self._custom_gates:
+            raise ValueError(f"Duplicate gate definition for {gate_name}")
+        self._custom_gates[gate_name] = definition
+
+    def _visit_basic_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a gate operation element.
 
         Args:
@@ -378,7 +381,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
 
         # Currently handling the gates in the stdgates.inc file
-        _log.debug("Visiting gate operation '%s'", str(operation))
+        _log.debug("Visiting basic gate operation '%s'", str(operation))
         op_name = operation.name.name
         op_qubits = self._get_op_qubits(operation)
         qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
@@ -400,6 +403,45 @@ class BasicQisVisitor(CircuitElementVisitor):
             for i in range(0, len(op_qubits), op_qubit_count):
                 qubit_subset = op_qubits[i : i + op_qubit_count]
                 qir_func(self._builder, *qubit_subset)
+
+    def _visit_custom_gate_operation(self, operation: QuantumGate) -> None:
+        """Visit a custom gate operation element.
+
+        Args:
+            operation (QuantumGate): The gate operation to visit.
+
+        Returns:
+            None
+        """
+        _log.debug("Visiting custom gate operation '%s'", str(operation))
+        gate_name = operation.name.name
+        gate_definition = self._custom_gates[gate_name]
+
+        if len(operation.arguments) != len(gate_definition.arguments):
+            raise ValueError(
+                f"Parameter count mismatch for gate {gate_name} in operation {operation}"
+            )
+
+        op_parameters = self._get_op_parameters(operation)
+        op_qubits = self._get_op_qubits(operation)
+
+        if len(op_qubits) != len(gate_definition.qubits):
+            raise ValueError(f"Qubit count mismatch for gate {gate_name} in operation {operation}")
+        
+
+    def _visit_generic_gate_operation(self, operation: QuantumGate) -> None:
+        """Visit a gate operation element.
+
+        Args:
+            operation (QuantumGate): The gate operation to visit.
+
+        Returns:
+            None
+        """
+        if operation.name.name in self._custom_gates:
+            self._visit_custom_gate_operation(operation)
+        else:
+            self._visit_basic_gate_operation(operation)
 
     def _visit_classical_operation(self, statement: ClassicalDeclaration) -> None:
         """Visit a classical operation element.
@@ -443,8 +485,10 @@ class BasicQisVisitor(CircuitElementVisitor):
             self._visit_reset(statement)
         elif isinstance(statement, QuantumBarrier):
             self._visit_barrier(statement)
+        elif isinstance(statement, QuantumGateDefinition):
+            self._visit_gate_definition(statement)
         elif isinstance(statement, QuantumGate):
-            self._visit_gate_operation(statement)
+            self._visit_generic_gate_operation(statement)
         elif isinstance(statement, ClassicalDeclaration):
             self._visit_classical_operation(statement)
         else:

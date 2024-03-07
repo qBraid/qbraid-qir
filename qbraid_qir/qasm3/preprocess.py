@@ -17,3 +17,34 @@
 
 
 # can use rigetti simulator for qir programs and qiskit for qasm3 programs
+
+
+# what are some problems which we face?
+
+# 1. let us just unfold the gates once.
+# assumption - we do not define any variables inside the gate
+# - gate parameters are directly passed on to other gate calls
+# - no if else conditions inside the gate
+# - no loops inside the gate
+# - no function calls inside the gate
+
+# eg. gate x2(a,b,c) p, q {
+#     h p;
+#     h q;
+#     rx(a) p;
+#     ry(b) q;
+#     rz(c) p;
+#     cx p, q;
+# }
+#    qubit[2] q;
+#    x2(1,2,3) q[0], q[1];
+
+# will be converted to
+
+# qubit[2] q;
+# h q[0];
+# h q[1];
+# rx(1) q[0];
+# ry(2) q[1];
+# rz(3) q[0];
+# cx q[0], q[1];
