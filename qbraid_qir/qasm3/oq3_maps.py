@@ -70,4 +70,4 @@ def map_qasm_op_to_pyqir_callable(op_name: str):
     try:
         return PYQIR_THREE_QUBIT_OP_MAP[op_name], 3
     except KeyError:
-        raise ValueError(f"Unsupported QASM operation: {op_name}")
+        raise ValueError(f"Unsupported / undeclared QASM operation: {op_name}")

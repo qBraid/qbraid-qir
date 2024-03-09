@@ -12,6 +12,7 @@
 Module defining Qasm3 Visitor.
 
 """
+#pylint: disable=line-too-long
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, List, Optional, Tuple
@@ -158,7 +159,7 @@ class BasicQisVisitor(CircuitElementVisitor):
                 f"Index {index} out of range for register of size {size} in {'qubit' if qubit else 'clbit'}"
             )
 
-    def _get_op_qubits(self, operation: Any) -> List[pyqir.qubit]:
+    def _get_op_qubits(self, operation: Any, qir_form: bool = True) -> List[pyqir.qubit]:
         """Get the qubits for the operation.
 
         Args:
@@ -167,7 +168,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         Returns:
             List[pyqir.qubit]: The qubits for the operation.
         """
-        op_qubits = []
+        qir_qubits = []
+        openqasm_qubits = []
         visited_qubits = set()
         for qubit in operation.qubits:
             if isinstance(qubit, IndexedIdentifier):
@@ -192,10 +194,17 @@ class BasicQisVisitor(CircuitElementVisitor):
                     qreg_qids = [
                         self._qubit_labels[f"{qreg_name}_{i}"] for i in range(start_qid, end_qid)
                     ]
+                    openqasm_qubits.extend(
+                        [
+                            IndexedIdentifier(Identifier(qreg_name), [[IntegerLiteral(i)]])
+                            for i in range(start_qid, end_qid)
+                        ]
+                    )
                 else:
                     qid = qubit.indices[0][0].value
                     self._validate_index(qid, qreg_size, qubit=True)
                     qreg_qids = [self._qubit_labels[f"{qreg_name}_{qid}"]]
+                    openqasm_qubits.append(qubit)
             else:
                 # or we have a single qreg name, which means all of qubits in that register
                 qreg_name = qubit.name
@@ -204,13 +213,23 @@ class BasicQisVisitor(CircuitElementVisitor):
                         f"Missing register declaration for {qreg_name} in operation {operation}"
                     )
                 qreg_size = self._qreg_size_map[qreg_name]
+                openqasm_qubits.extend(
+                    [
+                        IndexedIdentifier(Identifier(qreg_name), [[IntegerLiteral(i)]])
+                        for i in range(qreg_size)
+                    ]
+                )
                 qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)]
             for qid in qreg_qids:
                 if qid in visited_qubits:
                     raise ValueError(f"Duplicate qubit {qreg_name}[{qid}] argument")
                 visited_qubits.add(qid)
-            op_qubits.extend([pyqir.qubit(self._module.context, n) for n in qreg_qids])
-        return op_qubits
+            qir_qubits.extend([pyqir.qubit(self._module.context, n) for n in qreg_qids])
+
+        if not qir_form:
+            return openqasm_qubits
+
+        return qir_qubits
 
     def _visit_measurement(self, statement: QuantumMeasurementStatement) -> None:
         """Visit a measurement statement element.
@@ -404,6 +423,37 @@ class BasicQisVisitor(CircuitElementVisitor):
                 qubit_subset = op_qubits[i : i + op_qubit_count]
                 qir_func(self._builder, *qubit_subset)
 
+    def _transform_gate_qubits(self, gate_op, qubit_map):
+        """Transform the qubits of a gate operation with a qubit map.
+
+        Args:
+            gate_op (QuantumGate): The gate operation to transform.
+            qubit_map (Dict[str, IndexedIdentifier]): The qubit map to use for transformation.
+
+        Returns:
+            None
+        """
+        for i, qubit in enumerate(gate_op.qubits):
+            if isinstance(qubit, IndexedIdentifier):
+                raise ValueError(f"Indexing {qubit} not supported in gate definition")
+            # now we have an Identifier
+            gate_op.qubits[i] = qubit_map[qubit.name]
+
+    def _transform_gate_params(self, gate_op, param_map):
+        """Transform the parameters of a gate operation with a parameter map.
+
+        Args:
+            gate_op (QuantumGate): The gate operation to transform.
+            param_map (Dict[str, Union[FloatLiteral, IntegerLiteral]]): The parameter map to use for transformation.
+
+        Returns:
+            None
+        """
+        for i, param in enumerate(gate_op.arguments):
+            # replace only if we have an Identifier
+            if isinstance(param, Identifier):
+                gate_op.arguments[i] = param_map[param.name]
+
     def _visit_custom_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a custom gate operation element.
 
@@ -419,15 +469,44 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         if len(operation.arguments) != len(gate_definition.arguments):
             raise ValueError(
-                f"Parameter count mismatch for gate {gate_name} in operation {operation}"
+                f"Parameter count mismatch for gate {gate_name} in gate call. Expected \
+                 {len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"
             )
 
-        op_parameters = self._get_op_parameters(operation)
-        op_qubits = self._get_op_qubits(operation)
+        op_qubits = self._get_op_qubits(operation, qir_form=False)
 
         if len(op_qubits) != len(gate_definition.qubits):
-            raise ValueError(f"Qubit count mismatch for gate {gate_name} in operation {operation}")
-        
+            raise ValueError(
+                f"Qubit count mismatch for gate {gate_name} in gate call. Expected \
+                             {len(gate_definition.qubits)} but got {len(op_qubits)} in operation"
+            )
+
+        # we need this because the gates applied inside a gate definition use the
+        # VARIABLE names and not the qubits
+
+        # so we need to update the arguments of these gate applications with the actual
+        # qubit identifiers and then RECURSIVELY call the visit_generic_gate_operation
+        qubit_map = {
+            formal_arg.name: actual_arg
+            for formal_arg, actual_arg in zip(gate_definition.qubits, op_qubits)
+        }
+        param_map = {
+            formal_arg.name: actual_arg
+            for formal_arg, actual_arg in zip(gate_definition.arguments, operation.arguments)
+        }
+
+        for gate_op in gate_definition.body:
+            if isinstance(gate_op, QuantumGate):
+                # transform the gate_op with the actual qubit identifiers
+                # and the actual parameters
+                self._transform_gate_params(gate_op, param_map)
+                self._transform_gate_qubits(gate_op, qubit_map)
+                self._visit_generic_gate_operation(gate_op)
+            else:
+                # TODO : add control flow support
+                raise ValueError(
+                    f"Unsupported gate definition statement{ gate_op} in {gate_definition}"
+                )
 
     def _visit_generic_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a gate operation element.

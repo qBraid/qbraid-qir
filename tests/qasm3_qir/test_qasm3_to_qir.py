@@ -374,7 +374,7 @@ def test_incorrect_single_qubit_gates():
     # Test for unsupported gate : TO DO
 
     # one qubit
-    with pytest.raises(ValueError, match=r"Unsupported QASM operation: u_abc"):
+    with pytest.raises(ValueError, match=r"Unsupported / undeclared QASM operation: u_abc"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -385,7 +385,7 @@ def test_incorrect_single_qubit_gates():
             """
         )
     # two qubits
-    with pytest.raises(ValueError, match=r"Unsupported QASM operation: u_abc"):
+    with pytest.raises(ValueError, match=r"Unsupported / undeclared QASM operation: u_abc"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -396,7 +396,7 @@ def test_incorrect_single_qubit_gates():
             """
         )
     # three qubits
-    with pytest.raises(ValueError, match=r"Unsupported QASM operation: u_abc"):
+    with pytest.raises(ValueError, match=r"Unsupported / undeclared QASM operation: u_abc"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;

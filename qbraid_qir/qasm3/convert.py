@@ -28,8 +28,7 @@ from qbraid_qir.qasm3.visitor import BasicQisVisitor
 def qasm3_to_qir(
     program: Union[openqasm3.ast.Program, str], name: Optional[str] = None, **kwargs
 ) -> Module:
-    """
-    Converts an OpenQASM 3 program to a PyQIR module.
+    """Converts an OpenQASM 3 program to a PyQIR module.
 
     Args:
         program (openqasm3.ast.Program or str): The OpenQASM 3 program to convert.
