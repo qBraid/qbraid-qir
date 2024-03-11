@@ -12,6 +12,8 @@
 Module defining Cirq basic gate fixtures for use in tests.
 
 """
+import os
+
 import pytest
 
 from qbraid_qir.qasm3.oq3_maps import (
@@ -21,8 +23,13 @@ from qbraid_qir.qasm3.oq3_maps import (
     PYQIR_TWO_QUBIT_OP_MAP,
 )
 
-# All of the following dictionaries map from the names of methods on Cirq Circuit objects
-# to the name of the equivalent pyqir BasicQisBuilder method
+CUSTOM_OPS = ["simple", "nested", "complex"]
+
+RESOURCES_DIR = os.path.join(os.path.dirname(__file__), "resources")
+
+
+def resources_file(filename: str) -> str:
+    return os.path.join(RESOURCES_DIR, f"{filename}")
 
 
 def _fixture_name(s: str) -> str:
@@ -109,15 +116,6 @@ def _generate_two_qubit_fixture(gate_name: str):
     return test_fixture
 
 
-# Create a new function to generate a fixture for n-qubit gates
-# def _generate_n_qubit_fixture(gate_name: str, n: int):
-#     @pytest.fixture()
-#     def test_fixture():
-#         circuit = cirq.Circuit()
-#         qubits = [cirq.NamedQubit(f"q{i}") for i in range(n)]
-#         circuit.append(getattr(cirq, gate_name)(*qubits))
-
-
 # Generate double-qubit gate fixtures
 for gate in PYQIR_TWO_QUBIT_OP_MAP:
     name = _fixture_name(gate)
@@ -142,28 +140,33 @@ def _generate_three_qubit_fixture(gate_name: str):
     return test_fixture
 
 
-# New function for more complex gate structures:
-# def _generate_complex_gate_fixture(gate_sequence):
-#     @pytest.fixture()
-#     def test_fixture():
-#         circuit = cirq.Circuit()
-#         qubits = [cirq.NamedQubit(f"q{i}") for i in range(len(gate_sequence))]
-#         for gate_op, qubit_indices in gate_sequence:
-#             gates_to_apply = [getattr(cirq, gate_op)(qubits[i]) for i in qubit_indices]
-#             circuit.append(gates_to_apply)
-#         return circuit
-
-#     return test_fixture
-
-
 # Generate three-qubit gate fixtures
 for gate in PYQIR_THREE_QUBIT_OP_MAP:
     name = _fixture_name(gate)
     locals()[name] = _generate_three_qubit_fixture(gate)
 
+
+def _generate_custom_op_fixture(name: str):
+    print(os.getcwd())
+
+    @pytest.fixture()
+    def test_fixture():
+        if not name in CUSTOM_OPS:
+            raise ValueError(f"Invalid fixture {name} for custom ops")
+        path = resources_file(f"custom_gate_{name}.qasm")
+        with open(path, "r") as file:
+            return file.read()
+
+    return test_fixture
+
+
+for test_name in CUSTOM_OPS:
+    name = _fixture_name(test_name)
+    locals()[name] = _generate_custom_op_fixture(test_name)
+
 single_op_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_OP_MAP]
 single_op_tests.remove("Fixture_id")  # as we have already tested x gate
-
 rotation_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_ROTATION_MAP]
 double_op_tests = [_fixture_name(s) for s in PYQIR_TWO_QUBIT_OP_MAP]
 triple_op_tests = [_fixture_name(s) for s in PYQIR_THREE_QUBIT_OP_MAP]
+custom_op_tests = [_fixture_name(s) for s in CUSTOM_OPS]

@@ -12,7 +12,8 @@
 Module defining Qasm3 Visitor.
 
 """
-#pylint: disable=line-too-long
+# pylint: disable=line-too-long
+import copy
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, List, Optional, Tuple
@@ -496,12 +497,15 @@ class BasicQisVisitor(CircuitElementVisitor):
         }
 
         for gate_op in gate_definition.body:
+            # necessary to avoid modifying the original gate definition
+            # in case the gate is reapplied
+            gate_op_copy = copy.deepcopy(gate_op)
             if isinstance(gate_op, QuantumGate):
                 # transform the gate_op with the actual qubit identifiers
                 # and the actual parameters
-                self._transform_gate_params(gate_op, param_map)
-                self._transform_gate_qubits(gate_op, qubit_map)
-                self._visit_generic_gate_operation(gate_op)
+                self._transform_gate_params(gate_op_copy, param_map)
+                self._transform_gate_qubits(gate_op_copy, qubit_map)
+                self._visit_generic_gate_operation(gate_op_copy)
             else:
                 # TODO : add control flow support
                 raise ValueError(

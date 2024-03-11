@@ -299,3 +299,57 @@ def check_three_qubit_gate_op(
         assert (
             False
         ), f"Incorrect three qubit gate count: {expected_ops} expected, {op_count} actual"
+
+
+def _validate_simple_custom_op(entry_body: List[str]):
+    custom_op_lines = [
+        initialize_call_string(),
+        single_op_call_string("h", 0),
+        single_op_call_string("z", 1),
+        rotation_call_string("rx", 0.1, 0),
+        double_op_call_string("cnot", 0, 1),
+        result_record_output_string(0),
+        result_record_output_string(1),
+        return_string(),
+    ]
+
+    assert len(entry_body) == len(custom_op_lines), "Incorrect number of lines in custom op"
+    for i in range(len(entry_body)):
+        assert entry_body[i].strip() == custom_op_lines[i].strip(), "Incorrect custom op line"
+
+
+def _validate_nested_custom_op(entry_body: List[str]):
+    nested_op_lines = [
+        initialize_call_string(),
+        single_op_call_string("h", 1),
+        rotation_call_string("rz", 0.1, 1),
+        single_op_call_string("h", 0),
+        double_op_call_string("cnot", 0, 1),
+        rotation_call_string("rx", 0.1, 1),
+        rotation_call_string("ry", 0.5, 1),
+        result_record_output_string(0),
+        result_record_output_string(1),
+        return_string(),
+    ]
+
+    assert len(entry_body) == len(nested_op_lines), "Incorrect number of lines in nested op"
+    for i in range(len(entry_body)):
+        assert entry_body[i].strip() == nested_op_lines[i].strip(), "Incorrect nested op line"
+
+
+def _validate_complex_custom_op(entry_body: List[str]):
+    pass
+    # todo...
+
+
+def check_custom_qasm_gate_op(qir: List[str], test_type: str):
+    entry_body = get_entry_point_body(qir)
+    print(entry_body)
+    if test_type == "simple":
+        _validate_simple_custom_op(entry_body)
+    elif test_type == "nested":
+        _validate_nested_custom_op(entry_body)
+    elif test_type == "complex":
+        _validate_complex_custom_op(entry_body)
+    else:
+        assert False, f"Unknown test type {test_type} for custom ops"
