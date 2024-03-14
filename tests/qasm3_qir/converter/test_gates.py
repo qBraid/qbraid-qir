@@ -172,3 +172,71 @@ def test_custom_ops(test_name, request):
 
     # Check for custom gate definition
     check_custom_qasm_gate_op(generated_qir, gate_type)
+
+
+def test_incorrect_custom_ops():
+    #  1. Undeclared gate application
+    with pytest.raises(ValueError, match=r"Unsupported / undeclared QASM operation: custom_gate"):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+            include "stdgates.inc";
+
+            qubit[2] q1;
+            custom_gate q1;  // undeclared gate
+            """
+        )
+
+    # 2. Parameter mismatch
+    with pytest.raises(
+        ValueError, match=r"Parameter count mismatch for gate custom_gate. Expected 2 but got 1 .*"
+    ):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+            include "stdgates.inc";
+
+            gate custom_gate(a,b) p, q{
+                rx(a) p;
+                ry(b) q;
+            }
+
+            qubit[2] q1;
+            custom_gate(0.5) q1;  // parameter count mismatch
+            """
+        )
+
+    # 3. Qubit count mismatch
+    with pytest.raises(
+        ValueError, match=r"Qubit count mismatch for gate custom_gate. Expected 2 but got 3 .*"
+    ):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+            include "stdgates.inc";
+
+            gate custom_gate(a,b) p, q{
+                rx(a) p;
+                ry(b) q;
+            }
+
+            qubit[3] q1;
+            custom_gate(0.5, 0.5) q1;  // qubit count mismatch
+            """
+        )
+    # 4. Argument indexing in gate definition
+    with pytest.raises(ValueError, match=r"Indexing .* not supported in gate definition"):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+            include "stdgates.inc";
+
+            gate custom_gate(a,b) p, q{
+                rx(a) p;
+                ry(b) q[0];
+            }
+
+            qubit[2] q1;
+            custom_gate(0.5, 0.5) q1;  // indexing not supported
+            """
+        )

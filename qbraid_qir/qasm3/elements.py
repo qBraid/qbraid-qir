@@ -15,6 +15,7 @@ Module defining Qasm3 Converter elements.
 
 import uuid
 from abc import ABCMeta, abstractmethod
+from enum import Enum
 from typing import List, Optional, Tuple
 
 from openqasm3.ast import BitType, ClassicalDeclaration, Program, QubitDeclaration, Statement
@@ -29,6 +30,26 @@ def generate_module_id() -> str:
     # TODO: Consider a better approach of generating a unique identifier.
     generated_id = uuid.uuid1()
     return f"circuit-{generated_id}"
+
+
+class Scope(Enum):
+    """
+    Enum for the different scopes in QIR.
+    """
+
+    GLOBAL = "global"
+    GATE = "gate"
+    FUNCTION = "function"
+
+
+class Context(Enum):
+    """
+    Enum for the different contexts in QIR.
+    """
+
+    GLOBAL = "global"
+    IF = "if"
+    LOOP = "loop"
 
 
 class _ProgramElement(metaclass=ABCMeta):

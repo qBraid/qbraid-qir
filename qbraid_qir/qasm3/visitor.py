@@ -16,16 +16,21 @@ Module defining Qasm3 Visitor.
 import copy
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 import pyqir
 import pyqir._native
 import pyqir.rt
 from openqasm3.ast import (
+    BinaryExpression,
+    BooleanLiteral,
+    BranchingStatement,
     ClassicalDeclaration,
+    DurationLiteral,
     FloatLiteral,
     FloatType,
     Identifier,
+    ImaginaryLiteral,
     IndexedIdentifier,
     IntegerLiteral,
     IntType,
@@ -37,10 +42,11 @@ from openqasm3.ast import (
     RangeDefinition,
     Statement,
     UintType,
+    UnaryExpression,
 )
 from pyqir import BasicBlock, Builder, Constant, IntType, PointerType
 
-from qbraid_qir.qasm3.elements import Qasm3Module
+from qbraid_qir.qasm3.elements import Context, Qasm3Module, Scope
 from qbraid_qir.qasm3.oq3_maps import map_qasm_op_to_pyqir_callable
 
 _log = logging.getLogger(name=__name__)
@@ -70,6 +76,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         self._module = None
         self._builder = None
         self._entry_point = None
+        self._scope = Scope.GLOBAL
+        self._context = Context.GLOBAL
         self._qubit_labels = {}
         self._clbit_labels = {}
         self._qreg_size_map = {}
@@ -110,6 +118,27 @@ class BasicQisVisitor(CircuitElementVisitor):
     def finalize(self) -> None:
         self._builder.ret(None)
 
+    def _set_scope(self, scope: Scope) -> None:
+        self._scope = scope
+
+    def _in_gate(self) -> bool:
+        return self._scope == Scope.GATE
+
+    def _in_global_scope(self) -> bool:
+        return self._scope == Scope.GLOBAL and self._context == Context.GLOBAL
+
+    def _in_function(self) -> bool:
+        return self._scope == Scope.FUNCTION
+
+    def _set_context(self, context: Context) -> None:
+        self._context = context
+
+    def _in_loop(self) -> bool:
+        return self._context == Context.LOOP
+
+    def _in_ifblock(self) -> bool:
+        return self._context == Context.IF
+
     def record_output(self, module: Qasm3Module) -> None:
         if self._record_output is False:
             return
@@ -146,7 +175,7 @@ class BasicQisVisitor(CircuitElementVisitor):
                 self._clbit_labels[f"{register_name}_{i}"] = current_size + i
         _log.debug("Added labels for register '%s'", str(register))
 
-    def _validate_index(self, index: int, size: int, qubit: bool = False) -> None:
+    def _validate_index(self, index: Union[int, None], size: int, qubit: bool = False) -> None:
         """Validate the index for a register.
 
         Args:
@@ -154,7 +183,9 @@ class BasicQisVisitor(CircuitElementVisitor):
             size (int): The size of the register.
             qubit (bool): Whether the register is a qubit register.
         """
-
+        # nothing to validate if index is None
+        if index is None:
+            return True
         if index < 0 or index >= size:
             raise ValueError(
                 f"Index {index} out of range for register of size {size} in {'qubit' if qubit else 'clbit'}"
@@ -270,7 +301,14 @@ class BasicQisVisitor(CircuitElementVisitor):
                 f"Missing register declaration for {target_name} in measurement operation {statement}"
             )
 
-        def _build_qir_measurement(src_name, src_id, target_name, target_id):
+        def _build_qir_measurement(
+            src_name: str, src_id: Union[int, None], target_name: str, target_id: Union[int, None]
+        ):
+            if src_id is None:
+                src_id = 0
+            if target_id is None:
+                target_id = 0
+
             source_qubit = pyqir.qubit(
                 self._module.context, self._qubit_labels[f"{src_name}_{src_id}"]
             )
@@ -287,19 +325,10 @@ class BasicQisVisitor(CircuitElementVisitor):
                 )
             for i in range(self._qreg_size_map[source_name]):
                 _build_qir_measurement(source_name, i, target_name, i)
-
-        elif source_id is not None and target_id is not None:
+        else:
             self._validate_index(source_id, self._qreg_size_map[source_name], qubit=True)
             self._validate_index(target_id, self._creg_size_map[target_name], qubit=False)
             _build_qir_measurement(source_name, source_id, target_name, target_id)
-        elif source_id is not None and target_id is None:
-            # is it fine to record qubit measurement in the first clbit? or should we throw an error?
-            self._validate_index(source_id, self._qreg_size_map[source_name], qubit=True)
-            _build_qir_measurement(source_name, source_id, target_name, 0)
-        elif source_id is None and target_id is not None:
-            # is it fine to just then record first measurement of source qubit?
-            self._validate_index(target_id, self._creg_size_map[target_name], qubit=False)
-            _build_qir_measurement(source_name, 0, target_name, target_id)
 
     def _visit_reset(self, statement: QuantumReset) -> None:
         """Visit a reset statement element.
@@ -470,16 +499,16 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         if len(operation.arguments) != len(gate_definition.arguments):
             raise ValueError(
-                f"Parameter count mismatch for gate {gate_name} in gate call. Expected \
-                 {len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"
+                f"""Parameter count mismatch for gate {gate_name}. Expected \
+{len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"""
             )
 
         op_qubits = self._get_op_qubits(operation, qir_form=False)
 
         if len(op_qubits) != len(gate_definition.qubits):
             raise ValueError(
-                f"Qubit count mismatch for gate {gate_name} in gate call. Expected \
-                             {len(gate_definition.qubits)} but got {len(op_qubits)} in operation"
+                f"""Qubit count mismatch for gate {gate_name}. Expected \
+{len(gate_definition.qubits)} but got {len(op_qubits)} in operation"""
             )
 
         # we need this because the gates applied inside a gate definition use the
@@ -506,6 +535,15 @@ class BasicQisVisitor(CircuitElementVisitor):
                 self._transform_gate_params(gate_op_copy, param_map)
                 self._transform_gate_qubits(gate_op_copy, qubit_map)
                 self._visit_generic_gate_operation(gate_op_copy)
+            # can't have non-gate operations inside a gate definition
+            elif isinstance(gate_op, QuantumMeasurementStatement):
+                raise ValueError(
+                    f"Unsupported measurement statement in gate definition {gate_definition}"
+                )
+            elif isinstance(gate_op, QuantumReset):
+                raise ValueError(
+                    f"Unsupported reset statement in gate definition {gate_definition}"
+                )
             else:
                 # TODO : add control flow support
                 raise ValueError(
@@ -551,6 +589,61 @@ class BasicQisVisitor(CircuitElementVisitor):
         else:
             raise ValueError(f"Unsupported classical type {decl_type} in {statement}")
 
+    def _evaluate_expression(self, expression: Any) -> bool:
+        """Evaluate an expression.
+
+        Args:
+            expression (Any): The expression to evaluate.
+
+        Returns:
+            bool: The result of the evaluation.
+        """
+        if isinstance(expression, BooleanLiteral):
+            return expression.value
+        if isinstance(expression, (FloatLiteral, ImaginaryLiteral, DurationLiteral)):
+            raise ValueError(f"Unsupported expression type {type(expression)} in if condition")
+        if isinstance(expression, IntegerLiteral):
+            return int(expression.value) != 0
+        if isinstance(expression, UnaryExpression):
+            op = expression.operator.name  # can be '!', '~' or '-'
+            if op == "!":
+                return not self._evaluate_expression(expression.expression)
+        elif isinstance(expression, BinaryExpression):
+            lhs = self._evaluate_expression(expression.lhs)
+            op = expression.operator.name
+            rhs = self._evaluate_expression(expression.rhs)
+
+            # TO DO...
+
+    def _visit_branching_statement(self, statement: BranchingStatement) -> None:
+        """Visit a branching statement element.
+
+        Args:
+            statement (BranchingStatement): The branching statement to visit.
+
+        Returns:
+            None
+        """
+
+        condition = statement.condition
+        if_block = statement.if_block
+
+        # if block should be present for sure
+        if not statement.if_block:
+            raise ValueError(f"Missing if block in {statement}")
+        else_block = statement.else_block
+
+        block_to_visit = if_block if self._evaluate_expression(condition) else else_block
+        for stmt in block_to_visit:
+            self._set_context(Context.IF)
+            self.visit_context_statement(stmt)
+
+    def visit_contextual_statement(self, statement: Statement) -> None:
+        pass
+
+    def visit_scoped_statement(self, statement: Statement) -> None:
+        pass
+
     def visit_statement(self, statement: Statement) -> None:
         """Visit a statement element.
 
@@ -574,8 +667,8 @@ class BasicQisVisitor(CircuitElementVisitor):
             self._visit_generic_gate_operation(statement)
         elif isinstance(statement, ClassicalDeclaration):
             self._visit_classical_operation(statement)
-        else:
-            pass
+        elif isinstance(statement, BranchingStatement):
+            self._visit_branching_statement(statement)
 
     def ir(self) -> str:
         return str(self._module)
