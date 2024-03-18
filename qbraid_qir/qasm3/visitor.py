@@ -47,7 +47,7 @@ from openqasm3.ast import (
 from pyqir import BasicBlock, Builder, Constant, IntType, PointerType
 
 from qbraid_qir.qasm3.elements import Context, Qasm3Module, Scope
-from qbraid_qir.qasm3.oq3_maps import map_qasm_op_to_pyqir_callable
+from qbraid_qir.qasm3.oq3_maps import map_qasm_op_to_pyqir_callable, qasm3_expression_op_map
 
 _log = logging.getLogger(name=__name__)
 
@@ -490,8 +490,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         Args:
             operation (QuantumGate): The gate operation to visit.
 
-        Returns:
-            None
+        Returns:in computation
         """
         _log.debug("Visiting custom gate operation '%s'", str(operation))
         gate_name = operation.name.name
@@ -589,7 +588,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         else:
             raise ValueError(f"Unsupported classical type {decl_type} in {statement}")
 
-    def _evaluate_expression(self, expression: Any) -> bool:
+    def evaluate_expression(self, expression: Any) -> bool:
         """Evaluate an expression.
 
         Args:
@@ -598,22 +597,27 @@ class BasicQisVisitor(CircuitElementVisitor):
         Returns:
             bool: The result of the evaluation.
         """
-        if isinstance(expression, BooleanLiteral):
-            return expression.value
-        if isinstance(expression, (FloatLiteral, ImaginaryLiteral, DurationLiteral)):
+        if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
             raise ValueError(f"Unsupported expression type {type(expression)} in if condition")
-        if isinstance(expression, IntegerLiteral):
-            return int(expression.value) != 0
-        if isinstance(expression, UnaryExpression):
-            op = expression.operator.name  # can be '!', '~' or '-'
+        elif isinstance(expression, BooleanLiteral):
+            return expression.value
+        elif isinstance(expression, (IntegerLiteral, FloatLiteral)):
+            return int(expression.value)
+        elif isinstance(expression, UnaryExpression):
+            op = expression.op.name  # can be '!', '~' or '-'
             if op == "!":
-                return not self._evaluate_expression(expression.expression)
+                return not self.evaluate_expression(expression.expression)
+            elif op == "-":
+                return -1 * self.evaluate_expression(expression.expression)
+            elif op == "~":
+                value = self.evaluate_expression(expression.expression)
+                if not isinstance(value, int):
+                    raise ValueError(f"Unsupported expression type {type(value)} in ~ operation")
         elif isinstance(expression, BinaryExpression):
-            lhs = self._evaluate_expression(expression.lhs)
-            op = expression.operator.name
-            rhs = self._evaluate_expression(expression.rhs)
-
-            # TO DO...
+            lhs = self.evaluate_expression(expression.lhs)
+            op = expression.op.name
+            rhs = self.evaluate_expression(expression.rhs)
+            return qasm3_expression_op_map[op](lhs, rhs)
 
     def _visit_branching_statement(self, statement: BranchingStatement) -> None:
         """Visit a branching statement element.
@@ -634,6 +638,13 @@ class BasicQisVisitor(CircuitElementVisitor):
         else_block = statement.else_block
 
         block_to_visit = if_block if self._evaluate_expression(condition) else else_block
+        # HOW??
+        # pyqir._native.if_result(
+        #     self._builder,
+        #     pyqir.result(self._module.context, 0),
+        #     one = #statements in if block,???
+        #     zero = #statements in else block???
+        # )
         for stmt in block_to_visit:
             self._set_context(Context.IF)
             self.visit_context_statement(stmt)

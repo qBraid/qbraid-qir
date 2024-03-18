@@ -15,6 +15,34 @@ Module mapping supported QASM gates/operations to pyqir functions.
 
 import pyqir
 
+OPERATOR_MAP = {
+    "+": lambda x, y: x + y,
+    "-": lambda x, y: x - y,
+    "*": lambda x, y: x * y,
+    "/": lambda x, y: x / y,
+    "%": lambda x, y: x % y,
+    "==": lambda x, y: x == y,
+    "!=": lambda x, y: x != y,
+    "<": lambda x, y: x < y,
+    ">": lambda x, y: x > y,
+    "<=": lambda x, y: x <= y,
+    ">=": lambda x, y: x >= y,
+    "&&": lambda x, y: x and y,
+    "||": lambda x, y: x or y,
+    "^": lambda x, y: x ^ y,
+    "&": lambda x, y: x & y,
+    "|": lambda x, y: x | y,
+    "<<": lambda x, y: x << y,
+    ">>": lambda x, y: x >> y,
+}
+
+
+def qasm3_expression_op_map(op_name: str, left, right):
+    try:
+        return OPERATOR_MAP[op_name](left, right)
+    except KeyError:
+        raise ValueError(f"Unsupported / undeclared QASM operator: {op_name}")
+
 
 def id_gate(builder, qubits):
     pyqir._native.x(builder, qubits)
