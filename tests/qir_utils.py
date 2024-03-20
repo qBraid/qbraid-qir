@@ -306,7 +306,7 @@ def _validate_simple_custom_op(entry_body: List[str]):
         initialize_call_string(),
         single_op_call_string("h", 0),
         single_op_call_string("z", 1),
-        rotation_call_string("rx", 0.1, 0),
+        rotation_call_string("rx", 1.1, 0),
         double_op_call_string("cnot", 0, 1),
         result_record_output_string(0),
         result_record_output_string(1),
@@ -322,11 +322,11 @@ def _validate_nested_custom_op(entry_body: List[str]):
     nested_op_lines = [
         initialize_call_string(),
         single_op_call_string("h", 1),
-        rotation_call_string("rz", 0.1, 1),
+        rotation_call_string("rz", 4.8, 1),
         single_op_call_string("h", 0),
         double_op_call_string("cnot", 0, 1),
-        rotation_call_string("rx", 0.1, 1),
-        rotation_call_string("ry", 0.5, 1),
+        rotation_call_string("rx", 4.8, 1),
+        rotation_call_string("ry", 5, 1),
         result_record_output_string(0),
         result_record_output_string(1),
         return_string(),
@@ -338,8 +338,22 @@ def _validate_nested_custom_op(entry_body: List[str]):
 
 
 def _validate_complex_custom_op(entry_body: List[str]):
-    pass
-    # todo...
+    complex_op_lines = [
+        initialize_call_string(),
+        single_op_call_string("h", 0),
+        single_op_call_string("x", 0),
+        rotation_call_string("rx", 0.5, 0),
+        rotation_call_string("ry", 0.1, 0),
+        rotation_call_string("rz", 0.2, 0),
+        double_op_call_string("cnot", 0, 1),
+        result_record_output_string(0),
+        result_record_output_string(1),
+        return_string(),
+    ]
+
+    assert len(entry_body) == len(complex_op_lines), "Incorrect number of lines in complex op"
+    for i in range(len(entry_body)):
+        assert entry_body[i].strip() == complex_op_lines[i].strip(), "Incorrect complex op line"
 
 
 def check_custom_qasm_gate_op(qir: List[str], test_type: str):
@@ -353,3 +367,25 @@ def check_custom_qasm_gate_op(qir: List[str], test_type: str):
         _validate_complex_custom_op(entry_body)
     else:
         assert False, f"Unknown test type {test_type} for custom ops"
+
+
+def check_expressions(
+    qir: List[str], expected_ops: int, gates: List[str], expression_values, qubits: List[int]
+):
+    entry_body = get_entry_point_body(qir)
+    op_count = 0
+    q_id = 0
+
+    for line in entry_body:
+        if line.strip().startswith("call") and "qis__" in line:
+            assert line.strip() == rotation_call_string(
+                gates[q_id], expression_values[q_id], qubits[q_id]
+            ), f"Incorrect rotation gate call in qir - {line}"
+            op_count += 1
+            q_id += 1
+
+        if op_count == expected_ops:
+            break
+
+    if op_count != expected_ops:
+        assert False, f"Incorrect rotation gate count: {expected_ops} expected, {op_count} actual"

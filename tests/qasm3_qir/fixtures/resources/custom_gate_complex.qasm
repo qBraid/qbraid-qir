@@ -20,5 +20,4 @@ gate custom3(p, q) c, d {
 
 qubit[2] q;
 
-custom3(0.1, 0.2) q[0], q[1];
-custom3(0.3, 0.4) q[0:];
+custom3(0.1, 0.2) q[0:];

@@ -10,8 +10,8 @@ gate custom(a,b,c) p, q{
     h p;
     cx p,q;
     rx(a) q;
-    ry(0.5) q;
+    ry(0.5/0.1) q;
 }
 
 qubit[2] q;
-custom(0.1, 0.2, 0.3) q[0], q[1];
+custom(2 + 3 - 1/5, 0.1, 0.3) q[0], q[1];

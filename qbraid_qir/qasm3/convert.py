@@ -50,13 +50,6 @@ def qasm3_to_qir(
         # Supported conversions qasm3 -> qiskit :
         # https://github.com/Qiskit/qiskit-qasm3-import/blob/main/src/qiskit_qasm3_import/converter.py
 
-        # PROPOSED SEMANTIC + DECOMPOSITION PASS
-        # qiskit_circuit = loads(program).decompose(reps=3)
-        # decomposed_qasm = Exporter().dumps(qiskit_circuit)
-        # PROPOSED SEMANTIC + DECOMPOSITION PASS
-
-        # program = openqasm3.parse(decomposed_qasm)
-
         program = openqasm3.parse(program)
 
     elif not isinstance(program, openqasm3.ast.Program):

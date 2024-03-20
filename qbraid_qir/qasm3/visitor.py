@@ -277,7 +277,6 @@ class BasicQisVisitor(CircuitElementVisitor):
         target = statement.target
         source_id, target_id = None, None
 
-        # handle measurement operation
         source_name = source.name
         if isinstance(source, IndexedIdentifier):
             source_name = source.name.name
@@ -318,7 +317,6 @@ class BasicQisVisitor(CircuitElementVisitor):
             pyqir._native.mz(self._builder, source_qubit, result)
 
         if source_id is None and target_id is None:
-            # sizes should match
             if self._qreg_size_map[source_name] != self._creg_size_map[target_name]:
                 raise ValueError(
                     f"Register sizes of {source_name} and {target_name} do not match for measurement operation"
@@ -365,7 +363,6 @@ class BasicQisVisitor(CircuitElementVisitor):
             qreg_size = self._qreg_size_map[qreg_name]
             qubit_ids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)]
 
-        # generate pyqir reset equivalent
         for qid in qubit_ids:
             pyqir._native.reset(self._builder, pyqir.qubit(self._module.context, qid))
 
@@ -402,11 +399,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
         param_list = []
         for param in operation.arguments:
-            if not isinstance(param, (FloatLiteral, IntegerLiteral)):
-                raise ValueError(
-                    f"Unsupported parameter type {type(param)} for operation {operation}"
-                )
-            param_list.append(float(param.value))
+            param_value = self._evaluate_expression(param)
+            param_list.append(param_value)
 
         if len(param_list) > 1:
             raise ValueError(f"Parameterized gate {operation} with > 1 params not supported")
@@ -414,6 +408,14 @@ class BasicQisVisitor(CircuitElementVisitor):
         return param_list
 
     def _visit_gate_definition(self, definition: QuantumGateDefinition) -> None:
+        """Visit a gate definition element.
+
+        Args:
+            definition (QuantumGateDefinition): The gate definition to visit.
+
+        Returns:
+            None
+        """
         gate_name = definition.name.name
         if gate_name in self._custom_gates:
             raise ValueError(f"Duplicate gate definition for {gate_name}")
@@ -429,9 +431,8 @@ class BasicQisVisitor(CircuitElementVisitor):
             None
         """
 
-        # Currently handling the gates in the stdgates.inc file
         _log.debug("Visiting basic gate operation '%s'", str(operation))
-        op_name = operation.name.name
+        op_name : str = operation.name.name
         op_qubits = self._get_op_qubits(operation)
         qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
         op_parameters = None
@@ -466,7 +467,6 @@ class BasicQisVisitor(CircuitElementVisitor):
         for i, qubit in enumerate(gate_op.qubits):
             if isinstance(qubit, IndexedIdentifier):
                 raise ValueError(f"Indexing {qubit} not supported in gate definition")
-            # now we have an Identifier
             gate_op.qubits[i] = qubit_map[qubit.name]
 
     def _transform_gate_params(self, gate_op, param_map):
@@ -480,7 +480,6 @@ class BasicQisVisitor(CircuitElementVisitor):
             None
         """
         for i, param in enumerate(gate_op.arguments):
-            # replace only if we have an Identifier
             if isinstance(param, Identifier):
                 gate_op.arguments[i] = param_map[param.name]
 
@@ -493,8 +492,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         Returns:in computation
         """
         _log.debug("Visiting custom gate operation '%s'", str(operation))
-        gate_name = operation.name.name
-        gate_definition = self._custom_gates[gate_name]
+        gate_name : str = operation.name.name
+        gate_definition : QuantumGateDefinition = self._custom_gates[gate_name]
 
         if len(operation.arguments) != len(gate_definition.arguments):
             raise ValueError(
@@ -588,7 +587,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         else:
             raise ValueError(f"Unsupported classical type {decl_type} in {statement}")
 
-    def evaluate_expression(self, expression: Any) -> bool:
+    def _evaluate_expression(self, expression: Any) -> bool:
         """Evaluate an expression.
 
         Args:
@@ -598,26 +597,32 @@ class BasicQisVisitor(CircuitElementVisitor):
             bool: The result of the evaluation.
         """
         if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
-            raise ValueError(f"Unsupported expression type {type(expression)} in if condition")
+            raise ValueError(f"Unsupported expression type {type(expression)}")
+        elif isinstance(expression, Identifier):
+            # we need to check our scope and context to get the value of the identifier
+            # if it is a classical register, we can directly get the value
+            # how to get the value of the identifier in the QIR??
+            # TO DO : extend this
+            raise ValueError(f"Unsupported expression type {type(expression)}")
         elif isinstance(expression, BooleanLiteral):
             return expression.value
         elif isinstance(expression, (IntegerLiteral, FloatLiteral)):
-            return int(expression.value)
+            return expression.value
         elif isinstance(expression, UnaryExpression):
             op = expression.op.name  # can be '!', '~' or '-'
             if op == "!":
-                return not self.evaluate_expression(expression.expression)
+                return not self._evaluate_expression(expression.expression)
             elif op == "-":
-                return -1 * self.evaluate_expression(expression.expression)
+                return -1 * self._evaluate_expression(expression.expression)
             elif op == "~":
-                value = self.evaluate_expression(expression.expression)
+                value = self._evaluate_expression(expression.expression)
                 if not isinstance(value, int):
                     raise ValueError(f"Unsupported expression type {type(value)} in ~ operation")
         elif isinstance(expression, BinaryExpression):
-            lhs = self.evaluate_expression(expression.lhs)
+            lhs = self._evaluate_expression(expression.lhs)
             op = expression.op.name
-            rhs = self.evaluate_expression(expression.rhs)
-            return qasm3_expression_op_map[op](lhs, rhs)
+            rhs = self._evaluate_expression(expression.rhs)
+            return qasm3_expression_op_map(op, lhs, rhs)
 
     def _visit_branching_statement(self, statement: BranchingStatement) -> None:
         """Visit a branching statement element.

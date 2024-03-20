@@ -149,7 +149,7 @@ def test_incorrect_single_qubit_gates():
 
     # Invalid use of variables in gate application
 
-    with pytest.raises(ValueError, match=r"Unsupported parameter type .* for operation .*"):
+    with pytest.raises(ValueError, match=r"Unsupported expression type .*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
