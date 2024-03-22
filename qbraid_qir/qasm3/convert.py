@@ -48,7 +48,7 @@ def qasm3_to_qir(
     """
     if isinstance(program, str):
         # Supported conversions qasm3 -> qiskit :
-        # https://github.com/Qiskit/qiskit-qasm3-import/blob/main/src/qiskit_qasm3_import/converter.py
+        # https://github.com/Qiskit/qiskit-qasm3-import/blob/main/src/qiskit_qasm3_import/converter.py``
 
         program = openqasm3.parse(program)
 

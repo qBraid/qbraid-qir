@@ -32,8 +32,11 @@ from openqasm3.ast import (
     Identifier,
     ImaginaryLiteral,
     IndexedIdentifier,
+    IndexExpression,
     IntegerLiteral,
-    IntType,
+)
+from openqasm3.ast import IntType as qasm3IntType
+from openqasm3.ast import (
     QuantumBarrier,
     QuantumGate,
     QuantumGateDefinition,
@@ -44,7 +47,9 @@ from openqasm3.ast import (
     UintType,
     UnaryExpression,
 )
-from pyqir import BasicBlock, Builder, Constant, IntType, PointerType
+from pyqir import BasicBlock, Builder, Constant
+from pyqir import IntType as qirIntType
+from pyqir import PointerType
 
 from qbraid_qir.qasm3.elements import Context, Qasm3Module, Scope
 from qbraid_qir.qasm3.oq3_maps import map_qasm_op_to_pyqir_callable, qasm3_expression_op_map
@@ -107,7 +112,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         self._builder.insert_at_end(BasicBlock(context, "entry", entry))
 
         if self._initialize_runtime is True:
-            i8p = PointerType(IntType(context, 8))
+            i8p = PointerType(qirIntType(context, 8))
             nullptr = Constant.null(i8p)
             pyqir.rt.initialize(self._builder, nullptr)
 
@@ -143,7 +148,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         if self._record_output is False:
             return
 
-        i8p = PointerType(IntType(self._module.context, 8))
+        i8p = PointerType(qirIntType(self._module.context, 8))
 
         for i in range(module.num_qubits):
             result_ref = pyqir.result(self._module.context, i)
@@ -432,7 +437,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
 
         _log.debug("Visiting basic gate operation '%s'", str(operation))
-        op_name : str = operation.name.name
+        op_name: str = operation.name.name
         op_qubits = self._get_op_qubits(operation)
         qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
         op_parameters = None
@@ -492,8 +497,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         Returns:in computation
         """
         _log.debug("Visiting custom gate operation '%s'", str(operation))
-        gate_name : str = operation.name.name
-        gate_definition : QuantumGateDefinition = self._custom_gates[gate_name]
+        gate_name: str = operation.name.name
+        gate_definition: QuantumGateDefinition = self._custom_gates[gate_name]
 
         if len(operation.arguments) != len(gate_definition.arguments):
             raise ValueError(
@@ -573,7 +578,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
         decl_type = statement.type
 
-        if isinstance(decl_type, (IntType, UintType, FloatType)):
+        if isinstance(decl_type, (qasm3IntType, UintType, FloatType)):
             size = decl_type.size if decl_type.size is not None else 1
 
             # we only support static integer sizes
@@ -598,15 +603,18 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
         if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
             raise ValueError(f"Unsupported expression type {type(expression)}")
-        elif isinstance(expression, Identifier):
+        elif isinstance(expression, (Identifier, IndexedIdentifier)):
             # we need to check our scope and context to get the value of the identifier
             # if it is a classical register, we can directly get the value
             # how to get the value of the identifier in the QIR??
             # TO DO : extend this
+            # we only support classical register values in computation
             raise ValueError(f"Unsupported expression type {type(expression)}")
+
         elif isinstance(expression, BooleanLiteral):
             return expression.value
         elif isinstance(expression, (IntegerLiteral, FloatLiteral)):
+            print("here")
             return expression.value
         elif isinstance(expression, UnaryExpression):
             op = expression.op.name  # can be '!', '~' or '-'
@@ -623,6 +631,16 @@ class BasicQisVisitor(CircuitElementVisitor):
             op = expression.op.name
             rhs = self._evaluate_expression(expression.rhs)
             return qasm3_expression_op_map(op, lhs, rhs)
+        else:
+            raise ValueError(f"Unsupported expression type {type(expression)}")
+
+    def _validate_branch_condition(self, condition) -> None:
+        # What about binary expressions ?
+        # Other types of expressions ?
+        if not isinstance(condition, IndexExpression):
+            raise ValueError(
+                f"Unsupported expression type {type(condition)} in if condition. Can only be a simple comparison"
+            )
 
     def _visit_branching_statement(self, statement: BranchingStatement) -> None:
         """Visit a branching statement element.
@@ -633,26 +651,35 @@ class BasicQisVisitor(CircuitElementVisitor):
         Returns:
             None
         """
-
         condition = statement.condition
-        if_block = statement.if_block
+        self._validate_branch_condition(condition)
 
+        if_block = statement.if_block
         # if block should be present for sure
         if not statement.if_block:
             raise ValueError(f"Missing if block in {statement}")
         else_block = statement.else_block
 
-        block_to_visit = if_block if self._evaluate_expression(condition) else else_block
-        # HOW??
-        # pyqir._native.if_result(
-        #     self._builder,
-        #     pyqir.result(self._module.context, 0),
-        #     one = #statements in if block,???
-        #     zero = #statements in else block???
-        # )
-        for stmt in block_to_visit:
-            self._set_context(Context.IF)
-            self.visit_context_statement(stmt)
+        reg_id = None
+        reg_name = None
+
+        reg_name = condition.collection.name
+        reg_id = condition.index[0].value
+        if reg_name not in self._creg_size_map:
+            raise ValueError(f"Missing register declaration for {reg_name} in {condition}")
+        self._validate_index(reg_id, self._creg_size_map[reg_name], qubit=False)
+
+        def _visit_statement_block(block):
+            for stmt in block:
+                self.visit_statement(stmt)
+
+        # if the condition is true, we visit the if block
+        pyqir._native.if_result(
+            self._builder,
+            pyqir.result(self._module.context, self._clbit_labels[f"{reg_name}_{reg_id}"]),
+            zero=lambda: _visit_statement_block(else_block),
+            one=lambda: _visit_statement_block(if_block),
+        )
 
     def visit_contextual_statement(self, statement: Statement) -> None:
         pass

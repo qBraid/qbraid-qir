@@ -389,3 +389,15 @@ def check_expressions(
 
     if op_count != expected_ops:
         assert False, f"Incorrect rotation gate count: {expected_ops} expected, {op_count} actual"
+
+
+def check_simple_if(
+    qir: List[str],
+):
+    pass
+
+
+def check_complex_if(
+    qir: List[str],
+):
+    pass
