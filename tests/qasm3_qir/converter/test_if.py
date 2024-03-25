@@ -13,10 +13,32 @@ Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
 
+import os
+from pathlib import Path
+
+import pyqir
 import pytest
 
 from qbraid_qir.qasm3 import qasm3_to_qir
-from tests.qir_utils import check_attributes
+from tests.qir_utils import check_attributes, get_entry_point_body
+
+RESOURCES_DIR = os.path.join(
+    os.path.dirname(__file__).removesuffix("converter"), "fixtures/resources"
+)
+
+
+def resources_file(filename: str) -> str:
+    return str(os.path.join(RESOURCES_DIR, f"{filename}"))
+
+
+def compare_reference_ir(generated_bitcode: bytes, file_path: str) -> None:
+    module = pyqir.Module.from_bitcode(pyqir.Context(), generated_bitcode, f"{file_path}")
+    ir = str(module)
+    pyqir_ir_body = get_entry_point_body(ir.splitlines())
+
+    expected = Path(file_path).read_text(encoding="utf-8")
+    expected_ir_body = get_entry_point_body(expected.splitlines())
+    assert pyqir_ir_body == expected_ir_body
 
 
 def test_simple_if():
@@ -36,7 +58,8 @@ def test_simple_if():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 4, 4)
-    # todo
+    simple_file = resources_file("simple_if.ll")
+    compare_reference_ir(result.bitcode, simple_file)
 
 
 def test_complex_if():
@@ -68,7 +91,8 @@ def test_complex_if():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 4, 8)
-    # todo
+    complex_if = resources_file("complex_if.ll")
+    compare_reference_ir(result.bitcode, complex_if)
 
 
 def test_incorrect_if():
