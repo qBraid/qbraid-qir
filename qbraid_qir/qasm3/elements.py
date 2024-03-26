@@ -19,7 +19,8 @@ from enum import Enum
 from typing import List, Optional, Tuple
 
 from openqasm3.ast import BitType, ClassicalDeclaration, Program, QubitDeclaration, Statement
-from pyqir import Context, Module
+from pyqir import Context as qirContext
+from pyqir import Module
 
 
 def generate_module_id() -> str:
@@ -152,7 +153,7 @@ class Qasm3Module:
                 elements.append(_Statement(statement))
 
         if module is None:
-            module = Module(Context(), generate_module_id(program))
+            module = Module(qirContext(), generate_module_id(program))
 
         # for element in elements:
         #     print(element,"\n")

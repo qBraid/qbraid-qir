@@ -52,7 +52,11 @@ from pyqir import IntType as qirIntType
 from pyqir import PointerType
 
 from qbraid_qir.qasm3.elements import Context, Qasm3Module, Scope
-from qbraid_qir.qasm3.oq3_maps import map_qasm_op_to_pyqir_callable, qasm3_expression_op_map
+from qbraid_qir.qasm3.oq3_maps import (
+    map_qasm_op_to_pyqir_callable,
+    qasm3_constants_map,
+    qasm3_expression_op_map,
+)
 
 _log = logging.getLogger(name=__name__)
 
@@ -603,15 +607,18 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
         if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
             raise ValueError(f"Unsupported expression type {type(expression)}")
-        elif isinstance(expression, (Identifier, IndexedIdentifier)):
+        if isinstance(expression, (Identifier, IndexedIdentifier)):
             # we need to check our scope and context to get the value of the identifier
             # if it is a classical register, we can directly get the value
             # how to get the value of the identifier in the QIR??
             # TO DO : extend this
             # we only support classical register values in computation
-            raise ValueError(f"Unsupported expression type {type(expression)}")
+            try:
+                return qasm3_constants_map(expression.name)
+            except:
+                raise ValueError(f"Undefined identifier {expression.name} in {expression}")
 
-        elif isinstance(expression, BooleanLiteral):
+        if isinstance(expression, BooleanLiteral):
             return expression.value
         elif isinstance(expression, (IntegerLiteral, FloatLiteral)):
             print("here")
@@ -634,13 +641,51 @@ class BasicQisVisitor(CircuitElementVisitor):
         else:
             raise ValueError(f"Unsupported expression type {type(expression)}")
 
-    def _validate_branch_condition(self, condition) -> None:
-        # What about binary expressions ?
-        # Other types of expressions ?
+    def _analyse_branch_condition(self, condition) -> bool:
+        """
+        Analyse the branching condition to determine the branch to take
+
+        Args:
+            condition (Any): The condition to analyse
+
+        Returns:
+            bool: The branch to take"""
+
+        if isinstance(condition, UnaryExpression):
+            if condition.op.name != "!":
+                raise ValueError(f"Unsupported unary expression {condition} in if condition")
+            return False
+        if isinstance(condition, BinaryExpression):
+            if condition.op.name != "==":
+                raise ValueError(f"Unsupported binary expression {condition} in if condition")
+            if not isinstance(condition.lhs, IndexExpression):
+                raise ValueError(
+                    f"Unsupported expression type {type(condition.lhs)} in if condition"
+                )
+            return condition.rhs.value != 0
         if not isinstance(condition, IndexExpression):
             raise ValueError(
                 f"Unsupported expression type {type(condition)} in if condition. Can only be a simple comparison"
             )
+        return True
+
+    def _get_branch_params(self, condition) -> Tuple[Union[int, None], Union[str, None]]:
+        """
+        Get the branch parameters from the branching condition
+
+        Args:
+            condition (Any): The condition to analyse
+
+        Returns:
+            Tuple[Union[int, None], Union[str, None]]: The branch parameters
+        """
+        if isinstance(condition, UnaryExpression):
+            return condition.expression.index[0].value, condition.expression.collection.name
+        if isinstance(condition, BinaryExpression):
+            return condition.lhs.index[0].value, condition.lhs.collection.name
+        if isinstance(condition, IndexExpression):
+            return condition.index[0].value, condition.collection.name
+        return None, None
 
     def _visit_branching_statement(self, statement: BranchingStatement) -> None:
         """Visit a branching statement element.
@@ -652,19 +697,17 @@ class BasicQisVisitor(CircuitElementVisitor):
             None
         """
         condition = statement.condition
-        self._validate_branch_condition(condition)
+        positive_branching = self._analyse_branch_condition(condition)
 
         if_block = statement.if_block
-        # if block should be present for sure
         if not statement.if_block:
             raise ValueError(f"Missing if block in {statement}")
         else_block = statement.else_block
+        if not positive_branching:
+            if_block, else_block = else_block, if_block
 
-        reg_id = None
-        reg_name = None
+        reg_id, reg_name = self._get_branch_params(condition)
 
-        reg_name = condition.collection.name
-        reg_id = condition.index[0].value
         if reg_name not in self._creg_size_map:
             raise ValueError(f"Missing register declaration for {reg_name} in {condition}")
         self._validate_index(reg_id, self._creg_size_map[reg_name], qubit=False)

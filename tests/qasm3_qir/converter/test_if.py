@@ -53,6 +53,14 @@ def test_simple_if():
         x q[0];
         cx q[0], q[1];    
     }
+
+    if(c[1] == 1){
+        cx q[1], q[2];
+    }
+
+    if(!c[2]){
+        h q[2];
+    }
     """
     result = qasm3_to_qir(qasm)
     generated_qir = str(result).splitlines()
@@ -141,6 +149,39 @@ def test_incorrect_if():
            measure q->c;
 
            if(c2[0]){
+            cx q;
+           }
+           """
+        )
+
+    with pytest.raises(ValueError, match=r"Unsupported unary expression .*"):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+           include "stdgates.inc";
+           qubit[2] q;
+           bit[2] c;
+
+           h q;
+           measure q->c;
+
+           if(~c[0]){
+            cx q;
+           }
+           """
+        )
+    with pytest.raises(ValueError, match=r"Unsupported binary expression .*"):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+           include "stdgates.inc";
+           qubit[2] q;
+           bit[2] c;
+
+           h q;
+           measure q->c;
+
+           if(c[0] >= 1){
             cx q;
            }
            """

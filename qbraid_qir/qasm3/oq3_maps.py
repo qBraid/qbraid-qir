@@ -40,8 +40,8 @@ OPERATOR_MAP = {
 def qasm3_expression_op_map(op_name: str, left, right):
     try:
         return OPERATOR_MAP[op_name](left, right)
-    except KeyError:
-        raise ValueError(f"Unsupported / undeclared QASM operator: {op_name}")
+    except KeyError as exc:
+        raise ValueError(f"Unsupported / undeclared QASM operator: {op_name}") from exc
 
 
 def id_gate(builder, qubits):
@@ -97,5 +97,16 @@ def map_qasm_op_to_pyqir_callable(op_name: str):
         pass
     try:
         return PYQIR_THREE_QUBIT_OP_MAP[op_name], 3
-    except KeyError:
-        raise ValueError(f"Unsupported / undeclared QASM operation: {op_name}")
+    except KeyError as exc:
+        raise ValueError(f"Unsupported / undeclared QASM operation: {op_name}") from exc
+
+
+CONSTANTS_MAP = {
+    "pi": 3.141592653589793,
+    "e": 2.718281828459045,
+    "tau": 6.283185307179586,
+}
+
+
+def qasm3_constants_map(constant_name: str):
+    return CONSTANTS_MAP[constant_name]

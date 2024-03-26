@@ -27,6 +27,28 @@ else:                                             ; preds = %entry
   br label %continue
 
 continue:                                         ; preds = %else, %then
+  %1 = call i1 @__quantum__qis__read_result__body(%Result* inttoptr (i64 1 to %Result*))
+  br i1 %1, label %then1, label %else2
+
+then1:                                            ; preds = %continue
+  call void @__quantum__qis__cnot__body(%Qubit* inttoptr (i64 1 to %Qubit*), %Qubit* inttoptr (i64 2 to %Qubit*))
+  br label %continue3
+
+else2:                                            ; preds = %continue
+  br label %continue3
+
+continue3:                                        ; preds = %else2, %then1
+  %2 = call i1 @__quantum__qis__read_result__body(%Result* inttoptr (i64 2 to %Result*))
+  br i1 %2, label %then4, label %else5
+
+then4:                                            ; preds = %continue3
+  br label %continue6
+
+else5:                                            ; preds = %continue3
+  call void @__quantum__qis__h__body(%Qubit* inttoptr (i64 2 to %Qubit*))
+  br label %continue6
+
+continue6:                                        ; preds = %else5, %then4
   call void @__quantum__rt__result_record_output(%Result* null, i8* null)
   call void @__quantum__rt__result_record_output(%Result* inttoptr (i64 1 to %Result*), i8* null)
   call void @__quantum__rt__result_record_output(%Result* inttoptr (i64 2 to %Result*), i8* null)
