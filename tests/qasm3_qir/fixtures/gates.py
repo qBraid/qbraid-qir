@@ -78,7 +78,6 @@ def _generate_rotation_fixture(gate_name: str):
     def test_fixture():
         if not _validate_gate_name(gate_name):
             raise ValueError(f"Unknown qasm3 gate {gate_name}")
-
         qasm3_string = f"""
         OPENQASM 3;
         include "stdgates.inc";
@@ -166,7 +165,7 @@ for test_name in CUSTOM_OPS:
 
 single_op_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_OP_MAP]
 single_op_tests.remove("Fixture_id")  # as we have already tested x gate
-rotation_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_ROTATION_MAP]
+rotation_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_ROTATION_MAP if "u" not in s.lower()]
 double_op_tests = [_fixture_name(s) for s in PYQIR_TWO_QUBIT_OP_MAP]
 triple_op_tests = [_fixture_name(s) for s in PYQIR_THREE_QUBIT_OP_MAP]
 custom_op_tests = [_fixture_name(s) for s in CUSTOM_OPS]

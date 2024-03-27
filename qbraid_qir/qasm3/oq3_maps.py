@@ -51,6 +51,24 @@ def id_gate(builder, qubits):
     pyqir._native.x(builder, qubits)
 
 
+# Reference -
+# https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.UGate
+# https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.PhaseGate
+def u3_gate(builder, theta, phi, lam, qubits):
+    pyqir._native.rz(builder, lam, qubits)
+    pyqir._native.rx(builder, CONSTANTS_MAP["pi"] / 2, qubits)
+    pyqir._native.rz(builder, theta + CONSTANTS_MAP["pi"], qubits)
+    pyqir._native.rx(builder, CONSTANTS_MAP["pi"] / 2, qubits)
+    pyqir._native.rz(builder, phi + CONSTANTS_MAP["pi"], qubits)
+    # global phase - e^(i*(phi+lambda)/2) is missing in the above implementation
+
+
+# Reference -
+# https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.U2Gate
+def u2_gate(builder, phi, lam, qubits):
+    u3_gate(builder, CONSTANTS_MAP["pi"] / 2, phi, lam, qubits)
+
+
 PYQIR_ONE_QUBIT_OP_MAP = {
     # Identity Gate
     "id": id_gate,
@@ -70,6 +88,11 @@ PYQIR_ONE_QUBIT_ROTATION_MAP = {
     "rx": pyqir._native.rx,
     "ry": pyqir._native.ry,
     "rz": pyqir._native.rz,
+    "U": u3_gate,
+    "u3": u3_gate,
+    "U3": u3_gate,
+    "U2": u2_gate,
+    "u2": u2_gate,
 }
 
 PYQIR_TWO_QUBIT_OP_MAP = {
@@ -105,6 +128,7 @@ def map_qasm_op_to_pyqir_callable(op_name: str):
 
 CONSTANTS_MAP = {
     "pi": 3.141592653589793,
+    "π": 3.141592653589793,
     "e": 2.718281828459045,
     "tau": 6.283185307179586,
 }

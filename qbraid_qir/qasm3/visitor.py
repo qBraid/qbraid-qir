@@ -32,6 +32,7 @@ from openqasm3.ast import (
     FloatType,
     Identifier,
     ImaginaryLiteral,
+    Include,
     IndexedIdentifier,
     IndexExpression,
     IntegerLiteral,
@@ -434,13 +435,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         param_list = []
         for param in operation.arguments:
             param_value = self._evaluate_expression(param)
-            param_list.append(param_value)
-
-        if len(param_list) > 1:
-            self._print_err_location(operation.span)
-            raise Qasm3ConversionError(
-                f"Parameterized gate {operation} with > 1 params not supported"
-            )
+            param_list.append(float(param_value))
 
         return param_list
 
@@ -526,6 +521,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         for i, param in enumerate(gate_op.arguments):
             if isinstance(param, Identifier):
                 gate_op.arguments[i] = param_map[param.name]
+            # TODO : update the arg value in expressions not just SINGLE identifiers
 
     def _visit_custom_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a custom gate operation element recursively.
@@ -568,7 +564,6 @@ class BasicQisVisitor(CircuitElementVisitor):
             formal_arg.name: actual_arg
             for formal_arg, actual_arg in zip(gate_definition.arguments, operation.arguments)
         }
-
         for gate_op in gate_definition.body:
             # necessary to avoid modifying the original gate definition
             # in case the gate is reapplied
@@ -790,8 +785,9 @@ class BasicQisVisitor(CircuitElementVisitor):
             None
         """
         _log.debug("Visiting statement '%s'", str(statement))
-
-        if isinstance(statement, QuantumMeasurementStatement):
+        if isinstance(statement, Include):
+            pass
+        elif isinstance(statement, QuantumMeasurementStatement):
             self._visit_measurement(statement)
         elif isinstance(statement, QuantumReset):
             self._visit_reset(statement)
@@ -805,6 +801,10 @@ class BasicQisVisitor(CircuitElementVisitor):
             self._visit_classical_operation(statement)
         elif isinstance(statement, BranchingStatement):
             self._visit_branching_statement(statement)
+        else:
+            # TODO : extend this
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Unsupported statement type {type(statement)}")
 
     def ir(self) -> str:
         return str(self._module)
