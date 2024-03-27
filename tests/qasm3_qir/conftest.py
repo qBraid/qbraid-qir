@@ -9,18 +9,10 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module defining exceptions for errors raised by qBraid.
+Fixtures imported/defined in this file can be used by any test in this directory
+without needing to import them (pytest will automatically discover them).
 
 """
+# pylint: disable=unused-import,wildcard-import,unused-wildcard-import
 
-
-class QbraidQirError(Exception):
-    """Base class for errors raised by qbraid-qir."""
-
-
-class QirConversionError(QbraidQirError):
-    """Class for errors raised when converting quantum program to QIR."""
-
-
-class Qasm3ConversionError(QbraidQirError):
-    """Class for errors raised when converting quantum program to QASM3."""
+from .fixtures.gates import *

@@ -8,19 +8,12 @@
 #
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
-"""
-Module defining exceptions for errors raised by qBraid.
 
-"""
-
-
-class QbraidQirError(Exception):
-    """Base class for errors raised by qbraid-qir."""
+# can use this -
+# https://github.com/qBraid/qBraid/blob/eec41d1d4a2cbda0385191d041884fbe2965328e/qbraid/programs/qasm3.py#L108
 
 
-class QirConversionError(QbraidQirError):
-    """Class for errors raised when converting quantum program to QIR."""
+# run simulations with both qasm3 and qir programs and compare the results for final tests
 
 
-class Qasm3ConversionError(QbraidQirError):
-    """Class for errors raised when converting quantum program to QASM3."""
+# can use rigetti simulator for qir programs and qiskit for qasm3 programs

@@ -49,9 +49,7 @@ autoclass_content = "both"
 autodoc_mock_imports = ["cirq"]
 napoleon_numpy_docstring = False
 todo_include_todos = True
-mathjax_path = (
-    "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
-)
+mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
 # The master toctree document.
 master_doc = "index"
