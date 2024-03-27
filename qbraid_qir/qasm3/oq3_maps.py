@@ -15,6 +15,8 @@ Module mapping supported QASM gates/operations to pyqir functions.
 
 import pyqir
 
+from qbraid_qir.exceptions import Qasm3ConversionError
+
 OPERATOR_MAP = {
     "+": lambda x, y: x + y,
     "-": lambda x, y: x - y,
@@ -41,7 +43,7 @@ def qasm3_expression_op_map(op_name: str, left, right):
     try:
         return OPERATOR_MAP[op_name](left, right)
     except KeyError as exc:
-        raise ValueError(f"Unsupported / undeclared QASM operator: {op_name}") from exc
+        raise Qasm3ConversionError(f"Unsupported / undeclared QASM operator: {op_name}") from exc
 
 
 def id_gate(builder, qubits):
@@ -98,7 +100,7 @@ def map_qasm_op_to_pyqir_callable(op_name: str):
     try:
         return PYQIR_THREE_QUBIT_OP_MAP[op_name], 3
     except KeyError as exc:
-        raise ValueError(f"Unsupported / undeclared QASM operation: {op_name}") from exc
+        raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}") from exc
 
 
 CONSTANTS_MAP = {

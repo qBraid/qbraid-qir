@@ -15,6 +15,7 @@ Module defining Qasm3 Visitor.
 # pylint: disable=line-too-long
 import copy
 import logging
+import sys
 from abc import ABCMeta, abstractmethod
 from typing import Any, List, Optional, Tuple, Union
 
@@ -43,6 +44,7 @@ from openqasm3.ast import (
     QuantumMeasurementStatement,
     QuantumReset,
     RangeDefinition,
+    Span,
     Statement,
     UintType,
     UnaryExpression,
@@ -51,6 +53,7 @@ from pyqir import BasicBlock, Builder, Constant
 from pyqir import IntType as qirIntType
 from pyqir import PointerType
 
+from qbraid_qir.exceptions import Qasm3ConversionError
 from qbraid_qir.qasm3.elements import Context, Qasm3Module, Scope
 from qbraid_qir.qasm3.oq3_maps import (
     map_qasm_op_to_pyqir_callable,
@@ -184,6 +187,12 @@ class BasicQisVisitor(CircuitElementVisitor):
                 self._clbit_labels[f"{register_name}_{i}"] = current_size + i
         _log.debug("Added labels for register '%s'", str(register))
 
+    def _print_err_location(self, element: Span) -> str:
+        print(
+            f"Error at line {element.start_line}, column {element.start_column} in QASM file",
+            file=sys.stderr,
+        )
+
     def _validate_index(self, index: Union[int, None], size: int, qubit: bool = False) -> None:
         """Validate the index for a register.
 
@@ -196,7 +205,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         if index is None:
             return True
         if index < 0 or index >= size:
-            raise ValueError(
+            raise Qasm3ConversionError(
                 f"Index {index} out of range for register of size {size} in {'qubit' if qubit else 'clbit'}"
             )
 
@@ -216,7 +225,8 @@ class BasicQisVisitor(CircuitElementVisitor):
             if isinstance(qubit, IndexedIdentifier):
                 qreg_name = qubit.name.name
                 if qreg_name not in self._qreg_size_map:
-                    raise ValueError(
+                    self._print_err_location(operation.span)
+                    raise Qasm3ConversionError(
                         f"Missing register declaration for {qreg_name} in operation {operation}"
                     )
                 qreg_size = self._qreg_size_map[qreg_name]
@@ -250,7 +260,8 @@ class BasicQisVisitor(CircuitElementVisitor):
                 # or we have a single qreg name, which means all of qubits in that register
                 qreg_name = qubit.name
                 if qreg_name not in self._qreg_size_map:
-                    raise ValueError(
+                    self._print_err_location(operation.span)
+                    raise Qasm3ConversionError(
                         f"Missing register declaration for {qreg_name} in operation {operation}"
                     )
                 qreg_size = self._qreg_size_map[qreg_name]
@@ -263,7 +274,8 @@ class BasicQisVisitor(CircuitElementVisitor):
                 qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)]
             for qid in qreg_qids:
                 if qid in visited_qubits:
-                    raise ValueError(f"Duplicate qubit {qreg_name}[{qid}] argument")
+                    self._print_err_location(operation.span)
+                    raise Qasm3ConversionError(f"Duplicate qubit {qreg_name}[{qid}] argument")
                 visited_qubits.add(qid)
             qir_qubits.extend([pyqir.qubit(self._module.context, n) for n in qreg_qids])
 
@@ -290,22 +302,30 @@ class BasicQisVisitor(CircuitElementVisitor):
         if isinstance(source, IndexedIdentifier):
             source_name = source.name.name
             if isinstance(source.indices[0][0], RangeDefinition):
-                raise ValueError(f"Range based measurement {statement} not supported at the moment")
+                self._print_err_location(statement.span)
+                raise Qasm3ConversionError(
+                    f"Range based measurement {statement} not supported at the moment"
+                )
             source_id = source.indices[0][0].value
 
         target_name = target.name
         if isinstance(target, IndexedIdentifier):
             target_name = target.name.name
             if isinstance(target.indices[0][0], RangeDefinition):
-                raise ValueError(f"Range based measurement {statement} not supported at the moment")
+                self._print_err_location(statement.span)
+                raise Qasm3ConversionError(
+                    f"Range based measurement {statement} not supported at the moment"
+                )
             target_id = target.indices[0][0].value
 
         if source_name not in self._qreg_size_map:
-            raise ValueError(
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(
                 f"Missing register declaration for {source_name} in measurement operation {statement}"
             )
         if target_name not in self._creg_size_map:
-            raise ValueError(
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(
                 f"Missing register declaration for {target_name} in measurement operation {statement}"
             )
 
@@ -327,7 +347,8 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         if source_id is None and target_id is None:
             if self._qreg_size_map[source_name] != self._creg_size_map[target_name]:
-                raise ValueError(
+                self._print_err_location(statement.span)
+                raise Qasm3ConversionError(
                     f"Register sizes of {source_name} and {target_name} do not match for measurement operation"
                 )
             for i in range(self._qreg_size_map[source_name]):
@@ -352,19 +373,22 @@ class BasicQisVisitor(CircuitElementVisitor):
         if isinstance(qreg_name, Identifier):
             qreg_name = statement.qubits.name.name
             if isinstance(statement.qubits.indices[0][0], RangeDefinition):
-                raise ValueError(
+                self._print_err_location(statement.span)
+                raise Qasm3ConversionError(
                     f"Range based reset operation in {statement} not supported at the moment."
                 )
             qubit_id = statement.qubits.indices[0][0].value
 
         if qreg_name not in self._qreg_size_map:
-            raise ValueError(
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(
                 f"Missing register declaration for {qreg_name} in reset operation {statement}"
             )
 
         if qubit_id is not None:
             if qubit_id >= self._qreg_size_map[qreg_name]:
-                raise ValueError(
+                self._print_err_location(statement.span)
+                raise Qasm3ConversionError(
                     f"Qubit index {qubit_id} out of range for register {qreg_name} in reset operation {statement}"
                 )
             qubit_ids = [self._qubit_labels[f"{qreg_name}_{qubit_id}"]]
@@ -390,6 +414,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         if len(barrier_qubits) == total_qubit_count:
             pyqir._native.barrier(self._builder)
         else:
+            self._print_err_location(barrier.span)
             raise NotImplementedError(
                 "Barrier operation on a qubit subset is not supported in pyqir"
             )
@@ -412,7 +437,10 @@ class BasicQisVisitor(CircuitElementVisitor):
             param_list.append(param_value)
 
         if len(param_list) > 1:
-            raise ValueError(f"Parameterized gate {operation} with > 1 params not supported")
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError(
+                f"Parameterized gate {operation} with > 1 params not supported"
+            )
 
         return param_list
 
@@ -427,7 +455,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
         gate_name = definition.name.name
         if gate_name in self._custom_gates:
-            raise ValueError(f"Duplicate gate definition for {gate_name}")
+            self._print_err_location(definition.span)
+            raise Qasm3ConversionError(f"Duplicate gate definition for {gate_name}")
         self._custom_gates[gate_name] = definition
 
     def _visit_basic_gate_operation(self, operation: QuantumGate) -> None:
@@ -447,7 +476,10 @@ class BasicQisVisitor(CircuitElementVisitor):
         op_parameters = None
 
         if len(op_qubits) % op_qubit_count != 0:
-            raise ValueError(f"Invalid number of qubits {len(op_qubits)} for operation {operation}")
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError(
+                f"Invalid number of qubits {len(op_qubits)} for operation {operation.name.name}"
+            )
 
         if self._is_parametric_gate(operation):
             op_parameters = self._get_op_parameters(operation)
@@ -463,7 +495,7 @@ class BasicQisVisitor(CircuitElementVisitor):
                 qubit_subset = op_qubits[i : i + op_qubit_count]
                 qir_func(self._builder, *qubit_subset)
 
-    def _transform_gate_qubits(self, gate_op, qubit_map):
+    def _transform_gate_qubits(self, gate_op: QuantumGate, qubit_map: dict) -> None:
         """Transform the qubits of a gate operation with a qubit map.
 
         Args:
@@ -475,10 +507,13 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
         for i, qubit in enumerate(gate_op.qubits):
             if isinstance(qubit, IndexedIdentifier):
-                raise ValueError(f"Indexing {qubit} not supported in gate definition")
+                self._print_err_location(qubit.span)
+                raise Qasm3ConversionError(
+                    f"Indexing '{qubit.name.name}' not supported in gate definition"
+                )
             gate_op.qubits[i] = qubit_map[qubit.name]
 
-    def _transform_gate_params(self, gate_op, param_map):
+    def _transform_gate_params(self, gate_op: QuantumGate, param_map: dict) -> None:
         """Transform the parameters of a gate operation with a parameter map.
 
         Args:
@@ -493,19 +528,20 @@ class BasicQisVisitor(CircuitElementVisitor):
                 gate_op.arguments[i] = param_map[param.name]
 
     def _visit_custom_gate_operation(self, operation: QuantumGate) -> None:
-        """Visit a custom gate operation element.
+        """Visit a custom gate operation element recursively.
 
         Args:
             operation (QuantumGate): The gate operation to visit.
 
-        Returns:in computation
+        Returns: None
         """
         _log.debug("Visiting custom gate operation '%s'", str(operation))
         gate_name: str = operation.name.name
         gate_definition: QuantumGateDefinition = self._custom_gates[gate_name]
 
         if len(operation.arguments) != len(gate_definition.arguments):
-            raise ValueError(
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError(
                 f"""Parameter count mismatch for gate {gate_name}. Expected \
 {len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"""
             )
@@ -513,7 +549,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         op_qubits = self._get_op_qubits(operation, qir_form=False)
 
         if len(op_qubits) != len(gate_definition.qubits):
-            raise ValueError(
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError(
                 f"""Qubit count mismatch for gate {gate_name}. Expected \
 {len(gate_definition.qubits)} but got {len(op_qubits)} in operation"""
             )
@@ -537,25 +574,19 @@ class BasicQisVisitor(CircuitElementVisitor):
             # in case the gate is reapplied
             gate_op_copy = copy.deepcopy(gate_op)
             if isinstance(gate_op, QuantumGate):
-                # transform the gate_op with the actual qubit identifiers
-                # and the actual parameters
                 self._transform_gate_params(gate_op_copy, param_map)
                 self._transform_gate_qubits(gate_op_copy, qubit_map)
                 self._visit_generic_gate_operation(gate_op_copy)
-            # can't have non-gate operations inside a gate definition
             elif isinstance(gate_op, QuantumMeasurementStatement):
-                raise ValueError(
-                    f"Unsupported measurement statement in gate definition {gate_definition}"
-                )
+                self._print_err_location(gate_op.span)
+                raise Qasm3ConversionError(f"Unsupported measurement statement in gate definition")
             elif isinstance(gate_op, QuantumReset):
-                raise ValueError(
-                    f"Unsupported reset statement in gate definition {gate_definition}"
-                )
+                self._print_err_location(gate_op.span)
+                raise Qasm3ConversionError(f"Unsupported reset statement in gate definition")
             else:
                 # TODO : add control flow support
-                raise ValueError(
-                    f"Unsupported gate definition statement{ gate_op} in {gate_definition}"
-                )
+                self._print_err_location(gate_op.span)
+                raise Qasm3ConversionError(f"Unsupported gate definition statement {gate_op} in ")
 
     def _visit_generic_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a gate operation element.
@@ -589,12 +620,12 @@ class BasicQisVisitor(CircuitElementVisitor):
             if isinstance(size, IntegerLiteral):
                 value = size.value
             else:
-                raise ValueError(f"Unsupported integer size {size} in {statement}")
+                raise Qasm3ConversionError(f"Unsupported integer size {size} in {statement}")
             var_name = statement.identifier.name
 
             # how to add this in the QIR???
         else:
-            raise ValueError(f"Unsupported classical type {decl_type} in {statement}")
+            raise Qasm3ConversionError(f"Unsupported classical type {decl_type} in {statement}")
 
     def _evaluate_expression(self, expression: Any) -> bool:
         """Evaluate an expression.
@@ -606,25 +637,28 @@ class BasicQisVisitor(CircuitElementVisitor):
             bool: The result of the evaluation.
         """
         if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
-            raise ValueError(f"Unsupported expression type {type(expression)}")
+            self._print_err_location(expression.span)
+            raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
         if isinstance(expression, (Identifier, IndexedIdentifier)):
             # we need to check our scope and context to get the value of the identifier
             # if it is a classical register, we can directly get the value
             # how to get the value of the identifier in the QIR??
+
             # TO DO : extend this
-            # we only support classical register values in computation
             try:
                 return qasm3_constants_map(expression.name)
             except:
-                raise ValueError(f"Undefined identifier {expression.name} in {expression}")
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Undefined identifier {expression.name} in {expression}"
+                )
 
         if isinstance(expression, BooleanLiteral):
             return expression.value
         elif isinstance(expression, (IntegerLiteral, FloatLiteral)):
-            print("here")
             return expression.value
         elif isinstance(expression, UnaryExpression):
-            op = expression.op.name  # can be '!', '~' or '-'
+            op = expression.op.name
             if op == "!":
                 return not self._evaluate_expression(expression.expression)
             elif op == "-":
@@ -632,14 +666,19 @@ class BasicQisVisitor(CircuitElementVisitor):
             elif op == "~":
                 value = self._evaluate_expression(expression.expression)
                 if not isinstance(value, int):
-                    raise ValueError(f"Unsupported expression type {type(value)} in ~ operation")
+                    self._print_err_location(expression.span)
+                    raise Qasm3ConversionError(
+                        f"Unsupported expression type {type(value)} in ~ operation"
+                    )
+                return ~value
         elif isinstance(expression, BinaryExpression):
             lhs = self._evaluate_expression(expression.lhs)
             op = expression.op.name
             rhs = self._evaluate_expression(expression.rhs)
             return qasm3_expression_op_map(op, lhs, rhs)
         else:
-            raise ValueError(f"Unsupported expression type {type(expression)}")
+            self._print_err_location(expression.span)
+            raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
 
     def _analyse_branch_condition(self, condition) -> bool:
         """
@@ -653,19 +692,27 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         if isinstance(condition, UnaryExpression):
             if condition.op.name != "!":
-                raise ValueError(f"Unsupported unary expression {condition} in if condition")
+                self._print_err_location(condition.span)
+                raise Qasm3ConversionError(
+                    f"Unsupported unary expression '{condition.op.name}' in if condition"
+                )
             return False
         if isinstance(condition, BinaryExpression):
             if condition.op.name != "==":
-                raise ValueError(f"Unsupported binary expression {condition} in if condition")
+                self._print_err_location(condition.span)
+                raise Qasm3ConversionError(
+                    f"Unsupported binary expression '{condition.op.name}' in if condition"
+                )
             if not isinstance(condition.lhs, IndexExpression):
-                raise ValueError(
-                    f"Unsupported expression type {type(condition.lhs)} in if condition"
+                self._print_err_location(condition.span)
+                raise Qasm3ConversionError(
+                    f"Unsupported expression type '{type(condition.lhs)}' in if condition"
                 )
             return condition.rhs.value != 0
         if not isinstance(condition, IndexExpression):
-            raise ValueError(
-                f"Unsupported expression type {type(condition)} in if condition. Can only be a simple comparison"
+            self._print_err_location(condition.span)
+            raise Qasm3ConversionError(
+                f"Unsupported expression type '{type(condition)}' in if condition. Can only be a simple comparison"
             )
         return True
 
@@ -701,7 +748,8 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         if_block = statement.if_block
         if not statement.if_block:
-            raise ValueError(f"Missing if block in {statement}")
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Missing if block")
         else_block = statement.else_block
         if not positive_branching:
             if_block, else_block = else_block, if_block
@@ -709,7 +757,9 @@ class BasicQisVisitor(CircuitElementVisitor):
         reg_id, reg_name = self._get_branch_params(condition)
 
         if reg_name not in self._creg_size_map:
-            raise ValueError(f"Missing register declaration for {reg_name} in {condition}")
+            raise Qasm3ConversionError(
+                f"Missing register declaration for {reg_name} in {condition}"
+            )
         self._validate_index(reg_id, self._creg_size_map[reg_name], qubit=False)
 
         def _visit_statement_block(block):

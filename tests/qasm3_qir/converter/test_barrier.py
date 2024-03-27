@@ -14,6 +14,7 @@ Module containing unit tests for QASM3 to QIR conversion functions.
 """
 import pytest
 
+from qbraid_qir.exceptions import Qasm3ConversionError
 from qbraid_qir.qasm3.convert import qasm3_to_qir
 from tests.qir_utils import check_attributes, check_barrier
 
@@ -54,7 +55,7 @@ def test_incorrect_barrier():
     barrier q2;
     """
 
-    with pytest.raises(ValueError, match=r"Missing register declaration for q2 .*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Missing register declaration for q2 .*"):
         _ = qasm3_to_qir(undeclared)
 
     out_of_bounds = """
@@ -65,7 +66,9 @@ def test_incorrect_barrier():
     barrier q1[:4];
     """
 
-    with pytest.raises(ValueError, match="Index 3 out of range for register of size 2 in qubit"):
+    with pytest.raises(
+        Qasm3ConversionError, match="Index 3 out of range for register of size 2 in qubit"
+    ):
         _ = qasm3_to_qir(out_of_bounds)
 
     duplicate = """
@@ -76,5 +79,5 @@ def test_incorrect_barrier():
     barrier q1, q1;
     """
 
-    with pytest.raises(ValueError, match=r"Duplicate qubit .*argument"):
+    with pytest.raises(Qasm3ConversionError, match=r"Duplicate qubit .*argument"):
         _ = qasm3_to_qir(duplicate)

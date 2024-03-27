@@ -20,3 +20,7 @@ class QbraidQirError(Exception):
 
 class QirConversionError(QbraidQirError):
     """Class for errors raised when converting quantum program to QIR."""
+
+
+class Qasm3ConversionError(QbraidQirError):
+    """Class for errors raised when converting quantum program to QASM3."""

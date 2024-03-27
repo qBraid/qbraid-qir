@@ -19,6 +19,7 @@ from pathlib import Path
 import pyqir
 import pytest
 
+from qbraid_qir.exceptions import Qasm3ConversionError
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import check_attributes, get_entry_point_body
 
@@ -104,7 +105,7 @@ def test_complex_if():
 
 
 def test_incorrect_if():
-    with pytest.raises(ValueError, match=r"Unsupported expression type .*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Unsupported expression type .*"):
         _ = qasm3_to_qir(
             """
            OPENQASM 3;
@@ -121,7 +122,7 @@ def test_incorrect_if():
            """
         )
 
-    with pytest.raises(ValueError, match=r"Missing if block .*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Missing if block"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -137,7 +138,7 @@ def test_incorrect_if():
            """
         )
 
-    with pytest.raises(ValueError, match=r"Missing register declaration for c2 .*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Missing register declaration for c2 .*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -154,7 +155,7 @@ def test_incorrect_if():
            """
         )
 
-    with pytest.raises(ValueError, match=r"Unsupported unary expression .*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Unsupported unary expression .*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -170,7 +171,7 @@ def test_incorrect_if():
            }
            """
         )
-    with pytest.raises(ValueError, match=r"Unsupported binary expression .*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Unsupported binary expression .*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;

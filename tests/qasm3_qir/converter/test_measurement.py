@@ -14,6 +14,7 @@ Module containing unit tests for QASM3 to QIR conversion functions.
 """
 import pytest
 
+from qbraid_qir.exceptions import Qasm3ConversionError
 from qbraid_qir.qasm3.convert import qasm3_to_qir
 from tests.qir_utils import check_attributes, check_measure_op
 
@@ -47,7 +48,7 @@ def test_measure():
 
 def test_incorrect_measure():
     def run_test(qasm3_code, error_message):
-        with pytest.raises(ValueError, match=error_message):
+        with pytest.raises(Qasm3ConversionError, match=error_message):
             _ = qasm3_to_qir(qasm3_code)
 
     # Test for range based measurement not supported

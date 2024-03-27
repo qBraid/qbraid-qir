@@ -14,6 +14,7 @@ Module containing unit tests for QASM3 to QIR conversion functions.
 """
 import pytest
 
+from qbraid_qir.exceptions import Qasm3ConversionError
 from qbraid_qir.qasm3.convert import qasm3_to_qir
 from tests.qasm3_qir.fixtures.gates import (
     custom_op_tests,
@@ -88,7 +89,7 @@ def test_three_qubit_qasm3_gates(circuit_name, request):
 
 def test_incorrect_single_qubit_gates():
     # Test for undeclared register q2
-    with pytest.raises(ValueError, match=r"Missing register declaration for q2 .*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Missing register declaration for q2 .*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -102,7 +103,9 @@ def test_incorrect_single_qubit_gates():
     # Test for unsupported gate : TO DO
 
     # one qubit
-    with pytest.raises(ValueError, match=r"Unsupported / undeclared QASM operation: u_abc"):
+    with pytest.raises(
+        Qasm3ConversionError, match=r"Unsupported / undeclared QASM operation: u_abc"
+    ):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -113,7 +116,9 @@ def test_incorrect_single_qubit_gates():
             """
         )
     # two qubits
-    with pytest.raises(ValueError, match=r"Unsupported / undeclared QASM operation: u_abc"):
+    with pytest.raises(
+        Qasm3ConversionError, match=r"Unsupported / undeclared QASM operation: u_abc"
+    ):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -124,7 +129,9 @@ def test_incorrect_single_qubit_gates():
             """
         )
     # three qubits
-    with pytest.raises(ValueError, match=r"Unsupported / undeclared QASM operation: u_abc"):
+    with pytest.raises(
+        Qasm3ConversionError, match=r"Unsupported / undeclared QASM operation: u_abc"
+    ):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -136,7 +143,7 @@ def test_incorrect_single_qubit_gates():
         )
 
     # Invalid application of gate according to register size
-    with pytest.raises(ValueError, match=r"Invalid number of qubits 3 for operation .*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Invalid number of qubits 3 for operation .*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -149,7 +156,7 @@ def test_incorrect_single_qubit_gates():
 
     # Invalid use of variables in gate application
 
-    with pytest.raises(ValueError, match=r"Undefined identifier a in.*"):
+    with pytest.raises(Qasm3ConversionError, match=r"Undefined identifier a in.*"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -176,7 +183,9 @@ def test_custom_ops(test_name, request):
 
 def test_incorrect_custom_ops():
     #  1. Undeclared gate application
-    with pytest.raises(ValueError, match=r"Unsupported / undeclared QASM operation: custom_gate"):
+    with pytest.raises(
+        Qasm3ConversionError, match=r"Unsupported / undeclared QASM operation: custom_gate"
+    ):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
@@ -189,7 +198,8 @@ def test_incorrect_custom_ops():
 
     # 2. Parameter mismatch
     with pytest.raises(
-        ValueError, match=r"Parameter count mismatch for gate custom_gate. Expected 2 but got 1 .*"
+        Qasm3ConversionError,
+        match=r"Parameter count mismatch for gate custom_gate. Expected 2 but got 1 .*",
     ):
         _ = qasm3_to_qir(
             """
@@ -208,7 +218,8 @@ def test_incorrect_custom_ops():
 
     # 3. Qubit count mismatch
     with pytest.raises(
-        ValueError, match=r"Qubit count mismatch for gate custom_gate. Expected 2 but got 3 .*"
+        Qasm3ConversionError,
+        match=r"Qubit count mismatch for gate custom_gate. Expected 2 but got 3 .*",
     ):
         _ = qasm3_to_qir(
             """
@@ -225,7 +236,7 @@ def test_incorrect_custom_ops():
             """
         )
     # 4. Argument indexing in gate definition
-    with pytest.raises(ValueError, match=r"Indexing .* not supported in gate definition"):
+    with pytest.raises(Qasm3ConversionError, match=r"Indexing .* not supported in gate definition"):
         _ = qasm3_to_qir(
             """
             OPENQASM 3;
