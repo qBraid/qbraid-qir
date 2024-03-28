@@ -3,7 +3,7 @@ cirq-core>=1.3.0,<1.4.0
 openqasm3[parser]>=0.4.0,<0.6.0
 
 # unit tests
-qbraid
+qbraid~=0.5.3
 pytest
 pytest-cov
 

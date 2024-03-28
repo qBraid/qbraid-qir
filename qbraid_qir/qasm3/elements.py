@@ -98,6 +98,7 @@ class Qasm3Module:
         elements (List[Statement]): List of openqasm3 Statements.
     """
 
+    # pylint: disable-next=too-many-arguments
     def __init__(self, name: str, module: Module, num_qubits: int, num_clbits: int, elements):
         self._name = name
         self._module = module
@@ -153,10 +154,9 @@ class Qasm3Module:
                 elements.append(_Statement(statement))
 
         if module is None:
+            # pylint: disable-next=too-many-function-args
             module = Module(qirContext(), generate_module_id(program))
 
-        # for element in elements:
-        #     print(element,"\n")
         return cls(
             name="main",
             module=module,

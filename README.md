@@ -34,15 +34,31 @@ qBraid-SDK extension providing support for QIR conversions.
 
 This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
 
-## Getting started
-
-### Installation
+## Installation
 
 qBraid-QIR requires Python 3.8 or greater, and can be installed with pip as follows:
 
 ```shell
 pip install qbraid-qir
 ```
+
+### Optional dependencies
+
+qBraid-QIR offers integrations that require extra (optional) dependencies, which can be installed as follows:
+
+For Cirq to QIR conversions, install the `cirq` extra:
+
+```shell
+pip install 'qbraid-qir[cirq]'
+```
+
+For OpenQASM 3 to QIR conversions, install the `qasm3` extra:
+
+```shell
+pip install 'qbraid-qir[qasm3]'
+```
+
+### Install from source
 
 You can also install from source by cloning this repository and running a pip install command
 in the root directory of the repository:
@@ -53,7 +69,13 @@ cd qbraid-qir
 pip install .
 ```
 
-### Check version
+To include optional dependencies when installing from source, use the same "extras_require" format, e.g.
+
+```shell
+pip install '.[cirq,qasm3]'
+```
+
+## Check version
 
 You can view the version of qbraid-qir you have installed within a Python shell as follows:
 
@@ -63,18 +85,20 @@ In [1]: import qbraid_qir
 In [2]: qbraid_qir.__version__
 ```
 
-### Resources
+## Resources
 
 - [User Guide](https://docs.qbraid.com/projects/qir/)
 - [API Reference](https://docs.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html)
 - [Example Notebooks](examples)
 - [Test Containers](test-containers)
 
-### Usage Example
+## Usage examples
+
+## Cirq conversions
 
 ```python
 import cirq
-from qbraid_qir import cirq_to_qir
+from qbraid_qir.cirq import cirq_to_qir
 
 q0, q1 = cirq.LineQubit.range(2)
 
@@ -85,6 +109,30 @@ circuit = cirq.Circuit(
 )
 
 module = cirq_to_qir(circuit, name="my-circuit")
+
+ir = str(module)
+```
+
+### OpenQASM 3 conversions
+
+```python
+from qbraid_qir.qasm3 import qasm3_to_qir
+
+program = """
+OPENQASM 3;
+include "stdgates.inc";
+
+qubit[2] q;
+bit[2] c;
+
+h q[0];
+cx q[0], q[1];
+
+measure q[0] -> c[0];
+measure q[1] -> c[1];
+"""
+
+module = qasm3_to_qir(program, name="my-program")
 
 ir = str(module)
 ```
@@ -131,12 +179,12 @@ citation details, please refer to [CITATION.cff](CITATION.cff).
 
 ```tex
 @software{Kushnir_qBraid-QIR_Python_package_2024,
-author = {Kushnir, Samuel and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
+author = {Kushnir, Samuel and Gupta, Harshit and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
 license = {GPL-3.0},
-month = jan,
-title = {{qBraid-QIR: Python package for generating QIR programs from Cirq.}},
+month = mar,
+title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
 url = {https://github.com/qBraid/qbraid-qir},
-version = {0.1.0},
+version = {0.2.0},
 year = {2024}
 }
 ```
