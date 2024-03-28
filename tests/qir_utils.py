@@ -233,7 +233,6 @@ def check_two_qubit_gate_op(
     q_id = 0
 
     for line in entry_body:
-
         if gate_name.lower() == "cx":
             gate_name = "cnot"  # cnot is used in qir
 

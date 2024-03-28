@@ -94,7 +94,7 @@ In [2]: qbraid_qir.__version__
 
 ## Usage examples
 
-## Cirq conversions
+### Cirq conversions
 
 ```python
 import cirq

@@ -36,7 +36,6 @@ from tests.qir_utils import (
 # 7. Test gate operations in different ways
 @pytest.mark.parametrize("circuit_name", single_op_tests)
 def test_single_qubit_qasm3_gates(circuit_name, request):
-
     # see _generate_one_qubit_fixture for details
     qubit_list = [0, 1, 0, 0, 1]
     gate_name = circuit_name.removeprefix("Fixture_")
