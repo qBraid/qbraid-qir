@@ -32,7 +32,5 @@ Exceptions
 
 """
 from ._version import __version__
-from .cirq import cirq_to_qir
 from .exceptions import QbraidQirError, QirConversionError
-from .qasm3 import qasm3_to_qir
 from .serialization import dumps

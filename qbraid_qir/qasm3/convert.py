@@ -21,9 +21,6 @@ from qbraid_qir.exceptions import QirConversionError
 from qbraid_qir.qasm3.elements import Qasm3Module, generate_module_id
 from qbraid_qir.qasm3.visitor import BasicQisVisitor
 
-# from qiskit.qasm3 import loads
-# from qiskit.qasm3.exporter import Exporter
-
 
 def qasm3_to_qir(
     program: Union[openqasm3.ast.Program, str], name: Optional[str] = None, **kwargs
@@ -47,9 +44,6 @@ def qasm3_to_qir(
         QirConversionError: If the conversion fails.
     """
     if isinstance(program, str):
-        # Supported conversions qasm3 -> qiskit :
-        # https://github.com/Qiskit/qiskit-qasm3-import/blob/main/src/qiskit_qasm3_import/converter.py``
-
         program = openqasm3.parse(program)
 
     elif not isinstance(program, openqasm3.ast.Program):

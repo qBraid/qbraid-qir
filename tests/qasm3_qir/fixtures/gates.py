@@ -145,15 +145,15 @@ for gate in PYQIR_THREE_QUBIT_OP_MAP:
     locals()[name] = _generate_three_qubit_fixture(gate)
 
 
-def _generate_custom_op_fixture(name: str):
+def _generate_custom_op_fixture(op_name: str):
     print(os.getcwd())
 
     @pytest.fixture()
     def test_fixture():
-        if not name in CUSTOM_OPS:
-            raise ValueError(f"Invalid fixture {name} for custom ops")
-        path = resources_file(f"custom_gate_{name}.qasm")
-        with open(path, "r") as file:
+        if not op_name in CUSTOM_OPS:
+            raise ValueError(f"Invalid fixture {op_name} for custom ops")
+        path = resources_file(f"custom_gate_{op_name}.qasm")
+        with open(path, "r", encoding="utf-8") as file:
             return file.read()
 
     return test_fixture

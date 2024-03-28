@@ -314,8 +314,8 @@ def _validate_simple_custom_op(entry_body: List[str]):
     ]
 
     assert len(entry_body) == len(custom_op_lines), "Incorrect number of lines in custom op"
-    for i in range(len(entry_body)):
-        assert entry_body[i].strip() == custom_op_lines[i].strip(), "Incorrect custom op line"
+    for i, body_line in enumerate(entry_body):
+        assert body_line.strip() == custom_op_lines[i].strip(), "Incorrect custom op line"
 
 
 def _validate_nested_custom_op(entry_body: List[str]):
@@ -333,8 +333,8 @@ def _validate_nested_custom_op(entry_body: List[str]):
     ]
 
     assert len(entry_body) == len(nested_op_lines), "Incorrect number of lines in nested op"
-    for i in range(len(entry_body)):
-        assert entry_body[i].strip() == nested_op_lines[i].strip(), "Incorrect nested op line"
+    for i, body_line in enumerate(entry_body):
+        assert body_line.strip() == nested_op_lines[i].strip(), "Incorrect nested op line"
 
 
 def _validate_complex_custom_op(entry_body: List[str]):
@@ -352,8 +352,8 @@ def _validate_complex_custom_op(entry_body: List[str]):
     ]
 
     assert len(entry_body) == len(complex_op_lines), "Incorrect number of lines in complex op"
-    for i in range(len(entry_body)):
-        assert entry_body[i].strip() == complex_op_lines[i].strip(), "Incorrect complex op line"
+    for i, body_line in enumerate(entry_body):
+        assert body_line.strip() == complex_op_lines[i].strip(), "Incorrect complex op line"
 
 
 def check_custom_qasm_gate_op(qir: List[str], test_type: str):
