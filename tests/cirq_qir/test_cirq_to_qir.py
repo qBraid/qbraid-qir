@@ -19,8 +19,7 @@ import cirq
 import pyqir
 import pytest
 
-from qbraid_qir import QirConversionError
-from qbraid_qir.cirq.convert import cirq_to_qir
+from qbraid_qir.cirq import CirqConversionError, cirq_to_qir
 from tests.cirq_qir.fixtures.basic_gates import (
     double_op_tests,
     measurement_tests,
@@ -72,7 +71,7 @@ def test_cirq_to_qir_conversion_error():
     """Test raising exception for conversion error."""
     op = cirq.XPowGate(exponent=0.25).controlled().on(cirq.LineQubit(1), cirq.LineQubit(2))
     circuit = cirq.Circuit(op)
-    with pytest.raises(QirConversionError):
+    with pytest.raises(CirqConversionError):
         cirq_to_qir(circuit)
 
 

@@ -55,13 +55,9 @@ from pyqir import BasicBlock, Builder, Constant
 from pyqir import IntType as qirIntType
 from pyqir import PointerType
 
-from qbraid_qir.exceptions import Qasm3ConversionError
-from qbraid_qir.qasm3.elements import Context, Qasm3Module, Scope
-from qbraid_qir.qasm3.oq3_maps import (
-    map_qasm_op_to_pyqir_callable,
-    qasm3_constants_map,
-    qasm3_expression_op_map,
-)
+from .elements import Context, Qasm3Module, Scope
+from .exceptions import Qasm3ConversionError
+from .oq3_maps import map_qasm_op_to_pyqir_callable, qasm3_constants_map, qasm3_expression_op_map
 
 _log = logging.getLogger(name=__name__)
 

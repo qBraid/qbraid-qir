@@ -31,7 +31,16 @@ Classes
    CirqModule
    BasicQisVisitor
 
+Exceptions
+-----------
+
+.. autosummary::
+   :toctree: ../stubs/
+
+   CirqConversionError
+
 """
 from .convert import cirq_to_qir
 from .elements import CirqModule
+from .exceptions import CirqConversionError
 from .visitor import BasicQisVisitor

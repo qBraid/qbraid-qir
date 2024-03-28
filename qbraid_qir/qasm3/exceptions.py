@@ -9,14 +9,11 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module defining exceptions for errors raised by qBraid QIR.
+Module defining exceptions for errors raised during QASM3 conversions.
 
 """
+from qbraid_qir.exceptions import QirConversionError
 
 
-class QbraidQirError(Exception):
-    """Base class for errors raised by qbraid-qir."""
-
-
-class QirConversionError(QbraidQirError):
-    """Class for errors raised when converting quantum program to QIR."""
+class Qasm3ConversionError(QirConversionError):
+    """Class for errors raised when converting an OpenQASM 3 program to QIR."""

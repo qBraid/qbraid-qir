@@ -22,8 +22,8 @@ import pyqir._native
 import pyqir.rt
 from pyqir import BasicBlock, Builder, Constant, IntType, PointerType
 
-from qbraid_qir.cirq.elements import CirqModule
-from qbraid_qir.cirq.opsets import map_cirq_op_to_pyqir_callable
+from .elements import CirqModule
+from .opsets import map_cirq_op_to_pyqir_callable
 
 _log = logging.getLogger(name=__name__)
 

@@ -17,10 +17,10 @@ from typing import Optional
 import cirq
 from pyqir import Context, Module, qir_module
 
-from qbraid_qir.cirq.elements import CirqModule, generate_module_id
-from qbraid_qir.cirq.passes import preprocess_circuit
-from qbraid_qir.cirq.visitor import BasicQisVisitor
-from qbraid_qir.exceptions import QirConversionError
+from .elements import CirqModule, generate_module_id
+from .exceptions import CirqConversionError
+from .passes import preprocess_circuit
+from .visitor import BasicQisVisitor
 
 
 def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
@@ -42,7 +42,7 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
     Raises:
         TypeError: If the input is not a valid Cirq circuit.
         ValueError: If the input circuit is empty.
-        QirConversionError: If the conversion fails.
+        CirqConversionError: If the conversion fails.
     """
     if not isinstance(circuit, cirq.Circuit):
         raise TypeError("Input quantum program must be of type cirq.Circuit.")
@@ -56,7 +56,7 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
     try:
         circuit = preprocess_circuit(circuit)
     except Exception as err:  # pylint: disable=broad-exception-caught
-        raise QirConversionError("Failed to preprocess circuit.") from err
+        raise CirqConversionError("Failed to preprocess circuit.") from err
 
     llvm_module = qir_module(Context(), name)
     module = CirqModule.from_circuit(circuit, llvm_module)
@@ -66,5 +66,5 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
 
     err = llvm_module.verify()
     if err is not None:
-        raise QirConversionError(err)
+        raise CirqConversionError(err)
     return llvm_module

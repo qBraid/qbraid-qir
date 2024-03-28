@@ -17,9 +17,9 @@ from typing import Optional, Union
 import openqasm3
 from pyqir import Context, Module, qir_module
 
-from qbraid_qir.exceptions import QirConversionError
-from qbraid_qir.qasm3.elements import Qasm3Module, generate_module_id
-from qbraid_qir.qasm3.visitor import BasicQisVisitor
+from .elements import Qasm3Module, generate_module_id
+from .exceptions import Qasm3ConversionError
+from .visitor import BasicQisVisitor
 
 
 def qasm3_to_qir(
@@ -41,7 +41,7 @@ def qasm3_to_qir(
 
     Raises:
         TypeError: If the input is not a valid OpenQASM 3 program.
-        QirConversionError: If the conversion fails.
+        Qasm3ConversionError: If the conversion fails.
     """
     if isinstance(program, str):
         program = openqasm3.parse(program)
@@ -60,5 +60,5 @@ def qasm3_to_qir(
 
     err = llvm_module.verify()
     if err is not None:
-        raise QirConversionError(err)
+        raise Qasm3ConversionError(err)
     return llvm_module

@@ -15,7 +15,7 @@ Module mapping supported QASM gates/operations to pyqir functions.
 
 import pyqir
 
-from qbraid_qir.exceptions import Qasm3ConversionError
+from .exceptions import Qasm3ConversionError
 
 OPERATOR_MAP = {
     "+": lambda x, y: x + y,
