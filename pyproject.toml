@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics"
 ]
-dependencies = ["pyqir~=0.10.0"]
+dependencies = ["pyqir~=0.10.0", "numpy"]
 requires-python = ">= 3.8"
 
 [project.urls]
