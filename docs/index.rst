@@ -166,6 +166,7 @@ This project was conceived in cooperation with the Quantum Open Source Foundatio
 
    userguide/cirq_qir
    userguide/qasm3_qir
+   userguide/qasm3_supported
 
 .. toctree::
    :maxdepth: 1
