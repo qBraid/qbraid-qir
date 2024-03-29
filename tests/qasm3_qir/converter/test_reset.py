@@ -34,12 +34,13 @@ def test_reset_operations():
     reset q1;
     reset q2[1];
     reset q3[2];
+    reset q3[:2];
     """
 
     result = qasm3_to_qir(qasm3_string)
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 6, 0)
-    check_resets(generated_qir, expected_resets=3, qubit_list=[0, 2, 5])
+    check_resets(generated_qir, expected_resets=5, qubit_list=[0, 2, 5, 3, 4])
 
 
 def test_incorrect_resets():

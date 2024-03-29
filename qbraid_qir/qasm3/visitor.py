@@ -228,7 +228,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         qir_qubits = []
         openqasm_qubits = []
         visited_qubits = set()
-        for qubit in operation.qubits:
+        qubit_list = operation.qubits if isinstance(operation.qubits, list) else [operation.qubits]
+        for qubit in qubit_list:
             if isinstance(qubit, IndexedIdentifier):
                 qreg_name = qubit.name.name
                 if qreg_name not in self._qreg_size_map:
@@ -376,37 +377,9 @@ class BasicQisVisitor(CircuitElementVisitor):
             None
         """
         _log.debug("Visiting reset statement '%s'", str(statement))
-        qubit_id = None
-        qreg_name = statement.qubits.name
-        if isinstance(qreg_name, Identifier):
-            qreg_name = statement.qubits.name.name
-            if isinstance(statement.qubits.indices[0][0], RangeDefinition):
-                self._print_err_location(statement.span)
-                raise Qasm3ConversionError(
-                    f"Range based reset operation in {statement} not supported at the moment."
-                )
-            qubit_id = statement.qubits.indices[0][0].value
-
-        if qreg_name not in self._qreg_size_map:
-            self._print_err_location(statement.span)
-            raise Qasm3ConversionError(
-                f"Missing register declaration for {qreg_name} in reset operation {statement}"
-            )
-
-        if qubit_id is not None:
-            if qubit_id >= self._qreg_size_map[qreg_name]:
-                self._print_err_location(statement.span)
-                raise Qasm3ConversionError(
-                    f"Qubit index {qubit_id} out of range for register {qreg_name} in reset "
-                    f"operation {statement}"
-                )
-            qubit_ids = [self._qubit_labels[f"{qreg_name}_{qubit_id}"]]
-        else:
-            qreg_size = self._qreg_size_map[qreg_name]
-            qubit_ids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)]
-
+        qubit_ids = self._get_op_qubits(statement, True)
         for qid in qubit_ids:
-            pyqir._native.reset(self._builder, pyqir.qubit(self._module.context, qid))
+            pyqir._native.reset(self._builder, qid)
 
     def _visit_barrier(self, barrier: QuantumBarrier) -> None:
         """Visit a barrier statement element.
@@ -443,7 +416,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         param_list = []
         for param in operation.arguments:
             param_value = self._evaluate_expression(param)
-            param_list.append(float(param_value))
+            param_list.append(param_value)
 
         return param_list
 
