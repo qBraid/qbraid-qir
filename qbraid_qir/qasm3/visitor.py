@@ -44,6 +44,7 @@ from openqasm3.ast import (
     QuantumGateDefinition,
     QuantumMeasurementStatement,
     QuantumReset,
+    QubitDeclaration,
     RangeDefinition,
     Span,
     Statement,
@@ -159,21 +160,24 @@ class BasicQisVisitor(CircuitElementVisitor):
             result_ref = pyqir.result(self._module.context, i)
             pyqir.rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
 
-    def visit_register(self, register: Tuple[str, Optional[int]], is_qubit: bool) -> None:
+    def visit_register(self, register: Union[QubitDeclaration, ClassicalDeclaration]) -> None:
         """Visit a register element.
 
         Args:
-            register (Tuple[str, Optional[int]]): The register name and size.
-            is_qubit (bool): Whether the register is a qubit register.
+            register (Union[QubitDeclaration, ClassicalDeclaration]): The register name and size.
 
         Returns:
             None
         """
         _log.debug("Visiting register '%s'", str(register))
-        current_size = len(self._qubit_labels) if is_qubit else len(self._clbit_labels)
+        is_qubit = isinstance(register, QubitDeclaration)
 
-        register_size = register[1] if register[1] else 1
-        register_name = register[0]
+        current_size = len(self._qubit_labels) if is_qubit else len(self._clbit_labels)
+        if is_qubit:
+            register_size = 1 if register.size is None else register.size.value
+        else:
+            register_size = 1 if register.type.size is None else register.type.size.value
+        register_name = register.qubit.name if is_qubit else register.identifier.name
 
         for i in range(register_size):
             # required if indices are not used while applying a gate or measurement
@@ -337,10 +341,8 @@ class BasicQisVisitor(CircuitElementVisitor):
         def _build_qir_measurement(
             src_name: str, src_id: Union[int, None], target_name: str, target_id: Union[int, None]
         ):
-            if src_id is None:
-                src_id = 0
-            if target_id is None:
-                target_id = 0
+            src_id = 0 if src_id is None else src_id
+            target_id = 0 if target_id is None else target_id
 
             source_qubit = pyqir.qubit(
                 self._module.context, self._qubit_labels[f"{src_name}_{src_id}"]
@@ -614,21 +616,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         Returns:
             None
         """
-        decl_type = statement.type
-
-        if isinstance(decl_type, (qasm3IntType, UintType, FloatType)):
-            size = decl_type.size if decl_type.size is not None else 1
-
-            # we only support static integer sizes
-            if isinstance(size, IntegerLiteral):
-                value = size.value
-            else:
-                raise Qasm3ConversionError(f"Unsupported integer size {size} in {statement}")
-            var_name = statement.identifier.name
-
-            # how to add this in the QIR???
-        else:
-            raise Qasm3ConversionError(f"Unsupported classical type {decl_type} in {statement}")
+        raise NotImplementedError("Classical declarations not yet supported")
 
     def _evaluate_expression(self, expression: Any) -> bool:
         """Evaluate an expression.

@@ -16,7 +16,7 @@ Module defining Qasm3 Converter elements.
 import uuid
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Union
 
 from openqasm3.ast import BitType, ClassicalDeclaration, Program, QubitDeclaration, Statement
 from pyqir import Context as qirContext
@@ -64,15 +64,14 @@ class _ProgramElement(metaclass=ABCMeta):
 
 
 class _Register(_ProgramElement):
-    def __init__(self, register: Tuple[str, Optional[int]], is_qubit: bool = True):
-        self._register = register
-        self._is_qubit = is_qubit
+    def __init__(self, register: Union[QubitDeclaration, ClassicalDeclaration]):
+        self._register: Union[QubitDeclaration, ClassicalDeclaration] = register
 
     def accept(self, visitor):
-        visitor.visit_register(self._register, self._is_qubit)
+        visitor.visit_register(self._register)
 
     def __str__(self) -> str:
-        return f"Register({self._register}, is_qubit = {self._is_qubit})"
+        return f"Register({self._register})"
 
 
 class _Statement(_ProgramElement):
@@ -132,24 +131,22 @@ class Qasm3Module:
         Class method. Construct a Qasm3Module from a given openqasm3.ast.Program object
         and an optional QIR Module.
         """
-        elements: List[Statement] = []
+        elements = []
 
         num_qubits = 0
         num_clbits = 0
         for statement in program.statements:
             if isinstance(statement, QubitDeclaration):
-                name = statement.qubit.name
-                size = None if statement.size is None else statement.size.value
-                num_qubits += 1 if size is None else size
-                elements.append(_Register((name, size), True))
+                size = 1 if statement.size is None else statement.size.value
+                num_qubits += size
+                elements.append(_Register(statement))
 
             elif isinstance(statement, ClassicalDeclaration) and isinstance(
                 statement.type, BitType
             ):
-                name = statement.identifier.name
-                size = None if statement.type.size is None else statement.type.size.value
-                num_clbits += 1 if size is None else size
-                elements.append(_Register((name, size), False))
+                size = 1 if statement.type.size is None else statement.type.size.value
+                num_clbits += size
+                elements.append(_Register(statement))
             else:
                 elements.append(_Statement(statement))
 
