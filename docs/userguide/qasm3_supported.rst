@@ -1,4 +1,4 @@
-.. _sdk_qir_qasm3:
+.. _sdk_qir_qasm3_support:
 
 QASM support
 ==================
