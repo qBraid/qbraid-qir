@@ -9,9 +9,11 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module containing version information
-
-Version number (major.minor.patch[-label])
+Module defining exceptions for errors raised during QASM3 conversions.
 
 """
-__version__ = "0.2.0.dev"
+from qbraid_qir.exceptions import QirConversionError
+
+
+class Qasm3ConversionError(QirConversionError):
+    """Class for errors raised when converting an OpenQASM 3 program to QIR."""

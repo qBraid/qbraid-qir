@@ -9,9 +9,9 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module containing Cirq QIR functionality.
+Module containing OpenQASM 3 QIR functionality.
 
-.. currentmodule:: qbraid_qir.cirq
+.. currentmodule:: qbraid_qir.qasm3
 
 Functions
 -----------
@@ -19,7 +19,7 @@ Functions
 .. autosummary::
    :toctree: ../stubs/
 
-   cirq_to_qir
+   qasm3_to_qir
 
 
 Classes
@@ -28,8 +28,9 @@ Classes
 .. autosummary::
    :toctree: ../stubs/
 
-   CirqModule
+   Qasm3Module
    BasicQisVisitor
+
 
 Exceptions
 -----------
@@ -37,10 +38,10 @@ Exceptions
 .. autosummary::
    :toctree: ../stubs/
 
-   CirqConversionError
+   Qasm3ConversionError
 
 """
-from .convert import cirq_to_qir
-from .elements import CirqModule
-from .exceptions import CirqConversionError
+from .convert import qasm3_to_qir
+from .elements import Qasm3Module
+from .exceptions import Qasm3ConversionError
 from .visitor import BasicQisVisitor

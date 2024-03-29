@@ -165,6 +165,8 @@ This project was conceived in cooperation with the Quantum Open Source Foundatio
    :hidden:
 
    userguide/cirq_qir
+   userguide/qasm3_qir
+   userguide/qasm3_supported
 
 .. toctree::
    :maxdepth: 1
@@ -173,6 +175,7 @@ This project was conceived in cooperation with the Quantum Open Source Foundatio
 
    api/qbraid_qir
    api/qbraid_qir.cirq
+   api/qbraid_qir.qasm3
 
 
 Indices and Tables
