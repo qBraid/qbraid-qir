@@ -17,20 +17,6 @@ import os
 from setuptools import setup
 
 
-def read_requirements(file_path):
-    """
-    Reads a requirements file and returns the packages listed in it.
-
-    Args:
-        file_path (str): Path to the requirements file.
-
-    Returns:
-        list: List of package requirements.
-    """
-    with open(file_path, "r", encoding="utf-8") as file:
-        return [line.strip() for line in file if line.strip()]
-
-
 def read_version(file_path):
     """
     Extracts the version from a Python file containing a version variable.
@@ -57,16 +43,15 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 # Reading the package's version and requirements
 version = read_version(os.path.join(here, "qbraid_qir/_version.py"))
-install_requires = read_requirements(os.path.join(here, "requirements.txt"))
-dev_requires = read_requirements(os.path.join(here, "requirements-dev.txt"))
-docs_requires = read_requirements(os.path.join(here, "docs", "requirements.txt"))
 
 setup(
     version=version,
-    install_requires=install_requires,
+    install_requires=["pyqir~=0.10.0"],
     extras_require={
         "cirq": ["cirq-core>=1.3.0,<1.4.0"],
         "qasm3": ["openqasm3[parser]>=0.4.0,<0.6.0"],
-        "dev": dev_requires + docs_requires,
+        "test": ["qbraid~=0.5.3", "pytest", "pytest-cov"],
+        "lint": ["black[jupyter]", "isort", "pylint"],
+        "docs": ["sphinx~=7.2.6", "sphinx-autodoc-typehints>=1.24,<2.1", "sphinx-rtd-theme~=2.0.0", "docutils<0.21"],
     },
 )
