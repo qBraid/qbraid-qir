@@ -53,6 +53,12 @@ jobs:
         with:
           name: built-package
           path: dist
+      - name: Debug - List contents of tools directory
+        run: |
+          echo "Listing contents of the tools directory:"
+          ls -lah
+          echo "Current working directory:"
+          pwd
       - name: Install package wheel with extras
         run: |
           tools/install_wheel_with_extras.sh dist --extra qasm3 --extra cirq --extra test
