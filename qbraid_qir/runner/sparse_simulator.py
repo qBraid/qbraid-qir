@@ -15,11 +15,12 @@ Module containing Python wrapper for the qir-runner sparse quantum state simulat
 import re
 import shutil
 import subprocess
+import time
 import warnings
-from collections import defaultdict
 from typing import Dict, List, Optional
 
 from .exceptions import QirRunnerError
+from .result import Result
 
 
 def _is_valid_semantic_version(v: str) -> bool:
@@ -124,31 +125,6 @@ class Simulator:
         except (subprocess.CalledProcessError, OSError) as err:
             raise QirRunnerError(f"Error executing qir-runner command: {command}") from err
 
-    @staticmethod
-    def _parse_results(output: str) -> Dict[str, List[int]]:
-        """Process the output from the qir-runner to extract measurement results.
-
-        Args:
-            output (str): The raw output string from the qir-runner execution.
-
-        Returns:
-            Dict[str, List[int]]: A dictionary mapping 'qubit_i' to a list of measurement results.
-        """
-        results = defaultdict(list)
-        current_shot_results = []
-
-        for line in output.splitlines():
-            elements = line.split()
-            if len(elements) == 3 and elements[:2] == ["OUTPUT", "RESULT"]:
-                _, _, bit = elements
-                current_shot_results.append(int(bit))
-            elif line.startswith("END"):
-                for idx, result in enumerate(current_shot_results):
-                    results[f"qubit_{idx}"].append(result)
-                current_shot_results = []
-
-        return dict(results)
-
     def run(
         self, file_name: str, entrypoint: Optional[str] = None, shots: Optional[int] = None
     ) -> Dict[str, List[int]]:
@@ -171,8 +147,11 @@ class Simulator:
             command.extend(["-r", str(self.seed)])
 
         # Execute the qir-runner with the built command
-        output = self._execute_subprocess(command)
-        return self._parse_results(output)
+        start = time.time()
+        raw_out = self._execute_subprocess(command)
+        stop = time.time()
+        miliseconds = int((stop - start) * 1000)
+        return Result(raw_out, execution_duration=miliseconds)
 
     def __eq__(self, other):
         """Check if two Simulator instances are equal based on their attributes."""

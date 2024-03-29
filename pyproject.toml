@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics"
 ]
-dependencies = ["pyqir~=0.10.0"]
+dependencies = ["pyqir~=0.10.0", "numpy"]
 requires-python = ">= 3.8"
 
 [project.urls]
@@ -68,4 +68,13 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
   "logger.debug"
+]
+
+[tool.coverage.run]
+parallel = true
+source = ["qbraid_qir"]
+omit = [
+  "**/qbraid_qir/runner/sparse_simulator.py",
+  "**/qbraid_qir/runner/result.py",
+  "**/qbraid_qir/__init__.py"
 ]

@@ -20,6 +20,7 @@ Classes
    :toctree: ../stubs/
 
    Simulator
+   Result
 
 
 Exceptions
@@ -32,4 +33,5 @@ Exceptions
 
 """
 from .exceptions import QirRunnerError
+from .result import Result
 from .sparse_simulator import Simulator
