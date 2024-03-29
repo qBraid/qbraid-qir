@@ -22,7 +22,7 @@ BLUE = "\033[94m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
 
-header = """# Copyright (C) 2023 qBraid
+header = """# Copyright (C) 2024 qBraid
 #
 # This file is part of the qBraid-SDK
 #
@@ -33,13 +33,15 @@ header = """# Copyright (C) 2023 qBraid
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 """
 
+header_2023 = header.replace("2024", "2023")
+
 skip_files = []
 
 failed_headers = []
 fixed_headers = []
 
 
-def should_skip(file_path, content):
+def should_skip(file_path: str, content: str) -> bool:
     if file_path in skip_files:
         return True
 
@@ -59,11 +61,15 @@ def should_skip(file_path, content):
     return False
 
 
-def replace_or_add_header(file_path, fix=False):
+def replace_or_add_header(file_path: str, fix: bool = False) -> None:
     with open(file_path, "r", encoding="ISO-8859-1") as f:
         content = f.read()
 
-    if content.startswith(header) or should_skip(file_path, content):
+    if (
+        content.startswith(header)
+        or content.startswith(header_2023)
+        or should_skip(file_path, content)
+    ):
         return
 
     if not fix:
@@ -90,7 +96,7 @@ def replace_or_add_header(file_path, fix=False):
     fixed_headers.append(file_path)
 
 
-def process_files_in_directory(directory, fix=False):
+def process_files_in_directory(directory: str, fix: bool = False) -> int:
     count = 0
     for root, _, files in os.walk(directory):
         for file in files:
@@ -101,7 +107,7 @@ def process_files_in_directory(directory, fix=False):
     return count
 
 
-def display_help():
+def display_help() -> None:
     help_message = """
     Usage: python verify_headers.py SRC [OPTIONS] ...
 

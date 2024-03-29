@@ -176,6 +176,7 @@ This project was conceived in cooperation with the Quantum Open Source Foundatio
    api/qbraid_qir
    api/qbraid_qir.cirq
    api/qbraid_qir.qasm3
+   api/qbraid_qir.runner
 
 
 Indices and Tables

@@ -20,7 +20,7 @@ from pyqir import Context, Module, qir_module
 from .elements import CirqModule, generate_module_id
 from .exceptions import CirqConversionError
 from .passes import preprocess_circuit
-from .visitor import BasicQisVisitor
+from .visitor import BasicCirqVisitor
 
 
 def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> Module:
@@ -61,7 +61,7 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
     llvm_module = qir_module(Context(), name)
     module = CirqModule.from_circuit(circuit, llvm_module)
 
-    visitor = BasicQisVisitor(**kwargs)
+    visitor = BasicCirqVisitor(**kwargs)
     module.accept(visitor)
 
     err = llvm_module.verify()
