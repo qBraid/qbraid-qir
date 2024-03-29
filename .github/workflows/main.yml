@@ -55,7 +55,7 @@ jobs:
           path: dist
       - name: Install package wheel with extras
         run: |
-          ./tools/install_wheel_with_extras.sh dist --extra qasm3 --extra cirq --extra test
+          tools/install_wheel_with_extras.sh dist --extra qasm3 --extra cirq --extra test
       - name: Run tests with coverage
         run: |
           pytest --cov=qbraid_qir tests/ --cov-report=html --cov-report=xml --cov-report=term
