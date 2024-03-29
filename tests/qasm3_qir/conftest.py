@@ -9,9 +9,10 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module containing version information
-
-Version number (major.minor.patch[-label])
+Fixtures imported/defined in this file can be used by any test in this directory
+without needing to import them (pytest will automatically discover them).
 
 """
-__version__ = "0.2.0.dev"
+# pylint: disable=unused-import,wildcard-import,unused-wildcard-import
+
+from .fixtures.gates import *

@@ -17,8 +17,8 @@ from typing import List
 
 import cirq
 
-from qbraid_qir.cirq.opsets import map_cirq_op_to_pyqir_callable
-from qbraid_qir.exceptions import QirConversionError
+from .exceptions import CirqConversionError
+from .opsets import map_cirq_op_to_pyqir_callable
 
 
 def _decompose_gate_op(operation: cirq.GateOperation) -> List[cirq.OP_TREE]:
@@ -35,11 +35,11 @@ def _decompose_gate_op(operation: cirq.GateOperation) -> List[cirq.OP_TREE]:
         # Try converting to PyQIR. If successful, keep the operation.
         _ = map_cirq_op_to_pyqir_callable(operation)
         return [operation]
-    except QirConversionError:
+    except CirqConversionError:
         pass
     new_ops = cirq.decompose_once(operation, flatten=True, default=[operation])
     if len(new_ops) == 1 and new_ops[0] == operation:
-        raise QirConversionError("Couldn't convert circuit to QIR gate set.")
+        raise CirqConversionError("Couldn't convert circuit to QIR gate set.")
     return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
 
 

@@ -10,7 +10,6 @@
 
 """
 Module defining Cirq LLVM Module elements.
-
 """
 
 import hashlib
@@ -45,7 +44,6 @@ def generate_module_id(circuit: cirq.Circuit) -> str:
 
 
 class _CircuitElement(metaclass=ABCMeta):
-
     @abstractmethod
     def accept(self, visitor):
         pass

@@ -17,7 +17,7 @@ Before you start working on a new feature or a fix, here's how you can contribut
 ```shell
 git clone https://github.com/qBraid/qbraid-qir.git
 cd qbraid-qir
-pip install -e '.[dev]'
+pip install -e '.[cirq,qasm3]'
 ```
 
 ## Pull request checklist
@@ -62,12 +62,6 @@ Use [Google Style Python Docstrings](https://sphinxcontrib-napoleon.readthedocs.
 to specify attributes, arguments, exceptions, returns, and other related info. The docstrings are compiled into HTML using Sphinx, so to add relative links, in-line markup, bulleted lists, code-blocks, or do other types of formatting inside of docstrings, use the `reST` syntax mentioned (linked) above.
 
 Install sphinx and other docs requirements:
-
-```shell
-pip install -r docs/requirements.txt
-```
-
-or
 
 ```shell
 pip install -e '.[docs]'

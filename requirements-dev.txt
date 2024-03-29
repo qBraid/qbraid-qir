@@ -1,9 +1,0 @@
-# unit tests
-qbraid
-pytest
-pytest-cov
-
-# formatting
-black[jupyter]
-isort
-pylint

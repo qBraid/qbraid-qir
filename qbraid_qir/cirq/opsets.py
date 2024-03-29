@@ -17,7 +17,7 @@ from typing import Callable, Tuple
 import cirq
 import pyqir._native
 
-from qbraid_qir.exceptions import QirConversionError
+from .exceptions import CirqConversionError
 
 
 # NOTE: Upper/lower case matters here, and were set to
@@ -68,7 +68,7 @@ def map_cirq_op_to_pyqir_callable(operation: cirq.Operation) -> Tuple[Callable, 
                                and a string representing the gate/operation type.
 
     Raises:
-        QirConversionError: If the operation or gate is not supported.
+        CirqConversionError: If the operation or gate is not supported.
     """
     if isinstance(operation, cirq.ops.GateOperation):
         gate = operation.gate
@@ -94,4 +94,4 @@ def map_cirq_op_to_pyqir_callable(operation: cirq.Operation) -> Tuple[Callable, 
     try:
         return PYQIR_OP_MAP[op_name], op_name
     except KeyError as err:
-        raise QirConversionError(f"Cirq gate {operation} not supported.") from err
+        raise CirqConversionError(f"Cirq gate {operation} not supported.") from err

@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 title: >-
-  qBraid-QIR: Python package for generating QIR programs from Cirq.
+  qBraid-QIR: Python package for QIR conversions, integrations, and utilities.
 message: >-
   If you use this software, please cite it using the
   metadata from this file.
@@ -15,6 +15,9 @@ authors:
   - given-names: Priyansh
     family-names: Parakh
     affiliation: University of Toronto
+  - given-names: Harshit
+    family-names: Gupta
+    affiliation: VISA Inc.
   - given-names: Ryan James
     family-names: Hill
     affiliation: qBraid Co.
@@ -27,6 +30,7 @@ keywords:
   - qir
   - llvm
   - cirq
+  - openasm
 license: GPL-3.0
 version: 0.1.1
 date-released: '2024-03-04'
