@@ -29,16 +29,12 @@ from openqasm3.ast import (
     ClassicalDeclaration,
     DurationLiteral,
     FloatLiteral,
-    FloatType,
     Identifier,
     ImaginaryLiteral,
     Include,
     IndexedIdentifier,
     IndexExpression,
     IntegerLiteral,
-)
-from openqasm3.ast import IntType as qasm3IntType
-from openqasm3.ast import (
     QuantumBarrier,
     QuantumGate,
     QuantumGateDefinition,
@@ -49,7 +45,6 @@ from openqasm3.ast import (
     Span,
     Statement,
     SubroutineDefinition,
-    UintType,
     UnaryExpression,
 )
 from pyqir import BasicBlock, Builder, Constant
@@ -63,9 +58,9 @@ from .oq3_maps import map_qasm_op_to_pyqir_callable, qasm3_constants_map, qasm3_
 _log = logging.getLogger(name=__name__)
 
 
-class CircuitElementVisitor(metaclass=ABCMeta):
+class ProgramElementVisitor(metaclass=ABCMeta):
     @abstractmethod
-    def visit_register(self, register, is_qubit):
+    def visit_register(self, register):
         pass
 
     @abstractmethod
@@ -73,10 +68,10 @@ class CircuitElementVisitor(metaclass=ABCMeta):
         pass
 
 
-class BasicQisVisitor(CircuitElementVisitor):
-    """A visitor for QIS (Quantum Instruction Set) basic elements.
+class BasicQasmVisitor(ProgramElementVisitor):
+    """A visitor for basic OpenQASM program elements.
 
-    This class is designed to traverse and interact with elements in a quantum circuit.
+    This class is designed to traverse and interact with elements in an OpenQASM program.
 
     Args:
         initialize_runtime (bool): If True, quantum runtime will be initialized. Defaults to True.
@@ -591,6 +586,7 @@ class BasicQisVisitor(CircuitElementVisitor):
         """
         raise NotImplementedError("Classical declarations not yet supported")
 
+    # pylint: disable-next=too-many-return-statements
     def _evaluate_expression(self, expression: Any) -> bool:
         """Evaluate an expression.
 
@@ -622,15 +618,15 @@ class BasicQisVisitor(CircuitElementVisitor):
 
         if isinstance(expression, BooleanLiteral):
             return expression.value
-        elif isinstance(expression, (IntegerLiteral, FloatLiteral)):
+        if isinstance(expression, (IntegerLiteral, FloatLiteral)):
             return expression.value
-        elif isinstance(expression, UnaryExpression):
+        if isinstance(expression, UnaryExpression):
             op = expression.op.name
             if op == "!":
                 return not self._evaluate_expression(expression.expression)
-            elif op == "-":
+            if op == "-":
                 return -1 * self._evaluate_expression(expression.expression)
-            elif op == "~":
+            if op == "~":
                 value = self._evaluate_expression(expression.expression)
                 if not isinstance(value, int):
                     self._print_err_location(expression.span)
@@ -638,14 +634,17 @@ class BasicQisVisitor(CircuitElementVisitor):
                         f"Unsupported expression type {type(value)} in ~ operation"
                     )
                 return ~value
-        elif isinstance(expression, BinaryExpression):
+            raise Qasm3ConversionError(
+                f"Unsupported UnaryExpression operation: {op}. Expected one of ['!', '-', '~']"
+            )
+        if isinstance(expression, BinaryExpression):
             lhs = self._evaluate_expression(expression.lhs)
             op = expression.op.name
             rhs = self._evaluate_expression(expression.rhs)
             return qasm3_expression_op_map(op, lhs, rhs)
-        else:
-            self._print_err_location(expression.span)
-            raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
+
+        self._print_err_location(expression.span)
+        raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
 
     def _analyse_branch_condition(self, condition) -> bool:
         """

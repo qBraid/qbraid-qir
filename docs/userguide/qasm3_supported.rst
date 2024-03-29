@@ -6,9 +6,9 @@ QASM support
 Currently Supported Constructs
 ------------------------------
 
-The qasm3 to QIR converter supports the following openqasm constructrs - 
+The ``qbraid_qir.qasm3.qasm3_to_qir()`` converter supports the following OpenQASM 3 constructs:
 
-1. **Register Declarations** : Openqasm declarations of all forms ``qreg``, ``qubit``, ``bit`` and ``creg`` are supported. 
+1. **Register Declarations** : OpenQASM declarations of all forms ``qreg``, ``qubit``, ``bit`` and ``creg`` are supported. 
 
 2. **QuantumMeasurements** : Openqasm measurements are supported which involve single qubit measurement and full register measurements. Range based measurements are not supported currently.
 
@@ -37,7 +37,7 @@ The qasm3 to QIR converter supports the following openqasm constructrs -
 4. **QuantumGates** : **pyqir._native** gates are supported alongwith support for ``U3`` and ``U2`` gates. The U[x] gates are defined in the terms of existing ``rx`` and ``rz`` gates according to the decomposition present on the qiskit website - https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.UGate, https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.PhaseGate
 
 
-5. **QuantumBarriers** : Barriers are supported only if they are placed on ALL the qubits in the circuit. Eg. - 
+5. **QuantumBarriers** : Barriers are supported only if they are placed on ALL the qubits in the circuit. For example: 
 
 .. code-block:: c
 
@@ -83,7 +83,7 @@ The qasm3 to QIR converter supports the following openqasm constructrs -
 
 
 
-7. **Simple Branching Statements** (controlled on 1 bit) : Since QIR supports branching on a measurement result, single bit branching statements are supported at the moment. General boolean expressions and support for branching on full registers will be added in future. Example - 
+7. **Simple Branching Statements** (controlled on 1 bit) : Since QIR supports branching on a measurement result, single bit branching statements are supported at the moment. General boolean expressions and support for branching on full registers will be added in future. For example: 
 
 .. code-block:: c
 
@@ -118,7 +118,7 @@ The qasm3 to QIR converter supports the following openqasm constructrs -
     }
 
 
-8.  **Expressions** : General expression evaluation involving literals and constants is supported. Example - 
+8.  **Expressions** : General expression evaluation involving literals and constants is supported. For example: 
 
 .. code-block:: c 
 

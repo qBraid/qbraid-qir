@@ -38,8 +38,8 @@ class CircuitElementVisitor(metaclass=ABCMeta):
         pass
 
 
-class BasicQisVisitor(CircuitElementVisitor):
-    """A visitor for QIS (Quantum Instruction Set) basic elements.
+class BasicCirqVisitor(CircuitElementVisitor):
+    """A visitor for basic cirq.Circuit elements.
 
     This class is designed to traverse and interact with elements in a quantum circuit.
 

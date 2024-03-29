@@ -19,7 +19,7 @@ from pyqir import Context, Module, qir_module
 
 from .elements import Qasm3Module, generate_module_id
 from .exceptions import Qasm3ConversionError
-from .visitor import BasicQisVisitor
+from .visitor import BasicQasmVisitor
 
 
 def qasm3_to_qir(
@@ -55,7 +55,7 @@ def qasm3_to_qir(
     llvm_module = qir_module(Context(), name)
     module = Qasm3Module.from_program(program, llvm_module)
 
-    visitor = BasicQisVisitor(**kwargs)
+    visitor = BasicQasmVisitor(**kwargs)
     module.accept(visitor)
 
     err = llvm_module.verify()

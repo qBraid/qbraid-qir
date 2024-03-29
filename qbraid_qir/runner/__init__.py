@@ -1,4 +1,4 @@
-# Copyright (C) 2023 qBraid
+# Copyright (C) 2024 qBraid
 #
 # This file is part of the qBraid-SDK
 #
@@ -9,18 +9,9 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module containing OpenQASM 3 QIR functionality.
+Module containing tools for executing QIR programs
 
-.. currentmodule:: qbraid_qir.qasm3
-
-Functions
------------
-
-.. autosummary::
-   :toctree: ../stubs/
-
-   qasm3_to_qir
-
+.. currentmodule:: qbraid_qir.runner
 
 Classes
 ---------
@@ -28,8 +19,7 @@ Classes
 .. autosummary::
    :toctree: ../stubs/
 
-   Qasm3Module
-   BasicQasmVisitor
+   Simulator
 
 
 Exceptions
@@ -38,10 +28,8 @@ Exceptions
 .. autosummary::
    :toctree: ../stubs/
 
-   Qasm3ConversionError
+   QirRunnerError
 
 """
-from .convert import qasm3_to_qir
-from .elements import Qasm3Module
-from .exceptions import Qasm3ConversionError
-from .visitor import BasicQasmVisitor
+from .exceptions import QirRunnerError
+from .sparse_simulator import Simulator

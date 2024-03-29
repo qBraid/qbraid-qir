@@ -29,7 +29,7 @@ Classes
    :toctree: ../stubs/
 
    CirqModule
-   BasicQisVisitor
+   BasicCirqVisitor
 
 Exceptions
 -----------
@@ -43,4 +43,4 @@ Exceptions
 from .convert import cirq_to_qir
 from .elements import CirqModule
 from .exceptions import CirqConversionError
-from .visitor import BasicQisVisitor
+from .visitor import BasicCirqVisitor
