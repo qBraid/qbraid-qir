@@ -2,6 +2,48 @@
 requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "qbraid-qir"
+dynamic = ["version"]
+description = "qBraid-SDK extension providing support for QIR conversions."
+readme = "README.md"
+authors = [{ name = "qBraid Development Team", email = "contact@qbraid.com" }]
+license = { file = "LICENSE" }
+keywords = ["qbraid", "quantum", "qir", "llvm", "cirq", "openqasm"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics"
+]
+dependencies = ["pyqir~=0.10.0"]
+requires-python = ">= 3.8"
+
+[project.urls]
+Homepage = "https://github.com/qBraid/qbraid-qir"
+Documentation = "https://docs.qbraid.com/projects/qir/en/stable/"
+"Bug Tracker" = "https://github.com/qBraid/qbraid-qir/issues"
+Discord = "https://discord.gg/TPBU2sa8Et"
+"Launch on Lab" = "https://account.qbraid.com/?gitHubUrl=https://github.com/qBraid/qbraid-qir.git"
+
+[project.optional-dependencies]
+cirq = ["cirq-core>=1.3.0,<1.4.0"]
+qasm3 = ["openqasm3[parser]>=0.4.0,<0.6.0"]
+test = ["qbraid~=0.5.3", "pytest", "pytest-cov"]
+lint = ["black[jupyter]", "isort", "pylint"]
+docs = ["sphinx~=7.2.6", "sphinx-autodoc-typehints>=1.24,<2.1", "sphinx-rtd-theme~=2.0.0", "docutils<0.21"]
+
+[tool.setuptools.dynamic]
+version = {attr = "qbraid_qir.__version__"}
+
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 100
 disable = "C0103, C0115, C0116, I1101, R0903, W0212, W0511"
