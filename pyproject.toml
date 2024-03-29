@@ -69,3 +69,12 @@ exclude_lines = [
   "if TYPE_CHECKING:",
   "logger.debug"
 ]
+
+[tool.coverage.run]
+parallel = true
+source = ["qbraid_qir"]
+omit = [
+  "**/qbraid_qir/runner/sparse_simulator.py",
+  "**/qbraid_qir/runner/result.py",
+  "**/qbraid_qir/__init__.py"
+]
