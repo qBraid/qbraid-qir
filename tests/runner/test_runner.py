@@ -13,17 +13,51 @@ Unit tests for qir-runner Python simulator wrapper.
 
 """
 import random
+import shutil
 from typing import Optional
 
 import cirq
+import numpy as np
 import pytest
 
 from qbraid_qir import dumps
 from qbraid_qir.cirq import cirq_to_qir
-from qbraid_qir.runner import Result, Simulator
+from qbraid_qir.runner.result import Result
+from qbraid_qir.runner.simulator import Simulator, _is_valid_semantic_version
+
+skip_runner_tests = shutil.which("qir-runner") is None
+REASON = "qir-runner executable not available"
+
+# pylint: disable=redefined-outer-name
 
 
-def cirq_sparse(num_qubits: Optional[int] = None) -> cirq.Circuit:
+def _is_uniform_comput_basis(array: np.ndarray) -> bool:
+    """
+    Check if each measurement (row) in the array represents a uniform computational basis
+    state, i.e., for each shot, that qubit measurements are either all |0⟩s or all |1⟩s.
+
+    Args:
+        array (np.ndarray): A 2D numpy array where each row represents a measurement shot,
+                            and each column represents a qubit's state in that shot.
+
+    Returns:
+        bool: True if every measurement is in a uniform computational basis state
+              (all |0⟩s or all |1⟩s). False otherwise.
+
+    Raises:
+        ValueError: If the given array is not 2D.
+    """
+    if array.ndim != 2:
+        raise ValueError("The input array must be 2D.")
+
+    for shot in array:
+        # Check if all qubits in the shot are measured as |0⟩ or all as |1⟩
+        if not (np.all(shot == 0) or np.all(shot == 1)):
+            return False
+    return True
+
+
+def _sparse_circuit(num_qubits: Optional[int] = None) -> cirq.Circuit:
     """
     Generates a quantum circuit designed to benchmark the performance of a sparse simulator.
 
@@ -37,7 +71,7 @@ def cirq_sparse(num_qubits: Optional[int] = None) -> cirq.Circuit:
                                     a random number of qubits between 10 and 20 will be used.
 
     Returns:
-        cirq.Circuit: The constructed circuit for benchmarking.
+        cirq.Circuit: The constructed circuit for benchmarking
     """
     num_qubits = num_qubits or random.randint(10, 20)
     # Create a circuit
@@ -64,8 +98,14 @@ def cirq_sparse(num_qubits: Optional[int] = None) -> cirq.Circuit:
     return circuit
 
 
-@pytest.mark.skip(reason="qir-runner not available via GitHub Actions.")
-def test_sparse_simulator():
+@pytest.fixture
+def cirq_sparse():
+    """Cirq circuit used for testing."""
+    yield _sparse_circuit
+
+
+@pytest.mark.skipif(skip_runner_tests, reason=REASON)
+def test_sparse_simulator(cirq_sparse):
     """Test qir-runner sparse simulator python wrapper(s)."""
     circuit = cirq_sparse()
     num_qubits = len(circuit.all_qubits())
@@ -88,3 +128,29 @@ def test_sparse_simulator():
     assert metadata["num_shots"] == shots
     assert metadata["num_qubits"] == num_qubits
     assert isinstance(metadata["execution_duration"], float)
+
+    measurements = result.measurements
+    assert _is_uniform_comput_basis(measurements)
+
+
+@pytest.mark.parametrize(
+    "version_str, expected",
+    [
+        ("1.0.0", True),
+        ("0.1.2", True),
+        ("2.0.0-rc.1", True),
+        ("1.0.0-alpha+001", True),
+        ("1.2.3+meta-valid", True),
+        ("+invalid", False),  # no major, minor or patch version
+        ("-invalid", False),  # no major, minor or patch version
+        ("1.0.0-", False),  # pre-release info cannot be empty if hyphen is present
+        ("1.0.0+", False),  # build metadata cannot be empty if plus is present
+        ("1.0.0+meta/valid", False),  # build metadata contains invalid characters
+        ("1.0.0-alpha", True),
+        ("1.1.2+meta-123", True),
+        ("1.1.2+meta.123", True),
+    ],
+)
+def test_is_valid_semantic_version(version_str, expected):
+    """Test the _is_valid_semantic_version function used to verify qir-runner setup."""
+    assert _is_valid_semantic_version(version_str) == expected
