@@ -50,12 +50,17 @@ class Result:
     def _parse_results(self, output: str) -> Dict[str, List[int]]:
         """Parse the raw output from the execution to extract measurement results."""
         results = defaultdict(list)
+        current_shot_results = []
 
         for line in output.splitlines():
             elements = line.split()
             if len(elements) == 3 and elements[:2] == ["OUTPUT", "RESULT"]:
                 _, _, bit = elements
-                results[f"q{len(results)}"].append(int(bit))
+                current_shot_results.append(int(bit))
+            elif line.startswith("END"):
+                for idx, result in enumerate(current_shot_results):
+                    results[f"q{idx}"].append(result)
+                current_shot_results = []
 
         return dict(results)
 
