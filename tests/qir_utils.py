@@ -13,7 +13,8 @@ Module for containing QIR code utils functions used for unit tests.
 
 """
 
-from typing import List
+import struct
+from typing import List, Union
 
 from pyqir import (
     Context,
@@ -23,6 +24,12 @@ from pyqir import (
     required_num_qubits,
     required_num_results,
 )
+
+from qbraid_qir.qasm3.oq3_maps import CONSTANTS_MAP
+
+
+def double_to_hex(f):
+    return hex(struct.unpack("<Q", struct.pack("<d", f))[0])
 
 
 def assert_equal_qir(given_qir: str, filepath: str) -> None:
@@ -72,7 +79,11 @@ def double_op_call_string(name: str, qb1: int, qb2: int) -> str:
     return f"call void @__quantum__qis__{name}__body({_qubit_string(qb1)}, {_qubit_string(qb2)})"
 
 
-def rotation_call_string(name: str, theta: float, qb: int) -> str:
+def rotation_call_string(name: str, theta: Union[float, str], qb: int) -> str:
+    if isinstance(theta, str):
+        # for hex matching
+        theta = theta.replace("X", "x")
+        return f"call void @__quantum__qis__{name}__body(double {theta}, {_qubit_string(qb)})"
     return f"call void @__quantum__qis__{name}__body(double {theta:#e}, {_qubit_string(qb)})"
 
 
@@ -250,6 +261,48 @@ def check_two_qubit_gate_op(
         assert False, f"Incorrect two qubit gate count: {expected_ops} expected, {op_count} actual"
 
 
+def check_single_qubit_u3_op(
+    entry_body: List[str], expected_ops: int, qubit_list: List[int], param_list: List[float]
+):
+    theta, phi, lam = param_list
+    op_count = 0
+    q_id = 0
+    pi = CONSTANTS_MAP["pi"]
+    u3_param_list = [lam, pi / 2, theta + pi, pi / 2, phi + pi]
+    u3_gate_list = ["rz", "rx", "rz", "rx", "rz"]
+    u3_gates_id = 0
+
+    for line in entry_body:
+        gate_name = u3_gate_list[u3_gates_id]
+        if line.strip().startswith("call") and f"qis__{gate_name}" in line:
+            try:
+                rotation_call = rotation_call_string(
+                    gate_name, u3_param_list[u3_gates_id], qubit_list[q_id]
+                )
+                assert (
+                    line.strip() == rotation_call.strip()
+                ), f"Incorrect rotation gate call in qir - {line}, expected {rotation_call}"
+            except Exception as _:
+                rotation_call = rotation_call_string(
+                    gate_name, double_to_hex(u3_param_list[u3_gates_id]).upper(), qubit_list[q_id]
+                )
+                assert (
+                    line.strip() == rotation_call.strip()
+                ), f"Incorrect rotation gate call in qir - {line}, expected {rotation_call}"
+
+            u3_gates_id += 1
+            if u3_gates_id == len(u3_gate_list):
+                op_count += 1
+                q_id += 1
+                u3_gates_id = 0
+            if op_count == expected_ops:
+                break
+    if op_count != expected_ops:
+        raise AssertionError(
+            f"Incorrect rotation gate count for decomposed U3: {expected_ops} expected, {op_count} actual"
+        )
+
+
 def check_single_qubit_rotation_op(
     qir: List[str],
     expected_ops: int,
@@ -260,7 +313,13 @@ def check_single_qubit_rotation_op(
     entry_body = get_entry_point_body(qir)
     op_count = 0
     q_id = 0
-
+    if gate_name == "u3":
+        check_single_qubit_u3_op(entry_body, expected_ops, qubit_list, param_list)
+        return
+    elif gate_name == "u2":
+        param_list = [CONSTANTS_MAP["pi"] / 2, param_list[0], param_list[1]]
+        check_single_qubit_u3_op(entry_body, expected_ops, qubit_list, param_list)
+        return
     for line in entry_body:
         if line.strip().startswith("call") and f"qis__{gate_name}" in line:
             assert line.strip() == rotation_call_string(

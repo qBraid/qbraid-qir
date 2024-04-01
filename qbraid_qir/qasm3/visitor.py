@@ -550,12 +550,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 self._transform_gate_params(gate_op_copy, param_map)
                 self._transform_gate_qubits(gate_op_copy, qubit_map)
                 self._visit_generic_gate_operation(gate_op_copy)
-            elif isinstance(gate_op, QuantumMeasurementStatement):
-                self._print_err_location(gate_op.span)
-                raise Qasm3ConversionError("Unsupported measurement statement in gate definition")
-            elif isinstance(gate_op, QuantumReset):
-                self._print_err_location(gate_op.span)
-                raise Qasm3ConversionError("Unsupported reset statement in gate definition")
             else:
                 # TODO: add control flow support
                 self._print_err_location(gate_op.span)

@@ -56,7 +56,17 @@ def test_incorrect_measure():
         OPENQASM 3;
         qubit[2] q1;
         bit[2] c1;
-        c1[0:2] = measure q1[0:2];  // not supported 
+        measure q1[0:2] -> c1[:2];  // not supported 
+    """,
+        r"Range based measurement .* not supported at the moment",
+    )
+
+    run_test(
+        """
+        OPENQASM 3;
+        qubit[2] q1;
+        bit[2] c1;
+        measure q1 -> c1[:2];  // not supported 
     """,
         r"Range based measurement .* not supported at the moment",
     )

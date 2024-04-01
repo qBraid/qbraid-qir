@@ -46,6 +46,18 @@ def test_barrier():
 
 
 def test_incorrect_barrier():
+    subset = """
+    OPENQASM 3;
+
+    qubit[3] q1;
+
+    barrier q1[:2];
+    """
+    with pytest.raises(
+        NotImplementedError, match="Barrier operation on a qubit subset is not supported in pyqir"
+    ):
+        _ = qasm3_to_qir(subset)
+
     undeclared = """
     OPENQASM 3;
 

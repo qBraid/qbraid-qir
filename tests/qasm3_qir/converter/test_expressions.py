@@ -28,6 +28,9 @@ def test_correct_expressions():
     rz(3-2*3*(8/2)) q;
     rx(-1.57) q;
     rx(4%2) q;
+    rx(true) q;
+    rx(!0) q;
+    rx(~3) q;
     """
 
     result = qasm3_to_qir(qasm_str)

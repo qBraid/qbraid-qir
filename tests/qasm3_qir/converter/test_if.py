@@ -186,3 +186,22 @@ def test_incorrect_if():
            }
            """
         )
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Unsupported expression type .* in if condition. Can only be a simple comparison",
+    ):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+           include "stdgates.inc";
+           qubit[2] q;
+           bit[2] c;
+
+           h q;
+           measure q->c;
+
+           if(c){
+            cx q;
+           }
+           """
+        )
