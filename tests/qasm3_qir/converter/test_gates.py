@@ -85,6 +85,49 @@ def test_three_qubit_qasm3_gates(circuit_name, request):
     check_three_qubit_gate_op(generated_qir, 2, qubit_list, gate_name)
 
 
+def test_id_gate():
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+
+    qubit q;
+    id q;
+    """
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 0)
+    # we have 2 X gates for id
+    check_single_qubit_gate_op(generated_qir, 2, [0, 0], "x")
+
+
+def test_qasm_u3_gates():
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+
+    qubit[2] q1;
+    u3(0.5, 0.5, 0.5) q1[0];
+    """
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 2, 0)
+    check_single_qubit_rotation_op(generated_qir, 1, [0], [0.5, 0.5, 0.5], "u3")
+
+
+def test_qasm_u2_gates():
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+
+    qubit[2] q1;
+    u2(0.5, 0.5) q1[0];
+    """
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 2, 0)
+    check_single_qubit_rotation_op(generated_qir, 1, [0], [0.5, 0.5], "u2")
+
+
 def test_incorrect_single_qubit_gates():
     # Test for undeclared register q2
     with pytest.raises(Qasm3ConversionError, match=r"Missing register declaration for q2 .*"):
