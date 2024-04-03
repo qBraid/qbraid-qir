@@ -261,6 +261,7 @@ def check_two_qubit_gate_op(
         assert False, f"Incorrect two qubit gate count: {expected_ops} expected, {op_count} actual"
 
 
+# pylint: disable-next=too-many-locals
 def check_single_qubit_u3_op(
     entry_body: List[str], expected_ops: int, qubit_list: List[int], param_list: List[float]
 ):
@@ -282,7 +283,7 @@ def check_single_qubit_u3_op(
                 assert (
                     line.strip() == rotation_call.strip()
                 ), f"Incorrect rotation gate call in qir - {line}, expected {rotation_call}"
-            except Exception as _:
+            except Exception:  # pylint: disable=broad-exception-caught
                 rotation_call = rotation_call_string(
                     gate_name, double_to_hex(u3_param_list[u3_gates_id]).upper(), qubit_list[q_id]
                 )
@@ -299,7 +300,8 @@ def check_single_qubit_u3_op(
                 break
     if op_count != expected_ops:
         raise AssertionError(
-            f"Incorrect rotation gate count for decomposed U3: {expected_ops} expected, {op_count} actual"
+            "Incorrect rotation gate count for decomposed U3: "
+            f"{expected_ops} expected, {op_count} actual."
         )
 
 
@@ -316,7 +318,7 @@ def check_single_qubit_rotation_op(
     if gate_name == "u3":
         check_single_qubit_u3_op(entry_body, expected_ops, qubit_list, param_list)
         return
-    elif gate_name == "u2":
+    if gate_name == "u2":
         param_list = [CONSTANTS_MAP["pi"] / 2, param_list[0], param_list[1]]
         check_single_qubit_u3_op(entry_body, expected_ops, qubit_list, param_list)
         return
@@ -450,12 +452,12 @@ def check_expressions(
 
 
 def check_simple_if(
-    qir: List[str],
+    qir: List[str],  # pylint: disable=unused-argument
 ):
     pass
 
 
 def check_complex_if(
-    qir: List[str],
+    qir: List[str],  # pylint: disable=unused-argument
 ):
     pass
