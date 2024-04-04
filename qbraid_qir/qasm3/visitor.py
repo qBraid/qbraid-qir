@@ -23,6 +23,7 @@ import pyqir
 import pyqir._native
 import pyqir.rt
 from openqasm3.ast import (
+    AliasStatement,
     BinaryExpression,
     BooleanLiteral,
     BranchingStatement,
@@ -35,6 +36,7 @@ from openqasm3.ast import (
     IndexedIdentifier,
     IndexExpression,
     IntegerLiteral,
+    IODeclaration,
     QuantumBarrier,
     QuantumGate,
     QuantumGateDefinition,
@@ -770,10 +772,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._visit_branching_statement(statement)
         elif isinstance(statement, SubroutineDefinition):
             raise NotImplementedError("OpenQASM 3 subroutines not yet supported")
+        elif isinstance(statement, AliasStatement):
+            raise NotImplementedError("OpenQASM 3 aliases not yet supported")
+        elif isinstance(statement, IODeclaration):
+            raise NotImplementedError("OpenQASM 3 IO declarations not yet supported")
         else:
             # TODO : extend this
             self._print_err_location(statement.span)
-            raise Qasm3ConversionError(f"Unsupported statement type {type(statement)}")
+            raise Qasm3ConversionError(f"Unsupported statement of type {type(statement)}")
 
     def ir(self) -> str:
         return str(self._module)
