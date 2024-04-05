@@ -222,6 +222,68 @@ def test_custom_ops(test_name, request):
     check_custom_qasm_gate_op(generated_qir, gate_type)
 
 
+def test_simple_gate_modifier():
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+    qubit q;
+    pow(4) @ h q;
+    """
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_gate_op(generated_qir, 4, [0, 0, 0, 0], "h")
+
+
+def test_nested_gate_modifiers():
+
+    complex_qir = qasm3_to_qir(
+        """
+    OPENQASM 3;
+    include "stdgates.inc";
+    qubit[2] q;
+    gate custom2 p, q{
+        y p;
+        z q;
+    }
+    gate custom p, q {
+        pow(1) @ custom2 p, q;
+    }
+    pow(2) @ custom q; 
+    """
+    )
+    generated_qir = str(complex_qir).splitlines()
+    check_attributes(generated_qir, 2, 0)
+    check_single_qubit_gate_op(generated_qir, 2, [0, 0], "y")
+    check_single_qubit_gate_op(generated_qir, 2, [1, 1], "z")
+
+
+def test_unsupported_modifiers():
+    # TO DO : add implementations, but till then we have tests
+    with pytest.raises(Qasm3ConversionError, match="Multiple gate modifiers not supported yet"):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+            include "stdgates.inc";
+            qubit q;
+            pow(2) @ pow(2) @ h q;
+            """
+        )
+    for modifier in ["ctrl", "inv", "negctrl"]:
+        with pytest.raises(
+            NotImplementedError,
+            match=rf"Modifier GateModifier.{modifier} not supported at the moment",
+        ):
+            _ = qasm3_to_qir(
+                f"""
+                OPENQASM 3;
+                include "stdgates.inc";
+                qubit[2] q;
+                {modifier} @ h q[0], q[1];
+                """
+            )
+
+
 def test_incorrect_custom_ops():
     #  1. Undeclared gate application
     with pytest.raises(

@@ -30,6 +30,7 @@ from openqasm3.ast import (
     ClassicalDeclaration,
     DurationLiteral,
     FloatLiteral,
+    GateModifierName,
     Identifier,
     ImaginaryLiteral,
     Include,
@@ -502,6 +503,23 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 gate_op.arguments[i] = param_map[param.name]
             # TODO : update the arg value in expressions not just SINGLE identifiers
 
+    def _validate_gate_call(
+        self, operation: QuantumGate, gate_definition: QuantumGateDefinition, qubits_in_op
+    ) -> None:
+        if len(operation.arguments) != len(gate_definition.arguments):
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError(
+                f"""Parameter count mismatch for gate {operation.name.name}. Expected \
+{len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"""
+            )
+
+        if qubits_in_op != len(gate_definition.qubits):
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError(
+                f"""Qubit count mismatch for gate {operation.name.name}. Expected \
+{len(gate_definition.qubits)} but got {qubits_in_op} in operation"""
+            )
+
     def _visit_custom_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a custom gate operation element recursively.
 
@@ -514,23 +532,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
         _log.debug("Visiting custom gate operation '%s'", str(operation))
         gate_name: str = operation.name.name
         gate_definition: QuantumGateDefinition = self._custom_gates[gate_name]
-
-        if len(operation.arguments) != len(gate_definition.arguments):
-            self._print_err_location(operation.span)
-            raise Qasm3ConversionError(
-                f"""Parameter count mismatch for gate {gate_name}. Expected \
-{len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"""
-            )
-
         op_qubits = self._get_op_qubits(operation, qir_form=False)
 
-        if len(op_qubits) != len(gate_definition.qubits):
-            self._print_err_location(operation.span)
-            raise Qasm3ConversionError(
-                f"""Qubit count mismatch for gate {gate_name}. Expected \
-{len(gate_definition.qubits)} but got {len(op_qubits)} in operation"""
-            )
-
+        self._validate_gate_call(operation, gate_definition, len(op_qubits))
         # we need this because the gates applied inside a gate definition use the
         # VARIABLE names and not the qubits
 
@@ -545,6 +549,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
             for formal_arg, actual_arg in zip(gate_definition.arguments, operation.arguments)
         }
         for gate_op in gate_definition.body:
+
+            if gate_op.name.name == gate_name:
+                self._print_err_location(gate_op.span)
+                raise Qasm3ConversionError(
+                    f"Recursive definitions not allowed for gate {gate_name}"
+                )
+
             # necessary to avoid modifying the original gate definition
             # in case the gate is reapplied
             gate_op_copy = copy.deepcopy(gate_op)
@@ -557,6 +568,35 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 self._print_err_location(gate_op.span)
                 raise Qasm3ConversionError(f"Unsupported gate definition statement {gate_op}")
 
+    def _analyse_gate_modifiers(self, operation: QuantumGate) -> Tuple[Any, Any]:
+        """Analyse the modifiers of a gate operation.
+
+        Args:
+            operation (QuantumGate): The gate operation to analyse.
+
+        Returns:
+            Tuple[Any, Any]: The modifier name and value.
+        """
+        if not len(operation.modifiers):
+            return (
+                None,
+                None,
+            )
+
+        if len(operation.modifiers) > 1:
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError("Multiple gate modifiers not supported yet")
+
+        modifier = operation.modifiers[0]
+        modifier_name = modifier.modifier
+        modifier_value = modifier.argument.value if modifier.argument is not None else None
+        if modifier_name != GateModifierName.inv:
+            modifier_value = 1 if modifier_value is None else modifier_value
+        return (
+            modifier_name,
+            modifier_value,
+        )
+
     def _visit_generic_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a gate operation element.
 
@@ -566,10 +606,22 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        if operation.name.name in self._custom_gates:
-            self._visit_custom_gate_operation(operation)
+
+        def _apply_gate():
+            if operation.name.name in self._custom_gates:
+                self._visit_custom_gate_operation(operation)
+            else:
+                self._visit_basic_gate_operation(operation)
+
+        modifier_name, modifier_value = self._analyse_gate_modifiers(operation)
+        if modifier_name is None:
+            _apply_gate()
+        elif modifier_name == GateModifierName.pow:
+            for _ in range(modifier_value):
+                _apply_gate()
         else:
-            self._visit_basic_gate_operation(operation)
+            self._print_err_location(operation.span)
+            raise NotImplementedError(f"Modifier {modifier_name} not supported at the moment")
 
     def _visit_classical_operation(self, statement: ClassicalDeclaration) -> None:
         """Visit a classical operation element.
