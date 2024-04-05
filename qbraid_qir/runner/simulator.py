@@ -12,15 +12,20 @@
 Module containing Python wrapper for the qir-runner sparse quantum state simulator.
 
 """
+import logging
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 import time
 import warnings
 from typing import Dict, List, Optional
 
 from .exceptions import QirRunnerError
 from .result import Result
+
+logger = logging.getLogger(__name__)
 
 
 def _is_valid_semantic_version(v: str) -> bool:
@@ -69,6 +74,7 @@ class Simulator:
         self.seed = seed
         self._version = None
         self._qir_runner = None
+        self._num_qubits = 64
         self.qir_runner = qir_runner_path
         if not _is_valid_semantic_version(self.version):
             warnings.warn(
@@ -107,6 +113,12 @@ class Simulator:
             self._version = output.strip().split()[-1]
         return self._version
 
+    @property
+    def num_qubits(self) -> int:
+        """Get the number of qubits supported by the qir-runner simulator."""
+        # https://github.com/qir-alliance/qir-runner/blob/351cfdbb71241f8007f5d4137e0ee2dacb373d4c/sparsesim/src/matrix_testing.rs#L85
+        return self._num_qubits
+
     @staticmethod
     def _execute_subprocess(command: List[str], text: bool = True, **kwargs) -> str:
         """Execute a subprocess command and return its output.
@@ -126,12 +138,12 @@ class Simulator:
             raise QirRunnerError(f"Error executing qir-runner command: {command}") from err
 
     def run(
-        self, file_name: str, entrypoint: Optional[str] = None, shots: Optional[int] = None
+        self, bitcode: bytes, entrypoint: Optional[str] = None, shots: Optional[int] = None
     ) -> Dict[str, List[int]]:
         """Runs the qir-runner executable with the given QIR file and shots.
 
         Args:
-            file_name (str): Path to the QIR file to run ('.ll' or '.bc' file extension)
+            bitcode (bytes): QIR bitecode to execute.
             entrypoint (optional, str): Name of the entrypoint function to execute in the QIR file.
             shots (optional, int): The number of times to repeat the execution of the chosen entry
                                    point in the program. Defaults to 1.
@@ -139,19 +151,31 @@ class Simulator:
         Returns:
             A dictionary mapping 'qubit_i' to a list of measurement results.
         """
-        # Build the command with required and optional arguments
-        command = [self.qir_runner, "--shots", str(shots), "-f", file_name]
-        if entrypoint:
-            command.extend(["-e", entrypoint])
-        if self.seed is not None:
-            command.extend(["-r", str(self.seed)])
+        with tempfile.NamedTemporaryFile(suffix=".bc", delete=False) as temp_file:
+            file_name = temp_file.name
+            temp_file.write(bitcode)
+            logger.debug("Saved bitcode to temporary file %s", file_name)
 
-        # Execute the qir-runner with the built command
-        start = time.time()
-        raw_out = self._execute_subprocess(command)
-        stop = time.time()
-        miliseconds = int((stop - start) * 1000)
-        return Result(raw_out, execution_duration=miliseconds)
+        try:
+            # Build the command with required and optional arguments
+            command = [self.qir_runner, "--shots", str(shots or 1), "-f", file_name]
+            if entrypoint:
+                command.extend(["-e", entrypoint])
+            if self.seed is not None:
+                command.extend(["-r", str(self.seed)])
+
+            # Execute the qir-runner with the built command
+            start = time.time()
+            raw_out = self._execute_subprocess(command)
+            stop = time.time()
+            miliseconds = int((stop - start) * 1000)
+            logger.debug("Executed qir-runner subprocess in %s ms", miliseconds)
+
+            return Result(raw_out, execution_duration=miliseconds)
+        finally:
+            # Ensure the temporary file is deleted
+            os.remove(file_name)
+            logger.debug("Removed temporary bitcode file %s", file_name)
 
     def __eq__(self, other):
         """Check if two Simulator instances are equal based on their attributes."""

@@ -22,6 +22,8 @@ from .exceptions import QbraidQirError
 if TYPE_CHECKING:
     import pyqir
 
+logger = logging.getLogger(__name__)
+
 
 def dumps(module: "pyqir.Module", output_dir: Optional[str] = None) -> None:
     """
@@ -56,9 +58,9 @@ def dumps(module: "pyqir.Module", output_dir: Optional[str] = None) -> None:
     # Save bitcode file (does not require an encoding)
     with open(bc_file, "wb") as file:  # pylint: disable=unspecified-encoding
         file.write(module.bitcode)
-    logging.info("Saved to %s", bc_file)
+        logger.info("Saved to %s", bc_file)
 
     # Save LLVM IR file (default python encoding)
     with open(ll_file, "w", encoding="utf-8") as file:
         file.write(str(module))
-    logging.info("Saved to %s", ll_file)
+        logger.info("Saved to %s", ll_file)

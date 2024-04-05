@@ -112,11 +112,10 @@ def test_sparse_simulator(cirq_sparse):
 
     file_prefix = "sparse_simulator_test"
     module = cirq_to_qir(circuit, name=file_prefix)
-    dumps(module)
     simulator = Simulator()
 
     shots = random.randint(500, 1000)
-    result = simulator.run(f"{file_prefix}.bc", shots=shots)
+    result = simulator.run(module.bitcode, shots=shots)
     assert isinstance(result, Result)
 
     counts = result.measurement_counts()
