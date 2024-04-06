@@ -222,7 +222,7 @@ def test_custom_ops(test_name, request):
     check_custom_qasm_gate_op(generated_qir, gate_type)
 
 
-def test_simple_gate_modifier():
+def test_pow_gate_modifier():
     qasm3_string = """
     OPENQASM 3;
     include "stdgates.inc";
@@ -233,6 +233,24 @@ def test_simple_gate_modifier():
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 1, 0)
     check_single_qubit_gate_op(generated_qir, 4, [0, 0, 0, 0], "h")
+
+
+def test_inv_gate_modifier():
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+    qubit q;
+    inv @ h q;
+    inv @ y q;
+    inv @ rx(0.5) q;
+    inv @ U(0.5, 0.5, 0.5) q;
+    """
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_gate_op(generated_qir, 1, [0], "h")
+    check_single_qubit_gate_op(generated_qir, 1, [0], "y")
+    check_single_qubit_rotation_op(generated_qir, 1, [0], [-0.5], "rx")
 
 
 def test_nested_gate_modifiers():
@@ -269,7 +287,7 @@ def test_unsupported_modifiers():
             pow(2) @ pow(2) @ h q;
             """
         )
-    for modifier in ["ctrl", "inv", "negctrl"]:
+    for modifier in ["ctrl", "negctrl"]:
         with pytest.raises(
             NotImplementedError,
             match=rf"Modifier GateModifier.{modifier} not supported at the moment",

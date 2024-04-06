@@ -54,9 +54,14 @@ from pyqir import BasicBlock, Builder, Constant
 from pyqir import IntType as qirIntType
 from pyqir import PointerType
 
-from .elements import Context, Qasm3Module, Scope
+from .elements import Context, InversionOp, Qasm3Module, Scope
 from .exceptions import Qasm3ConversionError
-from .oq3_maps import map_qasm_op_to_pyqir_callable, qasm3_constants_map, qasm3_expression_op_map
+from .oq3_maps import (
+    map_qasm_inv_op_to_pyqir_callable,
+    map_qasm_op_to_pyqir_callable,
+    qasm3_constants_map,
+    qasm3_expression_op_map,
+)
 
 _log = logging.getLogger(name=__name__)
 
@@ -433,7 +438,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise Qasm3ConversionError(f"Duplicate gate definition for {gate_name}")
         self._custom_gates[gate_name] = definition
 
-    def _visit_basic_gate_operation(self, operation: QuantumGate) -> None:
+    def _visit_basic_gate_operation(self, operation: QuantumGate, inverse: bool = False) -> None:
         """Visit a gate operation element.
 
         Args:
@@ -446,7 +451,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
         _log.debug("Visiting basic gate operation '%s'", str(operation))
         op_name: str = operation.name.name
         op_qubits = self._get_op_qubits(operation)
-        qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
+        inverse_action = None
+        if not inverse:
+            qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
+        else:
+            # in basic gates, inverse action only affects the rotation gates
+            qir_func, op_qubit_count, inverse_action = map_qasm_inv_op_to_pyqir_callable(op_name)
+
         op_parameters = None
 
         if len(op_qubits) % op_qubit_count != 0:
@@ -457,6 +468,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         if self._is_parametric_gate(operation):
             op_parameters = self._get_op_parameters(operation)
+            if inverse_action == InversionOp.INVERT_ROTATION:
+                # we need to invert the rotation gates
+                op_parameters = [-1 * param for param in op_parameters]
 
         if op_parameters is not None:
             for i in range(0, len(op_qubits), op_qubit_count):
@@ -520,7 +534,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 {len(gate_definition.qubits)} but got {qubits_in_op} in operation"""
             )
 
-    def _visit_custom_gate_operation(self, operation: QuantumGate) -> None:
+    def _visit_custom_gate_operation(self, operation: QuantumGate, inverse: bool = False) -> None:
         """Visit a custom gate operation element recursively.
 
         Args:
@@ -548,7 +562,19 @@ class BasicQasmVisitor(ProgramElementVisitor):
             formal_arg.name: actual_arg
             for formal_arg, actual_arg in zip(gate_definition.arguments, operation.arguments)
         }
-        for gate_op in gate_definition.body:
+
+        gate_definition_ops = copy.deepcopy(gate_definition.body)
+        # if inverse:
+        #     gate_definition_ops.reverse()
+
+        for gate_op in gate_definition_ops:
+            # problem which we face here is that
+            # we need to pass the inverse Modifier of the parent
+            # gate call down to its quantum ops inside the gate definition
+
+            # we can do that safely by calling the apply_gate op
+            # BUT if we have a modifier inside a gate definition, then?
+            # we need to handle that as well
 
             if gate_op.name.name == gate_name:
                 self._print_err_location(gate_op.span)
@@ -582,7 +608,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 None,
                 None,
             )
-
+        # will need to change this also when we add support for multiple modifiers
         if len(operation.modifiers) > 1:
             self._print_err_location(operation.span)
             raise Qasm3ConversionError("Multiple gate modifiers not supported yet")
@@ -597,6 +623,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
             modifier_value,
         )
 
+    def _apply_gate(self, operation: QuantumGate, inverse: bool = False):
+        if operation.name.name in self._custom_gates:
+            self._visit_custom_gate_operation(operation, inverse)
+        else:
+            self._visit_basic_gate_operation(operation, inverse)
+
     def _visit_generic_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a gate operation element.
 
@@ -607,18 +639,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
 
-        def _apply_gate():
-            if operation.name.name in self._custom_gates:
-                self._visit_custom_gate_operation(operation)
-            else:
-                self._visit_basic_gate_operation(operation)
-
         modifier_name, modifier_value = self._analyse_gate_modifiers(operation)
         if modifier_name is None:
-            _apply_gate()
+            self._apply_gate(operation)
         elif modifier_name == GateModifierName.pow:
             for _ in range(modifier_value):
-                _apply_gate()
+                self._apply_gate(operation)
+        # TODO : custom gate inversion problem
+        elif modifier_name == GateModifierName.inv:
+            self._apply_gate(operation, inverse=True)
         else:
             self._print_err_location(operation.span)
             raise NotImplementedError(f"Modifier {modifier_name} not supported at the moment")

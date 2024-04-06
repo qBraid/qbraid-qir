@@ -12,9 +12,11 @@
 Module mapping supported QASM gates/operations to pyqir functions.
 
 """
+from enum import Enum
 
 import pyqir
 
+from .elements import InversionOp
 from .exceptions import Qasm3ConversionError
 
 OPERATOR_MAP = {
@@ -40,6 +42,17 @@ OPERATOR_MAP = {
 
 
 def qasm3_expression_op_map(op_name: str, left, right):
+    """
+    Return the result of applying the given operator to the given operands.
+
+    Args:
+        op_name (str): The operator name.
+        left: The left operand.
+        right: The right operand.
+
+    Returns:
+        The result of applying the operator to the operands.
+    """
     try:
         return OPERATOR_MAP[op_name](left, right)
     except KeyError as exc:
@@ -63,10 +76,23 @@ def u3_gate(builder, theta, phi, lam, qubits):
     # global phase - e^(i*(phi+lambda)/2) is missing in the above implementation
 
 
+def u3_inv_gate(builder, theta, phi, lam, qubits):
+    # reverse order of operations with negative angles
+    pyqir._native.rz(builder, -1.0 * (phi + CONSTANTS_MAP["pi"]), qubits)
+    pyqir._native.rx(builder, -1.0 * (CONSTANTS_MAP["pi"] / 2), qubits)
+    pyqir._native.rz(builder, -1.0 * (theta + CONSTANTS_MAP["pi"]), qubits)
+    pyqir._native.rx(builder, -1.0 * (CONSTANTS_MAP["pi"] / 2), qubits)
+    pyqir._native.rz(builder, -1.0 * lam, qubits)
+
+
 # Reference -
 # https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.U2Gate
 def u2_gate(builder, phi, lam, qubits):
     u3_gate(builder, CONSTANTS_MAP["pi"] / 2, phi, lam, qubits)
+
+
+def u2_inv_gate(builder, phi, lam, qubits):
+    u3_inv_gate(builder, CONSTANTS_MAP["pi"] / 2, phi, lam, qubits)
 
 
 PYQIR_ONE_QUBIT_OP_MAP = {
@@ -108,6 +134,15 @@ PYQIR_THREE_QUBIT_OP_MAP = {
 
 
 def map_qasm_op_to_pyqir_callable(op_name: str):
+    """
+    Map a QASM operation to a PyQIR callable.
+
+    Args:
+        op_name (str): The QASM operation name.
+
+    Returns:
+        tuple: A tuple containing the PyQIR callable and the number of qubits the operation acts on.
+    """
     try:
         return PYQIR_ONE_QUBIT_OP_MAP[op_name], 1
     except KeyError:
@@ -124,6 +159,53 @@ def map_qasm_op_to_pyqir_callable(op_name: str):
         return PYQIR_THREE_QUBIT_OP_MAP[op_name], 3
     except KeyError as exc:
         raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}") from exc
+
+
+PYQIR_SELF_INVERTING_ONE_QUBIT_OP_SET = {"id", "h", "x", "y", "z"}
+PYQIR_ST_GATE_INV_MAP = {
+    "s": "sdg",
+    "t": "tdg",
+    "sdg": "s",
+    "tdg": "t",
+}
+PYQIR_ROTATION_INVERSION_ONE_QUBIT_OP_MAP = {"rx", "ry", "rz"}
+PYQIR_U_INV_ROTATION_MAP = {
+    "U": u3_inv_gate,
+    "u3": u3_inv_gate,
+    "U3": u3_inv_gate,
+    "U2": u2_inv_gate,
+    "u2": u2_inv_gate,
+}
+
+
+def map_qasm_inv_op_to_pyqir_callable(op_name: str):
+    """
+    Map a QASM operation to a PyQIR callable.
+
+    Args:
+        op_name (str): The QASM operation name.
+
+    Returns:
+        tuple: A tuple containing the PyQIR callable, the number of qubits the operation acts on,
+        and what is to be done with the basic gate which we are trying to invert.
+    """
+    if op_name in PYQIR_SELF_INVERTING_ONE_QUBIT_OP_SET:
+        return PYQIR_ONE_QUBIT_OP_MAP[op_name], 1, InversionOp.NO_OP
+    elif op_name in PYQIR_ST_GATE_INV_MAP:
+        inv_gate_name = PYQIR_ST_GATE_INV_MAP[op_name]
+        return PYQIR_ONE_QUBIT_OP_MAP[inv_gate_name], 1, InversionOp.NO_OP
+    elif op_name in PYQIR_TWO_QUBIT_OP_MAP:
+        return PYQIR_TWO_QUBIT_OP_MAP[op_name], 2, InversionOp.NO_OP
+    elif op_name in PYQIR_THREE_QUBIT_OP_MAP:
+        return PYQIR_THREE_QUBIT_OP_MAP[op_name], 3, InversionOp.NO_OP
+    elif op_name in PYQIR_U_INV_ROTATION_MAP:
+        # Special handling for U gate as it is composed of multiple
+        # basic gates and we need to invert each of them
+        return PYQIR_U_INV_ROTATION_MAP[op_name], 1, InversionOp.NO_OP
+    elif op_name in PYQIR_ROTATION_INVERSION_ONE_QUBIT_OP_MAP:
+        return PYQIR_ONE_QUBIT_ROTATION_MAP[op_name], 1, InversionOp.INVERT_ROTATION
+    else:
+        raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
 
 
 CONSTANTS_MAP = {
