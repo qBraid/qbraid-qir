@@ -55,6 +55,7 @@ jobs:
           path: dist
       - name: Install package wheel with extras
         run: |
+          pip install setuptools
           tools/install_wheel_extras.sh dist --extra qasm3 --extra cirq --extra test
       - name: Run tests with coverage
         run: |
