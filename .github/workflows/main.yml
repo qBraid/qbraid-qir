@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
 
     steps:
       - uses: actions/checkout@v3
@@ -55,6 +55,7 @@ jobs:
           path: dist
       - name: Install package wheel with extras
         run: |
+          pip install setuptools
           tools/install_wheel_extras.sh dist --extra qasm3 --extra cirq --extra test
       - name: Run tests with coverage
         run: |
