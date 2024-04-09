@@ -17,15 +17,15 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics"
 ]
 dependencies = ["pyqir~=0.10.0", "numpy"]
-requires-python = ">= 3.8"
+requires-python = ">= 3.9"
 
 [project.urls]
 Homepage = "https://github.com/qBraid/qbraid-qir"
