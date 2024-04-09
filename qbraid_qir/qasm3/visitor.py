@@ -41,6 +41,7 @@ from openqasm3.ast import (
     QuantumBarrier,
     QuantumGate,
     QuantumGateDefinition,
+    QuantumGateModifier,
     QuantumMeasurementStatement,
     QuantumReset,
     QubitDeclaration,
@@ -564,18 +565,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
         }
 
         gate_definition_ops = copy.deepcopy(gate_definition.body)
-        # if inverse:
-        #     gate_definition_ops.reverse()
+        if inverse:
+            gate_definition_ops.reverse()
 
         for gate_op in gate_definition_ops:
-            # problem which we face here is that
-            # we need to pass the inverse Modifier of the parent
-            # gate call down to its quantum ops inside the gate definition
-
-            # we can do that safely by calling the apply_gate op
-            # BUT if we have a modifier inside a gate definition, then?
-            # we need to handle that as well
-
             if gate_op.name.name == gate_name:
                 self._print_err_location(gate_op.span)
                 raise Qasm3ConversionError(
@@ -588,40 +581,48 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if isinstance(gate_op, QuantumGate):
                 self._transform_gate_params(gate_op_copy, param_map)
                 self._transform_gate_qubits(gate_op_copy, qubit_map)
+                # need to trickle the inverse down to the child!
+                if inverse:
+                    # span doesn't matter as we don't analyse it
+                    gate_op_copy.modifiers.append(QuantumGateModifier(GateModifierName.inv, None))
                 self._visit_generic_gate_operation(gate_op_copy)
             else:
                 # TODO: add control flow support
                 self._print_err_location(gate_op.span)
                 raise Qasm3ConversionError(f"Unsupported gate definition statement {gate_op}")
 
-    def _analyse_gate_modifiers(self, operation: QuantumGate) -> Tuple[Any, Any]:
-        """Analyse the modifiers of a gate operation.
+    def _collapse_gate_modifiers(self, operation: QuantumGate) -> Tuple[Any, Any]:
+        """Collapse the gate modifiers of a gate operation.
+            Some analysis is required to get this result.
+            Essentially, any power operation is multiplied and any inverse operation is toggled.
+            The placement of the inverse operation does not matter.
 
         Args:
-            operation (QuantumGate): The gate operation to analyse.
+            operation (QuantumGate): The gate operation to collapse modifiers for.
 
         Returns:
-            Tuple[Any, Any]: The modifier name and value.
+            Tuple[Any, Any]: The power and inverse values of the gate operation.
         """
-        if not len(operation.modifiers):
-            return (
-                None,
-                None,
-            )
-        # will need to change this also when we add support for multiple modifiers
-        if len(operation.modifiers) > 1:
-            self._print_err_location(operation.span)
-            raise Qasm3ConversionError("Multiple gate modifiers not supported yet")
+        power_value, inverse_value = 1, False
 
-        modifier = operation.modifiers[0]
-        modifier_name = modifier.modifier
-        modifier_value = modifier.argument.value if modifier.argument is not None else None
-        if modifier_name != GateModifierName.inv:
-            modifier_value = 1 if modifier_value is None else modifier_value
-        return (
-            modifier_name,
-            modifier_value,
-        )
+        for modifier in operation.modifiers:
+            modifier_name = modifier.modifier
+            if modifier_name == GateModifierName.pow and modifier.argument is not None:
+                current_power = self._evaluate_expression(modifier.argument)
+                if current_power < 0:
+                    self._print_err_location(operation.span)
+                    raise Qasm3ConversionError(
+                        f"Negative power value {current_power} not allowed in gate operation"
+                    )
+                power_value = power_value * current_power
+            elif modifier_name == GateModifierName.inv:
+                inverse_value = not inverse_value
+            elif modifier_name in [GateModifierName.ctrl, GateModifierName.negctrl]:
+                self._print_err_location(operation.span)
+                raise NotImplementedError(
+                    f"Controlled modifier gates not yet supported in gate operation"
+                )
+        return (power_value, inverse_value)
 
     def _apply_gate(self, operation: QuantumGate, inverse: bool = False):
         if operation.name.name in self._custom_gates:
@@ -639,18 +640,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
 
-        modifier_name, modifier_value = self._analyse_gate_modifiers(operation)
-        if modifier_name is None:
-            self._apply_gate(operation)
-        elif modifier_name == GateModifierName.pow:
-            for _ in range(modifier_value):
-                self._apply_gate(operation)
-        # TODO : custom gate inversion problem
-        elif modifier_name == GateModifierName.inv:
-            self._apply_gate(operation, inverse=True)
-        else:
-            self._print_err_location(operation.span)
-            raise NotImplementedError(f"Modifier {modifier_name} not supported at the moment")
+        # Power and Inverse only
+        power_value, inverse_value = self._collapse_gate_modifiers(operation)
+
+        # Applying the inverse first and then the power is same as
+        # apply the power first and then inverting the gate
+        for _ in range(power_value):
+            self._apply_gate(operation, inverse=inverse_value)
 
     def _visit_classical_operation(self, statement: ClassicalDeclaration) -> None:
         """Visit a classical operation element.

@@ -227,12 +227,12 @@ def test_pow_gate_modifier():
     OPENQASM 3;
     include "stdgates.inc";
     qubit q;
-    pow(4) @ h q;
+    inv @ pow(2) @ pow(4) @ h q;
     """
     result = qasm3_to_qir(qasm3_string)
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 1, 0)
-    check_single_qubit_gate_op(generated_qir, 4, [0, 0, 0, 0], "h")
+    check_single_qubit_gate_op(generated_qir, 8, [0] * 8, "h")
 
 
 def test_inv_gate_modifier():
@@ -267,7 +267,7 @@ def test_nested_gate_modifiers():
     gate custom p, q {
         pow(1) @ custom2 p, q;
     }
-    pow(2) @ custom q; 
+    inv @ pow(1) @ pow(2) @ custom q; 
     """
     )
     generated_qir = str(complex_qir).splitlines()
@@ -278,19 +278,10 @@ def test_nested_gate_modifiers():
 
 def test_unsupported_modifiers():
     # TO DO : add implementations, but till then we have tests
-    with pytest.raises(Qasm3ConversionError, match="Multiple gate modifiers not supported yet"):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-            qubit q;
-            pow(2) @ pow(2) @ h q;
-            """
-        )
     for modifier in ["ctrl", "negctrl"]:
         with pytest.raises(
             NotImplementedError,
-            match=rf"Modifier GateModifier.{modifier} not supported at the moment",
+            match=r"Controlled modifier gates not yet supported .*",
         ):
             _ = qasm3_to_qir(
                 f"""
