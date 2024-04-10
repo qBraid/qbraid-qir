@@ -610,11 +610,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if modifier_name == GateModifierName.pow and modifier.argument is not None:
                 current_power = self._evaluate_expression(modifier.argument)
                 if current_power < 0:
-                    self._print_err_location(operation.span)
-                    raise Qasm3ConversionError(
-                        f"Negative power value {current_power} not allowed in gate operation"
-                    )
-                power_value = power_value * current_power
+                    inverse_value = not inverse_value
+                power_value = power_value * abs(current_power)
             elif modifier_name == GateModifierName.inv:
                 inverse_value = not inverse_value
             elif modifier_name in [GateModifierName.ctrl, GateModifierName.negctrl]:
@@ -623,12 +620,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     f"Controlled modifier gates not yet supported in gate operation"
                 )
         return (power_value, inverse_value)
-
-    def _apply_gate(self, operation: QuantumGate, inverse: bool = False):
-        if operation.name.name in self._custom_gates:
-            self._visit_custom_gate_operation(operation, inverse)
-        else:
-            self._visit_basic_gate_operation(operation, inverse)
 
     def _visit_generic_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a gate operation element.
@@ -646,7 +637,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
         # Applying the inverse first and then the power is same as
         # apply the power first and then inverting the gate
         for _ in range(power_value):
-            self._apply_gate(operation, inverse=inverse_value)
+            if operation.name.name in self._custom_gates:
+                self._visit_custom_gate_operation(operation, inverse_value)
+            else:
+                self._visit_basic_gate_operation(operation, inverse_value)
 
     def _visit_classical_operation(self, statement: ClassicalDeclaration) -> None:
         """Visit a classical operation element.

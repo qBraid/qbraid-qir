@@ -228,11 +228,12 @@ def test_pow_gate_modifier():
     include "stdgates.inc";
     qubit q;
     inv @ pow(2) @ pow(4) @ h q;
+    pow(-2) @ h q;
     """
     result = qasm3_to_qir(qasm3_string)
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 1, 0)
-    check_single_qubit_gate_op(generated_qir, 8, [0] * 8, "h")
+    check_single_qubit_gate_op(generated_qir, 10, [0] * 10, "h")
 
 
 def test_inv_gate_modifier():
@@ -243,14 +244,22 @@ def test_inv_gate_modifier():
     inv @ h q;
     inv @ y q;
     inv @ rx(0.5) q;
-    inv @ U(0.5, 0.5, 0.5) q;
+    inv @ s q;
+
+    qubit[2] q2;
+    inv @ cx q2;
+    inv @ ccx q[0], q2;
+    inv @ u2(0.5, 0.5) q2[0];
     """
     result = qasm3_to_qir(qasm3_string)
     generated_qir = str(result).splitlines()
-    check_attributes(generated_qir, 1, 0)
+    check_attributes(generated_qir, 3, 0)
     check_single_qubit_gate_op(generated_qir, 1, [0], "h")
     check_single_qubit_gate_op(generated_qir, 1, [0], "y")
     check_single_qubit_rotation_op(generated_qir, 1, [0], [-0.5], "rx")
+    check_single_qubit_gate_op(generated_qir, 1, [0], "sdg")
+    check_two_qubit_gate_op(generated_qir, 1, [[1, 2]], "cx")
+    check_three_qubit_gate_op(generated_qir, 1, [[0, 1, 2]], "ccx")
 
 
 def test_nested_gate_modifiers():
@@ -267,13 +276,14 @@ def test_nested_gate_modifiers():
     gate custom p, q {
         pow(1) @ custom2 p, q;
     }
-    inv @ pow(1) @ pow(2) @ custom q; 
+    pow(1) @ inv @ pow(2) @ custom q; 
+    pow(-1) @ custom q;
     """
     )
     generated_qir = str(complex_qir).splitlines()
     check_attributes(generated_qir, 2, 0)
-    check_single_qubit_gate_op(generated_qir, 2, [0, 0], "y")
-    check_single_qubit_gate_op(generated_qir, 2, [1, 1], "z")
+    check_single_qubit_gate_op(generated_qir, 2, [0, 0, 0], "y")
+    check_single_qubit_gate_op(generated_qir, 2, [1, 1, 1], "z")
 
 
 def test_unsupported_modifiers():
@@ -347,6 +357,7 @@ def test_incorrect_custom_ops():
             custom_gate(0.5, 0.5) q1;  // qubit count mismatch
             """
         )
+
     # 4. Argument indexing in gate definition
     with pytest.raises(Qasm3ConversionError, match=r"Indexing .* not supported in gate definition"):
         _ = qasm3_to_qir(
@@ -361,5 +372,21 @@ def test_incorrect_custom_ops():
 
             qubit[2] q1;
             custom_gate(0.5, 0.5) q1;  // indexing not supported
+            """
+        )
+
+    # 5. Recursive gate definition
+    with pytest.raises(Qasm3ConversionError, match=r"Recursive definitions not allowed .*"):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3;
+            include "stdgates.inc";
+
+            gate custom_gate(a,b) p, q{
+                custom_gate(a,b) p, q;
+            }
+
+            qubit[2] q1;
+            custom_gate(0.5, 0.5) q1;  // recursive definition
             """
         )
