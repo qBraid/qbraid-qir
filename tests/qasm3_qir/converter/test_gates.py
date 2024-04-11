@@ -16,6 +16,8 @@ import pytest
 
 from qbraid_qir.qasm3 import Qasm3ConversionError, qasm3_to_qir
 from tests.qasm3_qir.fixtures.gates import (
+    CUSTOM_GATE_INCORRECT_TESTS,
+    SINGLE_QUBIT_GATE_INCORRECT_TESTS,
     custom_op_tests,
     double_op_tests,
     rotation_tests,
@@ -128,85 +130,11 @@ def test_qasm_u2_gates():
     check_single_qubit_rotation_op(generated_qir, 1, [0], [0.5, 0.5], "u2")
 
 
-def test_incorrect_single_qubit_gates():
-    # Test for undeclared register q2
-    with pytest.raises(Qasm3ConversionError, match=r"Missing register declaration for q2 .*"):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            qubit[2] q1;
-            h q2;  // undeclared register
-            """
-        )
-
-    # Test for unsupported gate : TO DO
-
-    # one qubit
-    with pytest.raises(
-        Qasm3ConversionError, match=r"Unsupported / undeclared QASM operation: u_abc"
-    ):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            qubit[2] q1;
-            u_abc(0.5, 0.5, 0.5) q1;  // unsupported gate
-            """
-        )
-    # two qubits
-    with pytest.raises(
-        Qasm3ConversionError, match=r"Unsupported / undeclared QASM operation: u_abc"
-    ):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            qubit[2] q1;
-            u_abc(0.5, 0.5, 0.5) q1[0], q1[1];  // unsupported gate
-            """
-        )
-    # three qubits
-    with pytest.raises(
-        Qasm3ConversionError, match=r"Unsupported / undeclared QASM operation: u_abc"
-    ):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            qubit[3] q1;
-            u_abc(0.5, 0.5, 0.5) q1[0], q1[1], q1[2];  // unsupported gate
-            """
-        )
-
-    # Invalid application of gate according to register size
-    with pytest.raises(Qasm3ConversionError, match=r"Invalid number of qubits 3 for operation .*"):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            qubit[3] q1;
-            cx q1;  // invalid application of gate, as we apply it to 3 qubits in blocks of 2
-            """
-        )
-
-    # Invalid use of variables in gate application
-
-    with pytest.raises(Qasm3ConversionError, match=r"Undefined identifier a in.*"):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            qubit[2] q1;
-            rx(a) q1; // unsupported parameter type
-            """
-        )
+@pytest.mark.parametrize("test_name", SINGLE_QUBIT_GATE_INCORRECT_TESTS.keys())
+def test_incorrect_single_qubit_gates(test_name):
+    qasm_input, error_message = SINGLE_QUBIT_GATE_INCORRECT_TESTS[test_name]
+    with pytest.raises(Qasm3ConversionError, match=error_message):
+        _ = qasm3_to_qir(qasm_input)
 
 
 @pytest.mark.parametrize("test_name", custom_op_tests)
@@ -303,90 +231,8 @@ def test_unsupported_modifiers():
             )
 
 
-def test_incorrect_custom_ops():
-    #  1. Undeclared gate application
-    with pytest.raises(
-        Qasm3ConversionError, match=r"Unsupported / undeclared QASM operation: custom_gate"
-    ):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            qubit[2] q1;
-            custom_gate q1;  // undeclared gate
-            """
-        )
-
-    # 2. Parameter mismatch
-    with pytest.raises(
-        Qasm3ConversionError,
-        match=r"Parameter count mismatch for gate custom_gate. Expected 2 but got 1 .*",
-    ):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            gate custom_gate(a,b) p, q{
-                rx(a) p;
-                ry(b) q;
-            }
-
-            qubit[2] q1;
-            custom_gate(0.5) q1;  // parameter count mismatch
-            """
-        )
-
-    # 3. Qubit count mismatch
-    with pytest.raises(
-        Qasm3ConversionError,
-        match=r"Qubit count mismatch for gate custom_gate. Expected 2 but got 3 .*",
-    ):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            gate custom_gate(a,b) p, q{
-                rx(a) p;
-                ry(b) q;
-            }
-
-            qubit[3] q1;
-            custom_gate(0.5, 0.5) q1;  // qubit count mismatch
-            """
-        )
-
-    # 4. Argument indexing in gate definition
-    with pytest.raises(Qasm3ConversionError, match=r"Indexing .* not supported in gate definition"):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            gate custom_gate(a,b) p, q{
-                rx(a) p;
-                ry(b) q[0];
-            }
-
-            qubit[2] q1;
-            custom_gate(0.5, 0.5) q1;  // indexing not supported
-            """
-        )
-
-    # 5. Recursive gate definition
-    with pytest.raises(Qasm3ConversionError, match=r"Recursive definitions not allowed .*"):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3;
-            include "stdgates.inc";
-
-            gate custom_gate(a,b) p, q{
-                custom_gate(a,b) p, q;
-            }
-
-            qubit[2] q1;
-            custom_gate(0.5, 0.5) q1;  // recursive definition
-            """
-        )
+@pytest.mark.parametrize("test_name", CUSTOM_GATE_INCORRECT_TESTS.keys())
+def test_incorrect_custom_ops(test_name):
+    qasm_input, error_message = CUSTOM_GATE_INCORRECT_TESTS[test_name]
+    with pytest.raises(Qasm3ConversionError, match=error_message):
+        _ = qasm3_to_qir(qasm_input)
