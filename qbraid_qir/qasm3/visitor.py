@@ -30,6 +30,7 @@ from openqasm3.ast import (
     ClassicalDeclaration,
     DurationLiteral,
     FloatLiteral,
+    GateModifierName,
     Identifier,
     ImaginaryLiteral,
     Include,
@@ -40,6 +41,7 @@ from openqasm3.ast import (
     QuantumBarrier,
     QuantumGate,
     QuantumGateDefinition,
+    QuantumGateModifier,
     QuantumMeasurementStatement,
     QuantumReset,
     QubitDeclaration,
@@ -53,9 +55,14 @@ from pyqir import BasicBlock, Builder, Constant
 from pyqir import IntType as qirIntType
 from pyqir import PointerType
 
-from .elements import Context, Qasm3Module, Scope
+from .elements import Context, InversionOp, Qasm3Module, Scope
 from .exceptions import Qasm3ConversionError
-from .oq3_maps import map_qasm_op_to_pyqir_callable, qasm3_constants_map, qasm3_expression_op_map
+from .oq3_maps import (
+    map_qasm_inv_op_to_pyqir_callable,
+    map_qasm_op_to_pyqir_callable,
+    qasm3_constants_map,
+    qasm3_expression_op_map,
+)
 
 _log = logging.getLogger(name=__name__)
 
@@ -432,20 +439,40 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise Qasm3ConversionError(f"Duplicate gate definition for {gate_name}")
         self._custom_gates[gate_name] = definition
 
-    def _visit_basic_gate_operation(self, operation: QuantumGate) -> None:
+    def _visit_basic_gate_operation(self, operation: QuantumGate, inverse: bool = False) -> None:
         """Visit a gate operation element.
 
         Args:
             operation (QuantumGate): The gate operation to visit.
+            inverse (bool): Whether the operation is an inverse operation. Defaults to False.
+
+                          - if inverse is True, we apply check for different cases in the
+                            map_qasm_inv_op_to_pyqir_callable method.
+
+                          - Only rotation and S / T gates are affected by this inversion. For S/T
+                            gates we map them to Sdg / Tdg and vice versa.
+
+                          - For rotation gates, we map to the same gates but invert the rotation
+                            angles.
 
         Returns:
             None
+
+        Raises:
+            Qasm3ConversionError: If the number of qubits is invalid.
+
         """
 
         _log.debug("Visiting basic gate operation '%s'", str(operation))
         op_name: str = operation.name.name
         op_qubits = self._get_op_qubits(operation)
-        qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
+        inverse_action = None
+        if not inverse:
+            qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
+        else:
+            # in basic gates, inverse action only affects the rotation gates
+            qir_func, op_qubit_count, inverse_action = map_qasm_inv_op_to_pyqir_callable(op_name)
+
         op_parameters = None
 
         if len(op_qubits) % op_qubit_count != 0:
@@ -456,16 +483,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         if self._is_parametric_gate(operation):
             op_parameters = self._get_op_parameters(operation)
+            if inverse_action == InversionOp.INVERT_ROTATION:
+                op_parameters = [-1 * param for param in op_parameters]
 
-        if op_parameters is not None:
-            for i in range(0, len(op_qubits), op_qubit_count):
-                qubit_subset = op_qubits[i : i + op_qubit_count]
+        for i in range(0, len(op_qubits), op_qubit_count):
+            # we apply the gate on the qubit subset linearly
+            qubit_subset = op_qubits[i : i + op_qubit_count]
+            if op_parameters is not None:
                 qir_func(self._builder, *op_parameters, *qubit_subset)
-        else:
-            # we have a linear application of the gate
-            # first act on the first op_qubit_count qubits, then the next op_qubit_count and so on
-            for i in range(0, len(op_qubits), op_qubit_count):
-                qubit_subset = op_qubits[i : i + op_qubit_count]
+            else:
                 qir_func(self._builder, *qubit_subset)
 
     def _transform_gate_qubits(self, gate_op: QuantumGate, qubit_map: dict) -> None:
@@ -502,11 +528,34 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 gate_op.arguments[i] = param_map[param.name]
             # TODO : update the arg value in expressions not just SINGLE identifiers
 
-    def _visit_custom_gate_operation(self, operation: QuantumGate) -> None:
+    def _validate_gate_call(
+        self, operation: QuantumGate, gate_definition: QuantumGateDefinition, qubits_in_op
+    ) -> None:
+        if len(operation.arguments) != len(gate_definition.arguments):
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError(
+                f"""Parameter count mismatch for gate {operation.name.name}. Expected \
+{len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"""
+            )
+
+        if qubits_in_op != len(gate_definition.qubits):
+            self._print_err_location(operation.span)
+            raise Qasm3ConversionError(
+                f"""Qubit count mismatch for gate {operation.name.name}. Expected \
+{len(gate_definition.qubits)} but got {qubits_in_op} in operation"""
+            )
+
+    def _visit_custom_gate_operation(self, operation: QuantumGate, inverse: bool = False) -> None:
         """Visit a custom gate operation element recursively.
 
         Args:
             operation (QuantumGate): The gate operation to visit.
+            inverse (bool): Whether the operation is an inverse operation. Defaults to False.
+
+                            If True, the gate operation is applied in reverse order and the
+                            inverse modifier is appended to each gate call.
+                            See https://openqasm.com/language/gates.html#inverse-modifier
+                            for more clarity.
 
         Returns:
             None
@@ -514,23 +563,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
         _log.debug("Visiting custom gate operation '%s'", str(operation))
         gate_name: str = operation.name.name
         gate_definition: QuantumGateDefinition = self._custom_gates[gate_name]
-
-        if len(operation.arguments) != len(gate_definition.arguments):
-            self._print_err_location(operation.span)
-            raise Qasm3ConversionError(
-                f"""Parameter count mismatch for gate {gate_name}. Expected \
-{len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"""
-            )
-
         op_qubits = self._get_op_qubits(operation, qir_form=False)
 
-        if len(op_qubits) != len(gate_definition.qubits):
-            self._print_err_location(operation.span)
-            raise Qasm3ConversionError(
-                f"""Qubit count mismatch for gate {gate_name}. Expected \
-{len(gate_definition.qubits)} but got {len(op_qubits)} in operation"""
-            )
-
+        self._validate_gate_call(operation, gate_definition, len(op_qubits))
         # we need this because the gates applied inside a gate definition use the
         # VARIABLE names and not the qubits
 
@@ -544,18 +579,63 @@ class BasicQasmVisitor(ProgramElementVisitor):
             formal_arg.name: actual_arg
             for formal_arg, actual_arg in zip(gate_definition.arguments, operation.arguments)
         }
-        for gate_op in gate_definition.body:
+
+        gate_definition_ops = copy.deepcopy(gate_definition.body)
+        if inverse:
+            gate_definition_ops.reverse()
+
+        for gate_op in gate_definition_ops:
+            if gate_op.name.name == gate_name:
+                self._print_err_location(gate_op.span)
+                raise Qasm3ConversionError(
+                    f"Recursive definitions not allowed for gate {gate_name}"
+                )
+
             # necessary to avoid modifying the original gate definition
             # in case the gate is reapplied
             gate_op_copy = copy.deepcopy(gate_op)
             if isinstance(gate_op, QuantumGate):
                 self._transform_gate_params(gate_op_copy, param_map)
                 self._transform_gate_qubits(gate_op_copy, qubit_map)
+                # need to trickle the inverse down to the child!
+                if inverse:
+                    # span doesn't matter as we don't analyse it
+                    gate_op_copy.modifiers.append(QuantumGateModifier(GateModifierName.inv, None))
                 self._visit_generic_gate_operation(gate_op_copy)
             else:
                 # TODO: add control flow support
                 self._print_err_location(gate_op.span)
                 raise Qasm3ConversionError(f"Unsupported gate definition statement {gate_op}")
+
+    def _collapse_gate_modifiers(self, operation: QuantumGate) -> Tuple[Any, Any]:
+        """Collapse the gate modifiers of a gate operation.
+           Some analysis is required to get this result.
+           The basic idea is that any power operation is multiplied and inversions are toggled.
+           The placement of the inverse operation does not matter.
+
+        Args:
+            operation (QuantumGate): The gate operation to collapse modifiers for.
+
+        Returns:
+            Tuple[Any, Any]: The power and inverse values of the gate operation.
+        """
+        power_value, inverse_value = 1, False
+
+        for modifier in operation.modifiers:
+            modifier_name = modifier.modifier
+            if modifier_name == GateModifierName.pow and modifier.argument is not None:
+                current_power = self._evaluate_expression(modifier.argument)
+                if current_power < 0:
+                    inverse_value = not inverse_value
+                power_value = power_value * abs(current_power)
+            elif modifier_name == GateModifierName.inv:
+                inverse_value = not inverse_value
+            elif modifier_name in [GateModifierName.ctrl, GateModifierName.negctrl]:
+                self._print_err_location(operation.span)
+                raise NotImplementedError(
+                    "Controlled modifier gates not yet supported in gate operation"
+                )
+        return (power_value, inverse_value)
 
     def _visit_generic_gate_operation(self, operation: QuantumGate) -> None:
         """Visit a gate operation element.
@@ -566,10 +646,16 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        if operation.name.name in self._custom_gates:
-            self._visit_custom_gate_operation(operation)
-        else:
-            self._visit_basic_gate_operation(operation)
+
+        power_value, inverse_value = self._collapse_gate_modifiers(operation)
+
+        # Applying the inverse first and then the power is same as
+        # apply the power first and then inverting the gate
+        for _ in range(power_value):
+            if operation.name.name in self._custom_gates:
+                self._visit_custom_gate_operation(operation, inverse_value)
+            else:
+                self._visit_basic_gate_operation(operation, inverse_value)
 
     def _visit_classical_operation(self, statement: ClassicalDeclaration) -> None:
         """Visit a classical operation element.
@@ -618,21 +704,16 @@ class BasicQasmVisitor(ProgramElementVisitor):
             return expression.value
         if isinstance(expression, UnaryExpression):
             op = expression.op.name
-            if op == "!":
-                return not self._evaluate_expression(expression.expression)
             if op == "-":
-                return -1 * self._evaluate_expression(expression.expression)
+                op = "UMINUS"
+            operand = self._evaluate_expression(expression.expression)
             if op == "~":
-                value = self._evaluate_expression(expression.expression)
-                if not isinstance(value, int):
+                if not isinstance(operand, int):
                     self._print_err_location(expression.span)
                     raise Qasm3ConversionError(
-                        f"Unsupported expression type {type(value)} in ~ operation"
+                        f"Unsupported expression type {type(operand)} in ~ operation"
                     )
-                return ~value
-            raise Qasm3ConversionError(
-                f"Unsupported UnaryExpression operation: {op}. Expected one of ['!', '-', '~']"
-            )
+            return qasm3_expression_op_map(op, operand)
         if isinstance(expression, BinaryExpression):
             lhs = self._evaluate_expression(expression.lhs)
             op = expression.op.name

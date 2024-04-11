@@ -55,6 +55,11 @@ class Context(Enum):
     LOOP = "loop"
 
 
+class InversionOp(Enum):
+    NO_OP = 1
+    INVERT_ROTATION = 2
+
+
 class _ProgramElement(metaclass=ABCMeta):
     @classmethod
     def from_element_list(cls, elements):

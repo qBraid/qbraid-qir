@@ -169,3 +169,140 @@ rotation_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_ROTATION_MAP if "u" 
 double_op_tests = [_fixture_name(s) for s in PYQIR_TWO_QUBIT_OP_MAP]
 triple_op_tests = [_fixture_name(s) for s in PYQIR_THREE_QUBIT_OP_MAP]
 custom_op_tests = [_fixture_name(s) for s in CUSTOM_OPS]
+
+# qasm_input, expected_error
+SINGLE_QUBIT_GATE_INCORRECT_TESTS = {
+    "missing_register": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        qubit[2] q1;
+        h q2;  // undeclared register
+        """,
+        "Missing register declaration for q2 .*",
+    ),
+    "undeclared_1qubit_op": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        qubit[2] q1;
+        u_abc(0.5, 0.5, 0.5) q1;  // unsupported gate
+        """,
+        "Unsupported / undeclared QASM operation: u_abc",
+    ),
+    "undeclared_1qubit_op_with_indexing": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        qubit[2] q1;
+        u_abc(0.5, 0.5, 0.5) q1[0], q1[1];  // unsupported gate
+        """,
+        "Unsupported / undeclared QASM operation: u_abc",
+    ),
+    "undeclared_3qubit_op": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        qubit[3] q1;
+        u_abc(0.5, 0.5, 0.5) q1[0], q1[1], q1[2];  // unsupported gate
+        """,
+        "Unsupported / undeclared QASM operation: u_abc",
+    ),
+    "invalid_gate_application": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        qubit[3] q1;
+        cx q1;  // invalid application of gate, as we apply it to 3 qubits in blocks of 2
+        """,
+        "Invalid number of qubits 3 for operation .*",
+    ),
+    "unsupported_parameter_type": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        qubit[2] q1;
+        rx(a) q1; // unsupported parameter type
+        """,
+        "Undefined identifier a in.*",
+    ),
+}
+
+# qasm_input, expected_error
+CUSTOM_GATE_INCORRECT_TESTS = {
+    "undeclared_custom": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        qubit[2] q1;
+        custom_gate q1;  // undeclared gate
+        """,
+        "Unsupported / undeclared QASM operation: custom_gate",
+    ),
+    "parameter_mismatch": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        gate custom_gate(a,b) p, q{
+            rx(a) p;
+            ry(b) q;
+        }
+
+        qubit[2] q1;
+        custom_gate(0.5) q1;  // parameter count mismatch
+        """,
+        "Parameter count mismatch for gate custom_gate. Expected 2 but got 1 .*",
+    ),
+    "qubit_mismatch": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        gate custom_gate(a,b) p, q{
+            rx(a) p;
+            ry(b) q;
+        }
+
+        qubit[3] q1;
+        custom_gate(0.5, 0.5) q1;  // qubit count mismatch
+        """,
+        "Qubit count mismatch for gate custom_gate. Expected 2 but got 3 .*",
+    ),
+    "indexing_not_supported": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        gate custom_gate(a,b) p, q{
+            rx(a) p;
+            ry(b) q[0];
+        }
+
+        qubit[2] q1;
+        custom_gate(0.5, 0.5) q1;  // indexing not supported
+        """,
+        "Indexing .* not supported in gate definition",
+    ),
+    "recursive_definition": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        gate custom_gate(a,b) p, q{
+            custom_gate(a,b) p, q;
+        }
+
+        qubit[2] q1;
+        custom_gate(0.5, 0.5) q1;  // recursive definition
+        """,
+        "Recursive definitions not allowed .*",
+    ),
+}
