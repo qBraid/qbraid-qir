@@ -12,7 +12,8 @@
 Module mapping supported QASM gates/operations to pyqir functions.
 
 """
-from enum import Enum
+
+from typing import Union
 
 import pyqir
 
@@ -38,23 +39,27 @@ OPERATOR_MAP = {
     "|": lambda x, y: x | y,
     "<<": lambda x, y: x << y,
     ">>": lambda x, y: x >> y,
+    "~": lambda x: ~x,
+    "!": lambda x: not x,
+    "UMINUS": lambda x: -x,
 }
 
 
-def qasm3_expression_op_map(op_name: str, left, right):
+def qasm3_expression_op_map(op_name: str, *args):
     """
     Return the result of applying the given operator to the given operands.
 
     Args:
         op_name (str): The operator name.
-        left: The left operand.
-        right: The right operand.
+        *args: The operands of type Union[int, float, bool]
+                1. For unary operators, a single operand (e.g., ~3)
+                2. For binary operators, two operands (e.g., 3 + 2)
 
     Returns:
-        The result of applying the operator to the operands.
+        (Union[float, int, bool]): The result of applying the operator to the operands.
     """
     try:
-        return OPERATOR_MAP[op_name](left, right)
+        return OPERATOR_MAP[op_name](*args)
     except KeyError as exc:
         raise Qasm3ConversionError(f"Unsupported / undeclared QASM operator: {op_name}") from exc
 
@@ -64,10 +69,24 @@ def id_gate(builder, qubits):
     pyqir._native.x(builder, qubits)
 
 
-# Reference -
-# https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.UGate
-# https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.PhaseGate
-def u3_gate(builder, theta, phi, lam, qubits):
+def u3_gate(
+    builder, theta: Union[int, float], phi: Union[int, float], lam: Union[int, float], qubits
+):
+    """
+    Implements the U3 gate using the following decomposition:
+         https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.UGate
+         https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.PhaseGate
+
+    Args:
+        builder (pyqir._native.QirBuilder): The QIR builder.
+        theta (Union[int, float]): The theta angle.
+        phi (Union[int, float]): The phi angle.
+        lam (Union[int, float]): The lambda angle.
+        qubits: The qubits on which the gate is applied.
+
+    Returns:
+        None
+    """
     pyqir._native.rz(builder, lam, qubits)
     pyqir._native.rx(builder, CONSTANTS_MAP["pi"] / 2, qubits)
     pyqir._native.rz(builder, theta + CONSTANTS_MAP["pi"], qubits)
@@ -76,8 +95,13 @@ def u3_gate(builder, theta, phi, lam, qubits):
     # global phase - e^(i*(phi+lambda)/2) is missing in the above implementation
 
 
-def u3_inv_gate(builder, theta, phi, lam, qubits):
-    # reverse order of operations with negative angles
+def u3_inv_gate(
+    builder, theta: Union[int, float], phi: Union[int, float], lam: Union[int, float], qubits
+):
+    """
+    Implements the inverse of the U3 gate using the decomposition present in
+    the u3_gate function.
+    """
     pyqir._native.rz(builder, -1.0 * (phi + CONSTANTS_MAP["pi"]), qubits)
     pyqir._native.rx(builder, -1.0 * (CONSTANTS_MAP["pi"] / 2), qubits)
     pyqir._native.rz(builder, -1.0 * (theta + CONSTANTS_MAP["pi"]), qubits)
@@ -85,13 +109,19 @@ def u3_inv_gate(builder, theta, phi, lam, qubits):
     pyqir._native.rz(builder, -1.0 * lam, qubits)
 
 
-# Reference -
-# https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.U2Gate
 def u2_gate(builder, phi, lam, qubits):
+    """
+    Implements the U2 gate using the following decomposition:
+        https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.U2Gate
+    """
     u3_gate(builder, CONSTANTS_MAP["pi"] / 2, phi, lam, qubits)
 
 
 def u2_inv_gate(builder, phi, lam, qubits):
+    """
+    Implements the inverse of the U2 gate using the decomposition present in
+    the u2_gate function.
+    """
     u3_inv_gate(builder, CONSTANTS_MAP["pi"] / 2, phi, lam, qubits)
 
 
@@ -191,21 +221,20 @@ def map_qasm_inv_op_to_pyqir_callable(op_name: str):
     """
     if op_name in PYQIR_SELF_INVERTING_ONE_QUBIT_OP_SET:
         return PYQIR_ONE_QUBIT_OP_MAP[op_name], 1, InversionOp.NO_OP
-    elif op_name in PYQIR_ST_GATE_INV_MAP:
+    if op_name in PYQIR_ST_GATE_INV_MAP:
         inv_gate_name = PYQIR_ST_GATE_INV_MAP[op_name]
         return PYQIR_ONE_QUBIT_OP_MAP[inv_gate_name], 1, InversionOp.NO_OP
-    elif op_name in PYQIR_TWO_QUBIT_OP_MAP:
+    if op_name in PYQIR_TWO_QUBIT_OP_MAP:
         return PYQIR_TWO_QUBIT_OP_MAP[op_name], 2, InversionOp.NO_OP
-    elif op_name in PYQIR_THREE_QUBIT_OP_MAP:
+    if op_name in PYQIR_THREE_QUBIT_OP_MAP:
         return PYQIR_THREE_QUBIT_OP_MAP[op_name], 3, InversionOp.NO_OP
-    elif op_name in PYQIR_U_INV_ROTATION_MAP:
+    if op_name in PYQIR_U_INV_ROTATION_MAP:
         # Special handling for U gate as it is composed of multiple
         # basic gates and we need to invert each of them
         return PYQIR_U_INV_ROTATION_MAP[op_name], 1, InversionOp.NO_OP
-    elif op_name in PYQIR_ROTATION_INVERSION_ONE_QUBIT_OP_MAP:
+    if op_name in PYQIR_ROTATION_INVERSION_ONE_QUBIT_OP_MAP:
         return PYQIR_ONE_QUBIT_ROTATION_MAP[op_name], 1, InversionOp.INVERT_ROTATION
-    else:
-        raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
+    raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
 
 
 CONSTANTS_MAP = {

@@ -444,9 +444,23 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         Args:
             operation (QuantumGate): The gate operation to visit.
+            inverse (bool): Whether the operation is an inverse operation. Defaults to False.
+
+                          - if inverse is True, we apply check for different cases in the
+                            map_qasm_inv_op_to_pyqir_callable method.
+
+                          - Only rotation and S / T gates are affected by this inversion. For S/T
+                            gates we map them to Sdg / Tdg and vice versa.
+
+                          - For rotation gates, we map to the same gates but invert the rotation
+                            angles.
 
         Returns:
             None
+
+        Raises:
+            Qasm3ConversionError: If the number of qubits is invalid.
+
         """
 
         _log.debug("Visiting basic gate operation '%s'", str(operation))
@@ -470,18 +484,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if self._is_parametric_gate(operation):
             op_parameters = self._get_op_parameters(operation)
             if inverse_action == InversionOp.INVERT_ROTATION:
-                # we need to invert the rotation gates
                 op_parameters = [-1 * param for param in op_parameters]
 
-        if op_parameters is not None:
-            for i in range(0, len(op_qubits), op_qubit_count):
-                qubit_subset = op_qubits[i : i + op_qubit_count]
+        for i in range(0, len(op_qubits), op_qubit_count):
+            # we apply the gate on the qubit subset linearly
+            qubit_subset = op_qubits[i : i + op_qubit_count]
+            if op_parameters is not None:
                 qir_func(self._builder, *op_parameters, *qubit_subset)
-        else:
-            # we have a linear application of the gate
-            # first act on the first op_qubit_count qubits, then the next op_qubit_count and so on
-            for i in range(0, len(op_qubits), op_qubit_count):
-                qubit_subset = op_qubits[i : i + op_qubit_count]
+            else:
                 qir_func(self._builder, *qubit_subset)
 
     def _transform_gate_qubits(self, gate_op: QuantumGate, qubit_map: dict) -> None:
@@ -540,6 +550,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         Args:
             operation (QuantumGate): The gate operation to visit.
+            inverse (bool): Whether the operation is an inverse operation. Defaults to False.
+
+                            If True, the gate operation is applied in reverse order and the
+                            inverse modifier is appended to each gate call.
+                            See https://openqasm.com/language/gates.html#inverse-modifier
+                            for more clarity.
 
         Returns:
             None
@@ -593,9 +609,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
     def _collapse_gate_modifiers(self, operation: QuantumGate) -> Tuple[Any, Any]:
         """Collapse the gate modifiers of a gate operation.
-            Some analysis is required to get this result.
-            Essentially, any power operation is multiplied and any inverse operation is toggled.
-            The placement of the inverse operation does not matter.
+           Some analysis is required to get this result.
+           The basic idea is that any power operation is multiplied and inversions are toggled.
+           The placement of the inverse operation does not matter.
 
         Args:
             operation (QuantumGate): The gate operation to collapse modifiers for.
@@ -617,7 +633,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             elif modifier_name in [GateModifierName.ctrl, GateModifierName.negctrl]:
                 self._print_err_location(operation.span)
                 raise NotImplementedError(
-                    f"Controlled modifier gates not yet supported in gate operation"
+                    "Controlled modifier gates not yet supported in gate operation"
                 )
         return (power_value, inverse_value)
 
@@ -631,7 +647,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
 
-        # Power and Inverse only
         power_value, inverse_value = self._collapse_gate_modifiers(operation)
 
         # Applying the inverse first and then the power is same as
@@ -689,21 +704,16 @@ class BasicQasmVisitor(ProgramElementVisitor):
             return expression.value
         if isinstance(expression, UnaryExpression):
             op = expression.op.name
-            if op == "!":
-                return not self._evaluate_expression(expression.expression)
             if op == "-":
-                return -1 * self._evaluate_expression(expression.expression)
+                op = "UMINUS"
+            operand = self._evaluate_expression(expression.expression)
             if op == "~":
-                value = self._evaluate_expression(expression.expression)
-                if not isinstance(value, int):
+                if not isinstance(operand, int):
                     self._print_err_location(expression.span)
                     raise Qasm3ConversionError(
-                        f"Unsupported expression type {type(value)} in ~ operation"
+                        f"Unsupported expression type {type(operand)} in ~ operation"
                     )
-                return ~value
-            raise Qasm3ConversionError(
-                f"Unsupported UnaryExpression operation: {op}. Expected one of ['!', '-', '~']"
-            )
+            return qasm3_expression_op_map(op, operand)
         if isinstance(expression, BinaryExpression):
             lhs = self._evaluate_expression(expression.lhs)
             op = expression.op.name
