@@ -140,6 +140,8 @@ module = qasm3_to_qir(program, name="my-program")
 ir = str(module)
 ```
 
+[Currently Supported Operations](https://docs.google.com/spreadsheets/d/1Jgo2_usAnCmV5OLK1RvaGzd7vdjKZKxoBvlTI3g1_lE/edit?usp=sharing)
+
 ### Add QIR node to qBraid conversion graph
 
 ```python
