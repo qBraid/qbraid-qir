@@ -243,7 +243,3 @@ CONSTANTS_MAP = {
     "e": 2.718281828459045,
     "tau": 6.283185307179586,
 }
-
-
-def qasm3_constants_map(constant_name: str):
-    return CONSTANTS_MAP[constant_name]

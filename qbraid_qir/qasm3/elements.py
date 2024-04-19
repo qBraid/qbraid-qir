@@ -33,17 +33,6 @@ def generate_module_id() -> str:
     return f"program-{generated_id}"
 
 
-class Scope(Enum):
-    """
-    Enum for the different scopes in QIR.
-
-    """
-
-    GLOBAL = "global"
-    GATE = "gate"
-    FUNCTION = "function"
-
-
 class Context(Enum):
     """
     Enum for the different contexts in QIR.
@@ -58,6 +47,29 @@ class Context(Enum):
 class InversionOp(Enum):
     NO_OP = 1
     INVERT_ROTATION = 2
+
+
+class Variable:
+    """
+    Class representing an openqasm variable.
+
+    Args:
+        name (str): Name of the variable.
+        base_type (Any): Base type of the variable.
+        base_size (int): Base size of the variable.
+        dims (List[int]): Dimensions of the variable.
+        value (Optional[Union[int, float]]): Value of the variable.
+        is_constant (bool): Flag indicating if the variable is constant.
+
+    """
+
+    def __init__(self, name, base_type, base_size, dims, value, is_constant=False):
+        self.name = name
+        self.base_type = base_type
+        self.base_size = base_size
+        self.dims = dims
+        self.value = value
+        self.is_constant = is_constant
 
 
 class _ProgramElement(metaclass=ABCMeta):
