@@ -12,11 +12,13 @@
 Module defining Qasm3 Visitor.
 
 """
-# pylint: disable=too-many-instance-attributes
 import copy
 import logging
 import sys
 from abc import ABCMeta, abstractmethod
+
+# pylint: disable=too-many-instance-attributes
+from collections import deque
 from typing import Any, List, Optional, Tuple, Union
 
 import pyqir
@@ -97,7 +99,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._module = None
         self._builder = None
         self._entry_point = None
-        self._scope = [{}]
+        self._scope = deque([{}])
         self._context = Context.GLOBAL
         self._qubit_labels = {}
         self._clbit_labels = {}
@@ -143,25 +145,34 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._scope.append(scope)
 
     def _pop_scope(self) -> None:
-        assert len(self._scope) >= 1
-        self._scope.pop()
+        if len(self._scope) > 0:
+            self._scope.pop()
+
+        raise IndexError("Scope list is empty, can not pop")
 
     def _get_scope(self) -> dict:
-        assert len(self._scope) >= 1
-        return self._scope[-1]
+        if len(self._scope) > 0:
+            return self._scope[-1]
+
+        raise IndexError("No scopes available to get")
 
     def _check_in_scope(self, var_name: str) -> bool:
-        curr_scope = self._get_scope()
-        return var_name in curr_scope
+        try:
+            curr_scope = self._get_scope()
+            return var_name in curr_scope
+        except IndexError:
+            return False
 
     def _update_scope(self, variable: Variable) -> None:
+        if len(self._scope) == 0:
+            raise ValueError("No scope available to update")
         self._scope[-1][variable.name] = variable
 
     def _in_global_scope(self) -> bool:
         return len(self._scope) == 1 and self._context == Context.GLOBAL
 
     def _in_function(self) -> bool:
-        return self._scope == Scope.FUNCTION
+        return self._scope
 
     def _set_context(self, context: Context) -> None:
         self._context = context
