@@ -16,6 +16,16 @@ Module mapping supported QASM gates/operations to pyqir functions.
 from typing import Union
 
 import pyqir
+from openqasm3.ast import (
+    AngleType,
+    ArrayType,
+    BitType,
+    BoolType,
+    ComplexType,
+    FloatType,
+    IntType,
+    UintType,
+)
 
 from .elements import InversionOp
 from .exceptions import Qasm3ConversionError
@@ -242,4 +252,15 @@ CONSTANTS_MAP = {
     "π": 3.141592653589793,
     "e": 2.718281828459045,
     "tau": 6.283185307179586,
+}
+
+VARIABLE_TYPE_MAP = {
+    BitType: bool,
+    IntType: int,
+    UintType: int,
+    BoolType: bool,
+    FloatType: float,
+    ArrayType: None,  # not sure
+    AngleType: None,  # not sure
+    ComplexType: complex,
 }

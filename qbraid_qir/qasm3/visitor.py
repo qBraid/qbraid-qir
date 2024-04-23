@@ -35,6 +35,9 @@ from openqasm3.ast import (
     ConstantDeclaration,
     DurationLiteral,
     FloatLiteral,
+)
+from openqasm3.ast import FloatType as Qasm3FloatType
+from openqasm3.ast import (
     GateModifierName,
     Identifier,
     ImaginaryLiteral,
@@ -67,6 +70,7 @@ from .elements import Context, InversionOp, Qasm3Module, Variable
 from .exceptions import Qasm3ConversionError
 from .oq3_maps import (
     CONSTANTS_MAP,
+    VARIABLE_TYPE_MAP,
     map_qasm_inv_op_to_pyqir_callable,
     map_qasm_op_to_pyqir_callable,
     qasm3_expression_op_map,
@@ -688,6 +692,62 @@ class BasicQasmVisitor(ProgramElementVisitor):
             else:
                 self._visit_basic_gate_operation(operation, inverse_value)
 
+    def _validate_variable_assignment_value(self, variable: Variable, value: Any) -> None:
+        """Validate the assignment of a value to a variable.
+
+        Args:
+            variable (Variable): The variable to assign to.
+            value (Any): The value to assign.
+
+        Raises:
+            Qasm3ConversionError: If the value is not of the correct type.
+        """
+        # check 1 - type match
+
+        base_type = variable.base_type
+        qasm_type = base_type.__class__
+        try:
+            type_to_match = VARIABLE_TYPE_MAP[qasm_type]
+        except KeyError:
+            raise Qasm3ConversionError(f"Invalid type {qasm_type} for variable {variable.name}")
+
+        if not isinstance(value, type_to_match):
+            raise Qasm3ConversionError(
+                f"Invalid assignment of type {type(value)} to variable {variable.name}"
+            )
+
+        # check 2 - range match , if bits mentioned in base size
+        if type_to_match == int:
+            base_size = variable.base_size
+            left, right = 0, 0
+            if qasm_type == Qasm3IntType:
+                left, right = -1 * (2 ** (base_size - 1)), 2 ** (base_size - 1) - 1
+            else:
+                # would be uint only then we correctly get this
+                left, right = 0, 2**base_size - 1
+            if value < left or value > right:
+                raise Qasm3ConversionError(
+                    f"Value {value} out of limits for variable {variable.name} with base size {base_size}"
+                )
+
+        elif type_to_match == float:
+            base_size = variable.base_size
+            left, right = 0, 0
+            # Reference : https://openqasm.com/language/types.html#floating-point-numbers and IEEE 754 standard
+            if base_size == 32:
+                left, right = -(1.70141183 * (10**38)), (1.70141183 * (10**38))
+            else:
+                left, right = -(10**308), (10**308)
+
+            if value < left or value > right:
+                raise Qasm3ConversionError(
+                    f"Value {value} out of limits for variable {variable.name} with base size {base_size}"
+                )
+        elif type_to_match == bool:
+            pass
+        else:
+            raise TypeError(f"Invalid type {type_to_match} for variable {variable.name}")
+
     def _visit_constant_declaration(self, statement: ConstantDeclaration) -> None:
         """
         Visit a constant declaration element. Const can only be declared for scalar
@@ -710,7 +770,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Uninitialized constant {var_name}")
 
-        # TODO : check the type of the init value
         base_type = statement.type
 
         if base_type.size is None:
@@ -723,6 +782,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 raise Qasm3ConversionError(f"Invalid base size {base_size} for variable {var_name}")
 
         variable = Variable(var_name, base_type, base_size, [], init_value, is_constant=True)
+
+        self._validate_variable_assignment_value(variable, init_value)
         self._update_scope(variable)
 
     def _visit_classical_declaration(self, statement: ClassicalDeclaration) -> None:
@@ -740,18 +801,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if self._check_in_scope(var_name):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
-
         init_value = None
-        if statement.init_expression:
-            init_value = self._evaluate_expression(statement.init_expression)
-            # TODO: check that the init value is of the correct type
-
         base_type = statement.type
         final_dimensions = []
 
         if isinstance(base_type, ArrayType):
             dimensions = base_type.dimensions
             base_type = base_type.base_type
+            num_elements = 1
             for dim in dimensions:
                 dim_value = self._evaluate_expression(dim)
                 if not isinstance(dim_value, int) or dim_value <= 0:
@@ -760,32 +817,66 @@ class BasicQasmVisitor(ProgramElementVisitor):
                         f"Invalid dimension size {dim_value} in array declaration for {var_name}"
                     )
                 final_dimensions.append(dim_value)
+                num_elements *= dim_value
+            # we store the array as a list of elements
+            if init_value is None:
+                init_value = [None] * num_elements
+
+        if statement.init_expression:
+            init_value = self._evaluate_expression(statement.init_expression)
+            # TODO: account for array initializations
 
         if base_type.size is None:
             base_size = 32  # default for now
         else:
             base_size = self._evaluate_expression(base_type.size)
+
             if not isinstance(base_size, int) or base_size <= 0:
                 self._print_err_location(statement.span)
                 raise Qasm3ConversionError(f"Invalid base size {base_size} for variable {var_name}")
 
+            if isinstance(base_type, Qasm3FloatType):
+                # IEEE 754 Standard for floats
+                if base_size not in [32, 64]:
+                    self._print_err_location(statement.span)
+                    raise Qasm3ConversionError(
+                        f"Invalid base size {base_size} for float variable {var_name}"
+                    )
+
         variable = Variable(var_name, base_type, base_size, final_dimensions, init_value)
+
+        if init_value is not None:
+            self._validate_variable_assignment_value(variable, init_value)
+
         self._update_scope(variable)
 
-    def _validate_classical_indices(self, indices: List[List[Any]], var_name: str) -> None:
+    def _analyse_classical_indices(self, indices: List[List[Any]], var_name: str) -> None:
         """Validate the indices for a classical variable.
 
         Args:
             indices (List[List[Any]]): The indices to validate.
-        var_name (str): The name of the variable.
+            var_name (str): The name of the variable.
 
         Raises:
             Qasm3ConversionError: If the indices are invalid.
         """
+        flat_index = 0
+        multiplier = 1
         indices = indices[0]
         var_dimensions = self._get_scope()[var_name].dimensions
 
-        for index in indices:
+        if not var_dimensions:
+            self._print_err_location(indices[0].span)
+            raise Qasm3ConversionError(f"Indexing error. Variable {var_name} is not an array")
+
+        if len(indices) != len(var_dimensions):
+            self._print_err_location(indices[0].span)
+            raise Qasm3ConversionError(
+                f"Invalid number of indices for variable {var_name}. Expected {len(var_dimensions)} "
+                f"but got {len(indices)}"
+            )
+
+        for i, index in enumerate(indices):
             if isinstance(index[0], RangeDefinition):
                 self._print_err_location(index[0].span)
                 raise Qasm3ConversionError(
@@ -797,8 +888,18 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     f"Unsupported index type {type(index[0])} for classical variable {var_name}"
                 )
             index_value = index[0].value
+            curr_dimension = var_dimensions[i]
 
-        # TODO: complete this
+            if index_value < 0 or index_value >= curr_dimension:
+                self._print_err_location(index[0].span)
+                raise Qasm3ConversionError(
+                    f"Index {index_value} out of bounds for dimension {i+1} of variable {var_name}"
+                )
+            # Column major representation : https://en.wikipedia.org/wiki/Row-_and_column-major_order
+            flat_index = flat_index + multiplier * index_value
+            multiplier = multiplier * curr_dimension
+
+        return flat_index
 
     def _visit_classical_assignment(self, statement: ClassicalAssignment) -> None:
         """Visit a classical assignment element.
@@ -823,15 +924,19 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Assignment to constant variable {var_name} not allowed")
 
-        if isinstance(lvalue, IndexedIdentifier):
-            indices = lvalue.indices
-            self._validate_classical_indices(indices, var_name)
-
-        # TODO: validate the type of the value with the type of the variable
         var_value = self._evaluate_expression(statement.rvalue)
 
-        # TODO: extend to array assignments
-        self._get_scope()[var_name].value = var_value
+        # currently we support single array assignment only
+        # range based assignment not supported yet
+        self._validate_variable_assignment_value(self._get_scope()[var_name], var_value)
+
+        # handle assignment for arrays
+        if isinstance(lvalue, IndexedIdentifier):
+            indices = lvalue.indices
+            flat_index = self._analyse_classical_indices(indices, var_name)
+            self._get_scope()[var_name].value[flat_index] = var_value
+        else:
+            self._get_scope()[var_name].value = var_value
 
     # pylint: disable-next=too-many-return-statements
     def _evaluate_expression(self, expression: Any) -> bool:
@@ -867,16 +972,21 @@ class BasicQasmVisitor(ProgramElementVisitor):
             return var_value
 
         if isinstance(expression, IndexedIdentifier):
-            # TODO: extend this
+            var_name = expression.name.name
 
-            # var_name = expression.name.name
-            # if isinstance(expression.indices[0][0], RangeDefinition):
-            #     self._print_err_location(expression.span)
-            #     raise Qasm3ConversionError(
-            #         f"Range based indexing {expression} not supported at the moment"
-            #     )
-            # index = expression.indices[0][0].value
-            raise NotImplementedError("Indexing not supported yet in variables inside expressions")
+            if not self._check_in_scope(var_name):
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
+
+            indices = expression.indices
+            flat_index = self._analyse_classical_indices(indices, var_name)
+            var_value = self._get_scope()[var_name].value[flat_index]
+
+            if var_value is None:
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(f"Uninitialized variable {var_name} in expression")
+
+            return var_value
 
         if isinstance(expression, BooleanLiteral):
             return expression.value

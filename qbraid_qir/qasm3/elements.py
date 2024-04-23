@@ -166,6 +166,10 @@ class Qasm3Module:
                 size = 1 if statement.type.size is None else statement.type.size.value
                 num_clbits += size
                 elements.append(_Register(statement))
+                # as bit arrays are just 0 / 1 values, we can treat them as
+                # classical variables too. Thus, need to add them to normal
+                # statements too.
+                elements.append(_Statement(statement))
             else:
                 elements.append(_Statement(statement))
 
