@@ -11,34 +11,33 @@
 """
 Module containing OpenQASM 3 QIR functionality.
 
-.. currentmodule:: qbraid_qir.qasm3
+```{currentmodule} qbraid_qir.qasm3
+```
 
-Functions
------------
+## Functions
 
-.. autosummary::
-   :toctree: ../stubs/
+```{autosummary}
+:toctree: ../stubs/
 
-   qasm3_to_qir
+qasm3_to_qir
+```
 
+## Classes
 
-Classes
----------
+```{autosummary}
+:toctree: ../stubs/
 
-.. autosummary::
-   :toctree: ../stubs/
+Qasm3Module
+BasicQasmVisitor
+```
 
-   Qasm3Module
-   BasicQasmVisitor
+## Exceptions
 
+```{autosummary}
+:toctree: ../stubs/
 
-Exceptions
------------
-
-.. autosummary::
-   :toctree: ../stubs/
-
-   Qasm3ConversionError
+Qasm3ConversionError
+```
 
 """
 from .convert import qasm3_to_qir

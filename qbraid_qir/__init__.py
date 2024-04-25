@@ -11,30 +11,31 @@
 """
 This top level module contains the main qBraid QIR functionality.
 
-.. currentmodule:: qbraid_qir
+```{currentmodule} qbraid_qir
+```
 
-Functions
------------
+## Functions
 
-.. autosummary::
-   :toctree: ../stubs/
+```{autosummary}
+:toctree: ../stubs/
 
-   dumps
+dumps
+```
 
+## Exceptions
 
-Exceptions
------------
+```{autosummary}
+:toctree: ../stubs/
 
-.. autosummary::
-   :toctree: ../stubs/
-
-   QbraidQirError
-   QirConversionError
+QbraidQirError
+QirConversionError
+```
 
 """
 from ._version import __version__
 from .exceptions import QbraidQirError, QirConversionError
 from .serialization import dumps
+from . import cirq, qasm3, runner
 
 __all__ = [
     "__version__",

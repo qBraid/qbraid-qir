@@ -11,25 +11,25 @@
 """
 Module containing tools for executing QIR programs
 
-.. currentmodule:: qbraid_qir.runner
+```{currentmodule} qbraid_qir.runner
+```
 
-Classes
----------
+## Classes
 
-.. autosummary::
-   :toctree: ../stubs/
+```{autosummary}
+:toctree: ../stubs/
 
-   Simulator
-   Result
+Simulator
+Result
+```
 
+## Exceptions
 
-Exceptions
------------
+```{autosummary}
+:toctree: ../stubs/
 
-.. autosummary::
-   :toctree: ../stubs/
-
-   QirRunnerError
+QirRunnerError
+```
 
 """
 from .exceptions import QirRunnerError

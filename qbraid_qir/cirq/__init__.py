@@ -11,33 +11,33 @@
 """
 Module containing Cirq QIR functionality.
 
-.. currentmodule:: qbraid_qir.cirq
+```{currentmodule} qbraid_qir.cirq
+```
 
-Functions
------------
+## Functions
 
-.. autosummary::
-   :toctree: ../stubs/
+```{autosummary}
+:toctree: ../stubs/
 
-   cirq_to_qir
+cirq_to_qir
+```
 
+## Classes
 
-Classes
----------
+```{autosummary}
+:toctree: ../stubs/
 
-.. autosummary::
-   :toctree: ../stubs/
+CirqModule
+BasicCirqVisitor
+```
 
-   CirqModule
-   BasicCirqVisitor
+## Exceptions
 
-Exceptions
------------
+```{autosummary}
+:toctree: ../stubs/
 
-.. autosummary::
-   :toctree: ../stubs/
-
-   CirqConversionError
+CirqConversionError
+```
 
 """
 from .convert import cirq_to_qir

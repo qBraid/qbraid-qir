@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath("../../qbraid_qir"))
 # -- Project information -----------------------------------------------------
 
 project = "qbraid-qir"
-copyright = "2023, qBraid Development Team"
+copyright = "2024, qBraid Development Team"
 author = "qBraid Development Team"
 
 # The full version, including alpha/beta/rc tags
@@ -33,26 +33,34 @@ release = qbraid_qir.__version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "myst_parser",
+    "autodoc2",
     "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
     "sphinx.ext.autodoc",
-    "sphinx_autodoc_typehints",
     "sphinx.ext.autosummary",
+    "sphinx_autodoc_typehints",
+    "sphinx_copybutton",
     "sphinx.ext.todo",
     "sphinx.ext.mathjax",
     "sphinx.ext.coverage",
-    "sphinx.ext.viewcode",
 ]
 
 # set_type_checking_flag = True
+autosummary_generate = True
 autodoc_member_order = "bysource"
 autoclass_content = "both"
-autodoc_mock_imports = ["cirq", "openqasm3"]
+autodoc_mock_imports = ["cirq", "qasm3", "openqasm3"]
 napoleon_numpy_docstring = False
 todo_include_todos = True
 mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
 # The master toctree document.
 master_doc = "index"
+
+source_suffix = ['.rst', '.md']
+
+suppress_warnings = ["myst.strikethrough"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -97,6 +105,61 @@ html_favicon = "_static/favicon.ico"
 html_show_sphinx = False
 
 html_css_files = ["css/s4defs-roles.css"]
+
+# -- Autodoc settings ---------------------------------------------------
+
+autodoc2_render_plugin = "myst"
+autodoc2_packages = [
+    {
+        "path": "../qbraid_qir",
+        # "exclude_files": ["_docs.py"],
+        "auto_mode": False,
+    }
+]
+autodoc2_hidden_objects = ["dunder", "private", "inherited"]
+autodoc2_replace_annotations = [
+    ("re.Pattern", "typing.Pattern"),
+    ("markdown_it.MarkdownIt", "markdown_it.main.MarkdownIt"),
+]
+autodoc2_replace_bases = [
+    ("sphinx.directives.SphinxDirective", "sphinx.util.docutils.SphinxDirective"),
+]
+autodoc2_docstring_parser_regexes = [
+    ("qbraid_qir", "myst"),
+]
+nitpicky = True
+nitpick_ignore_regex = [
+    (r"py:.*", r"docutils\..*"),
+    (r"py:.*", r"pygments\..*"),
+    (r"py:.*", r"typing\.Literal\[.*"),
+]
+nitpick_ignore = [
+    ("py:obj", "myst_parser._docs._ConfigBase"),
+    ("py:exc", "MarkupError"),
+    ("py:class", "sphinx.util.typing.Inventory"),
+    ("py:class", "sphinx.writers.html.HTMLTranslator"),
+    ("py:obj", "sphinx.transforms.post_transforms.ReferencesResolver"),
+]
+
+# -- MyST settings ---------------------------------------------------
+
+myst_enable_extensions = [
+    "dollarmath",
+    "amsmath",
+    "deflist",
+    "fieldlist",
+    "html_admonition",
+    "html_image",
+    "colon_fence",
+    "smartquotes",
+    "replacements",
+    "linkify",
+    "strikethrough",
+    "substitution",
+    "tasklist",
+    "attrs_inline",
+    "attrs_block",
+]
 
 # -- More customizations ----------------------------------------------------
 
