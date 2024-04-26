@@ -42,6 +42,7 @@ class Context(Enum):
     GLOBAL = "global"
     IF = "if"
     LOOP = "loop"
+    FUNCTION = "function"
 
 
 class InversionOp(Enum):
@@ -58,7 +59,7 @@ class Variable:
         base_type (Any): Base type of the variable.
         base_size (int): Base size of the variable.
         dims (List[int]): Dimensions of the variable.
-        value (Optional[Union[int, float]]): Value of the variable.
+        value (Optional[Union[int, float, list]]): Value of the variable.
         is_constant (bool): Flag indicating if the variable is constant.
 
     """

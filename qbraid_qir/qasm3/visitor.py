@@ -29,6 +29,7 @@ from openqasm3.ast import (
     ArrayType,
     BinaryExpression,
     BooleanLiteral,
+    BoolType,
     BranchingStatement,
     ClassicalAssignment,
     ClassicalDeclaration,
@@ -146,26 +147,23 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._builder.ret(None)
 
     def _push_scope(self, scope: dict) -> None:
+        if not isinstance(scope, dict):
+            raise TypeError("Scope must be a dictionary")
         self._scope.append(scope)
 
     def _pop_scope(self) -> None:
-        if len(self._scope) > 0:
-            self._scope.pop()
-
-        raise IndexError("Scope list is empty, can not pop")
+        if len(self._scope) == 0:
+            raise IndexError("Scope list is empty, can not pop")
+        self._scope.pop()
 
     def _get_scope(self) -> dict:
-        if len(self._scope) > 0:
-            return self._scope[-1]
-
-        raise IndexError("No scopes available to get")
+        if len(self._scope) == 0:
+            raise IndexError("No scopes available to get")
+        return self._scope[-1]
 
     def _check_in_scope(self, var_name: str) -> bool:
-        try:
-            curr_scope = self._get_scope()
-            return var_name in curr_scope
-        except IndexError:
-            return False
+        curr_scope = self._get_scope()
+        return var_name in curr_scope
 
     def _update_scope(self, variable: Variable) -> None:
         if len(self._scope) == 0:
@@ -176,7 +174,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         return len(self._scope) == 1 and self._context == Context.GLOBAL
 
     def _in_function(self) -> bool:
-        return self._scope
+        return len(self._scope) > 1 and self._context == Context.FUNCTION
 
     def _set_context(self, context: Context) -> None:
         self._context = context
@@ -455,6 +453,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         param_list = []
         for param in operation.arguments:
             param_value = self._evaluate_expression(param)
+            print(param_value)
             param_list.append(param_value)
 
         return param_list
@@ -703,7 +702,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
             Qasm3ConversionError: If the value is not of the correct type.
         """
         # check 1 - type match
-
         base_type = variable.base_type
         qasm_type = base_type.__class__
         try:
@@ -761,6 +759,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
 
         var_name = statement.identifier.name
+
+        if var_name in CONSTANTS_MAP:
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Can not declare variable with keyword name {var_name}")
+
         if self._check_in_scope(var_name):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
@@ -771,8 +774,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise Qasm3ConversionError(f"Uninitialized constant {var_name}")
 
         base_type = statement.type
-
-        if base_type.size is None:
+        if isinstance(base_type, BoolType):
+            base_size = 1
+        elif base_type.size is None:
             base_size = 32  # default for now
         else:
             # TODO: ensure no NON-CONST vars are used in here
@@ -797,10 +801,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
 
         var_name = statement.identifier.name
-
+        if var_name in CONSTANTS_MAP:
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Can not declare variable with keyword name {var_name}")
         if self._check_in_scope(var_name):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
+
+        is_initialized = False
         init_value = None
         base_type = statement.type
         final_dimensions = []
@@ -818,18 +826,19 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     )
                 final_dimensions.append(dim_value)
                 num_elements *= dim_value
+
             # we store the array as a list of elements
-            if init_value is None:
-                init_value = [None] * num_elements
+            init_value = [None] * num_elements
 
         if statement.init_expression:
             init_value = self._evaluate_expression(statement.init_expression)
-            # TODO: account for array initializations
+            is_initialized = True
+            # TODO: account for array initializations and update the init_value
 
-        if base_type.size is None:
-            base_size = 32  # default for now
+        if isinstance(base_type, BoolType):
+            base_size = 1
         else:
-            base_size = self._evaluate_expression(base_type.size)
+            base_size = 32 if base_type.size is None else self._evaluate_expression(base_type.size)
 
             if not isinstance(base_size, int) or base_size <= 0:
                 self._print_err_location(statement.span)
@@ -845,8 +854,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         variable = Variable(var_name, base_type, base_size, final_dimensions, init_value)
 
-        if init_value is not None:
+        if is_initialized:
             self._validate_variable_assignment_value(variable, init_value)
+            # TODO: validate array initialization
 
         self._update_scope(variable)
 
@@ -862,36 +872,36 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
         flat_index = 0
         multiplier = 1
-        indices = indices[0]
-        var_dimensions = self._get_scope()[var_name].dimensions
+        var_dimensions = self._get_scope()[var_name].dims
 
         if not var_dimensions:
-            self._print_err_location(indices[0].span)
+            self._print_err_location(indices[0][0].span)
             raise Qasm3ConversionError(f"Indexing error. Variable {var_name} is not an array")
 
         if len(indices) != len(var_dimensions):
-            self._print_err_location(indices[0].span)
+            self._print_err_location(indices[0][0].span)
             raise Qasm3ConversionError(
                 f"Invalid number of indices for variable {var_name}. Expected {len(var_dimensions)} "
                 f"but got {len(indices)}"
             )
 
         for i, index in enumerate(indices):
-            if isinstance(index[0], RangeDefinition):
-                self._print_err_location(index[0].span)
+            index = index[0]
+            if isinstance(index, RangeDefinition):
+                self._print_err_location(index.span)
                 raise Qasm3ConversionError(
-                    f"Range based indexing {index[0]} not supported for classical variable {var_name}"
+                    f"Range based indexing {index} not supported for classical variable {var_name}"
                 )
             if not isinstance(index, IntegerLiteral):
-                self._print_err_location(index[0].span)
+                self._print_err_location(index.span)
                 raise Qasm3ConversionError(
-                    f"Unsupported index type {type(index[0])} for classical variable {var_name}"
+                    f"Unsupported index type {type(index)} for classical variable {var_name}"
                 )
-            index_value = index[0].value
+            index_value = index.value
             curr_dimension = var_dimensions[i]
 
             if index_value < 0 or index_value >= curr_dimension:
-                self._print_err_location(index[0].span)
+                self._print_err_location(index.span)
                 raise Qasm3ConversionError(
                     f"Index {index_value} out of bounds for dimension {i+1} of variable {var_name}"
                 )
@@ -951,40 +961,72 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Raises:
             Qasm3ConversionError: If the expression is not supported.
         """
+
         if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
             self._print_err_location(expression.span)
             raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
+
+        def _check_var_in_scope(var_name, span):
+            if not self._check_in_scope(var_name):
+                self._print_err_location(span)
+                raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
+
+        def _check_var_initialized(var_name, var_value, span):
+            if var_value is None:
+                self._print_err_location(span)
+                raise Qasm3ConversionError(f"Uninitialized variable {var_name} in expression")
+
+        def _get_var_value(var_name, indices=None):
+            var_value = None
+            if isinstance(expression, Identifier):
+                var_value = self._get_scope()[var_name].value
+            else:
+                # indices is a list of singleton lists
+                flat_index = self._analyse_classical_indices(indices, var_name)
+                var_value = self._get_scope()[var_name].value[flat_index]
+            return var_value
+
+        def _analyse_index_expression(index_expr):
+            indices = []
+            var_name = None
+
+            # Recursive structure for IndexExpression, don't know exactly why
+            while isinstance(index_expr, IndexExpression):
+                indices.append(index_expr.index)
+                index_expr = index_expr.collection
+
+            # reverse indices as outermost was present first
+            indices = indices[::-1]
+            var_name = index_expr.name
+
+            return var_name, indices
+
         if isinstance(expression, Identifier):
             var_name = expression.name
 
             if var_name in CONSTANTS_MAP:
                 return CONSTANTS_MAP[var_name]
 
-            if not self._check_in_scope(var_name):
-                self._print_err_location(expression.span)
-                raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
-
-            var_value = self._get_scope()[var_name].value
-            if var_value is None:
-                self._print_err_location(expression.span)
-                raise Qasm3ConversionError(f"Uninitialized variable {var_name} in expression")
+            _check_var_in_scope(var_name, expression.span)
+            var_value = _get_var_value(var_name)
+            _check_var_initialized(var_name, var_value, expression.span)
 
             return var_value
 
         if isinstance(expression, IndexedIdentifier):
             var_name = expression.name.name
 
-            if not self._check_in_scope(var_name):
-                self._print_err_location(expression.span)
-                raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
+            _check_var_in_scope(var_name, expression.span)
+            var_value = _get_var_value(var_name, expression.indices)
+            _check_var_initialized(var_name, var_value, expression.span)
 
-            indices = expression.indices
-            flat_index = self._analyse_classical_indices(indices, var_name)
-            var_value = self._get_scope()[var_name].value[flat_index]
+            return var_value
+        if isinstance(expression, IndexExpression):
+            var_name, indices = _analyse_index_expression(expression)
 
-            if var_value is None:
-                self._print_err_location(expression.span)
-                raise Qasm3ConversionError(f"Uninitialized variable {var_name} in expression")
+            _check_var_in_scope(var_name, expression.span)
+            var_value = _get_var_value(var_name, indices)
+            _check_var_initialized(var_name, var_value, expression.span)
 
             return var_value
 
