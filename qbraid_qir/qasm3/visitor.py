@@ -711,7 +711,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         if not isinstance(value, type_to_match):
             raise Qasm3ConversionError(
-                f"Invalid assignment of type {type(value)} to variable {variable.name}"
+                f"Invalid assignment of type {type(value)} to variable {variable.name} of type {qasm_type}"
             )
 
         # check 2 - range match , if bits mentioned in base size
@@ -721,7 +721,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if qasm_type == Qasm3IntType:
                 left, right = -1 * (2 ** (base_size - 1)), 2 ** (base_size - 1) - 1
             else:
-                # would be uint only then we correctly get this
+                # would be uint only so we correctly get this
                 left, right = 0, 2**base_size - 1
             if value < left or value > right:
                 raise Qasm3ConversionError(
@@ -768,10 +768,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
 
+        # TODO: extend to checking that only CONST vars are allowed when instantiating
+        #       a constant variable
         init_value = self._evaluate_expression(statement.init_expression)
-        if init_value is None:
-            self._print_err_location(statement.span)
-            raise Qasm3ConversionError(f"Uninitialized constant {var_name}")
 
         base_type = statement.type
         if isinstance(base_type, BoolType):
@@ -950,7 +949,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
     # pylint: disable-next=too-many-return-statements
     def _evaluate_expression(self, expression: Any) -> bool:
-        """Evaluate an expression.
+        """Evaluate an expression. Scalar types are assigned by
+           value and no referencing is done. (eg. strings in C)
 
         Args:
             expression (Any): The expression to evaluate.
@@ -1013,14 +1013,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
             return var_value
 
-        if isinstance(expression, IndexedIdentifier):
-            var_name = expression.name.name
-
-            _check_var_in_scope(var_name, expression.span)
-            var_value = _get_var_value(var_name, expression.indices)
-            _check_var_initialized(var_name, var_value, expression.span)
-
-            return var_value
         if isinstance(expression, IndexExpression):
             var_name, indices = _analyse_index_expression(expression)
 

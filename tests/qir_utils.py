@@ -324,8 +324,6 @@ def check_single_qubit_rotation_op(
         return
     for line in entry_body:
         if line.strip().startswith("call") and f"qis__{gate_name}" in line:
-            print("actual:", line.strip())
-            print("expected:", rotation_call_string(gate_name, param_list[q_id], qubit_list[q_id]))
             assert line.strip() == rotation_call_string(
                 gate_name, param_list[q_id], qubit_list[q_id]
             ), f"Incorrect rotation gate call in qir - {line}"
