@@ -31,6 +31,14 @@ def test_correct_expressions():
     rx(true) q;
     rx(!0) q;
     rx(~3) q;
+
+    int a = 5;
+    float b = 10*a*pi;
+    array[int[32], 2] c;
+    c[0] = 1;
+    c[1] = c[0] + 2;
+
+
     """
 
     result = qasm3_to_qir(qasm_str)
@@ -54,3 +62,9 @@ def test_incorrect_expressions():
         Qasm3ConversionError, match=r"Unsupported expression type .* in ~ operation"
     ):
         qasm3_to_qir("OPENQASM 3; qubit q; rx(~1.3+5im) q;")
+
+    with pytest.raises(Qasm3ConversionError, match="Undefined identifier x in expression"):
+        qasm3_to_qir("OPENQASM 3; qubit q; rx(x) q;")
+
+    with pytest.raises(Qasm3ConversionError, match="Uninitialized variable x in expression"):
+        qasm3_to_qir("OPENQASM 3; qubit q; int x; rx(x) q;")
