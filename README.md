@@ -33,13 +33,13 @@ qBraid-SDK extension providing support for QIR conversions.
 
 ## Motivation
 
-<img align="right" width="100" alt="qir" src="docs/_static/pkg-logos/qir.png">
+<img align="right" width="100" alt="qir" src="https://qbraid-static.s3.amazonaws.com/logos/qir.png">
 
 This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
 
 ## Installation
 
-qBraid-QIR requires Python 3.8 or greater, and can be installed with pip as follows:
+qBraid-QIR requires Python 3.9 or greater, and can be installed with pip as follows:
 
 ```shell
 pip install qbraid-qir
@@ -196,7 +196,7 @@ year = {2024}
 
 This project was conceived in cooperation with the Quantum Open Source Foundation ([QOSF](https://qosf.org/)).
 
-<a href="https://qosf.org/"><img src="docs/_static/pkg-logos/qosf.png" width="100px" style="vertical-align: middle;" /></a>
+<a href="https://qosf.org/"><img src="https://qbraid-static.s3.amazonaws.com/logos/qosf.png" width="100px" style="vertical-align: middle;" /></a>
 
 ## License
 
