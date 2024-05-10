@@ -6,6 +6,9 @@ message: >-
   metadata from this file.
 type: software
 authors:
+  - given-names: Harshit
+    family-names: Gupta
+    affiliation: qBraid Co.
   - given-names: Samuel
     family-names: Kushnir
     affiliation: University of Maryland
@@ -15,15 +18,12 @@ authors:
   - given-names: Priyansh
     family-names: Parakh
     affiliation: University of Toronto
-  - given-names: Harshit
-    family-names: Gupta
-    affiliation: VISA Inc.
   - given-names: Ryan James
     family-names: Hill
     affiliation: qBraid Co.
 repository-code: 'https://github.com/qBraid/qbraid-qir'
-url: 'https://docs.qbraid.com/projects/qir/en/v0.1.1/'
-repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.1.1'
+url: 'https://docs.qbraid.com/projects/qir/en/v0.2.0/'
+repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.2.0'
 keywords:
   - python
   - quantum-computing
@@ -32,5 +32,5 @@ keywords:
   - cirq
   - openasm
 license: GPL-3.0
-version: 0.1.1
-date-released: '2024-03-04'
+version: 0.2.0
+date-released: '2024-05-09'

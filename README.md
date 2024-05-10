@@ -181,10 +181,10 @@ The BibTeX entry below is aligned with the latest stable release. For the most u
 citation details, please refer to [CITATION.cff](CITATION.cff).
 
 ```tex
-@software{Kushnir_qBraid-QIR_Python_package_2024,
-author = {Kushnir, Samuel and Gupta, Harshit and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
+@software{Gupta_qBraid-QIR_Python_package_2024,
+author = {Gupta, Harshit and Kushnir, Samuel and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
 license = {GPL-3.0},
-month = mar,
+month = may,
 title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
 url = {https://github.com/qBraid/qbraid-qir},
 version = {0.2.0},

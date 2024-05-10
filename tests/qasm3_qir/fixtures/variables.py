@@ -125,7 +125,10 @@ ASSIGNMENT_TESTS = {
         int x = 3;
         x = 4.3232;
         """,
-        "Invalid assignment of type <class 'float'> to variable x of type <class 'openqasm3.ast.IntType'>",
+        (
+            "Invalid assignment of type <class 'float'> to variable x "
+            "of type <class 'openqasm3.ast.IntType'>"
+        ),
     ),
     "int_out_of_range": (
         """
@@ -152,7 +155,7 @@ ASSIGNMENT_TESTS = {
 
         float[32] x = 123456789123456789123456789123456789123456789.1;
         """,
-        rf"Value .* out of limits for variable x with base size 32",
+        "Value .* out of limits for variable x with base size 32",
     ),
     "indexing_non_array": (
         """

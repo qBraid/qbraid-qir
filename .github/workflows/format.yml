@@ -23,4 +23,4 @@ jobs:
         run: |
           black --check qbraid_qir tests tools examples
           isort --check-only qbraid_qir tests tools
-          python tools/verify_headers.py qbraid_qir tests
+          qbraid admin headers qbraid_qir tests

@@ -64,6 +64,7 @@ class Variable:
 
     """
 
+    # pylint: disable-next=too-many-arguments
     def __init__(self, name, base_type, base_size, dims, value, is_constant=False):
         self.name = name
         self.base_type = base_type
