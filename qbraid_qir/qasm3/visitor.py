@@ -17,7 +17,7 @@ import logging
 import sys
 from abc import ABCMeta, abstractmethod
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,too-many-lines
 from collections import deque
 from typing import Any, List, Optional, Tuple, Union
 
@@ -706,12 +706,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
         qasm_type = base_type.__class__
         try:
             type_to_match = VARIABLE_TYPE_MAP[qasm_type]
-        except KeyError:
-            raise Qasm3ConversionError(f"Invalid type {qasm_type} for variable {variable.name}")
+        except KeyError as err:
+            raise Qasm3ConversionError(
+                f"Invalid type {qasm_type} for variable {variable.name}"
+            ) from err
 
         if not isinstance(value, type_to_match):
             raise Qasm3ConversionError(
-                f"Invalid assignment of type {type(value)} to variable {variable.name} of type {qasm_type}"
+                f"Invalid assignment of type {type(value)} to variable {variable.name} "
+                f"of type {qasm_type}"
             )
 
         # check 2 - range match , if bits mentioned in base size
@@ -725,13 +728,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 left, right = 0, 2**base_size - 1
             if value < left or value > right:
                 raise Qasm3ConversionError(
-                    f"Value {value} out of limits for variable {variable.name} with base size {base_size}"
+                    f"Value {value} out of limits for variable {variable.name} "
+                    f"with base size {base_size}"
                 )
 
         elif type_to_match == float:
             base_size = variable.base_size
             left, right = 0, 0
-            # Reference : https://openqasm.com/language/types.html#floating-point-numbers and IEEE 754 standard
+            # IEEE 754 Standard for floats
+            # https://openqasm.com/language/types.html#floating-point-numbers
             if base_size == 32:
                 left, right = -(1.70141183 * (10**38)), (1.70141183 * (10**38))
             else:
@@ -739,7 +744,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
             if value < left or value > right:
                 raise Qasm3ConversionError(
-                    f"Value {value} out of limits for variable {variable.name} with base size {base_size}"
+                    f"Value {value} out of limits for variable {variable.name} "
+                    f"with base size {base_size}"
                 )
         elif type_to_match == bool:
             pass
@@ -768,8 +774,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
 
-        # TODO: extend to checking that only CONST vars are allowed when instantiating
-        #       a constant variable
+        # TODO: extend to checking that only CONST vars are allowed
+        # when instantiating a constant variable
         init_value = self._evaluate_expression(statement.init_expression)
 
         base_type = statement.type
@@ -880,8 +886,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if len(indices) != len(var_dimensions):
             self._print_err_location(indices[0][0].span)
             raise Qasm3ConversionError(
-                f"Invalid number of indices for variable {var_name}. Expected {len(var_dimensions)} "
-                f"but got {len(indices)}"
+                f"Invalid number of indices for variable {var_name}. "
+                f"Expected {len(var_dimensions)} but got {len(indices)}"
             )
 
         for i, index in enumerate(indices):
@@ -904,7 +910,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 raise Qasm3ConversionError(
                     f"Index {index_value} out of bounds for dimension {i+1} of variable {var_name}"
                 )
-            # Column major representation : https://en.wikipedia.org/wiki/Row-_and_column-major_order
+            # Column major representation: https://en.wikipedia.org/wiki/Row-_and_column-major_order
             flat_index = flat_index + multiplier * index_value
             multiplier = multiplier * curr_dimension
 
@@ -1149,6 +1155,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
     def visit_scoped_statement(self, statement: Statement) -> None:
         pass
 
+    # pylint: disable-next=too-many-branches
     def visit_statement(self, statement: Statement) -> None:
         """Visit a statement element.
 

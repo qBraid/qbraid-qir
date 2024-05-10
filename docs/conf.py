@@ -9,19 +9,13 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-import os
-import sys
 
 import qbraid_qir
-
-sys.path.insert(0, os.path.abspath(".."))
-sys.path.insert(0, os.path.abspath("../../qbraid_qir"))
 
 # -- Project information -----------------------------------------------------
 
 project = "qbraid-qir"
-copyright = "2023, qBraid Development Team"
+copyright = "2024, qBraid Development Team"
 author = "qBraid Development Team"
 
 # The full version, including alpha/beta/rc tags
