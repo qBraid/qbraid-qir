@@ -9,18 +9,23 @@
 | QuantumBarrier                 | ✅          | Complete               |
 | QuantumGateDefinition          | ✅          | Complete               |
 | QuantumGate                    | ✅          | Complete               |
-| QuantumGateModifier            | ✅          | Complete               |
+| QuantumGateModifier            | ✅          | Complete (pow, inv)    |
 | QubitDeclaration               | ✅          | Completed              |
 | Clbit Declarations             | ✅          | Completed              |
-| Pulse-level ops (e.g. delay)   | ❌          | Not supported by QIR   |
+| BinaryExpression               | ✅          | In progress            | 
+| UnaryExpression                | ✅          | In progress            |
 | BranchingStatement             | 🔜          | In progress            |
 | SubroutineDefinition           | 🔜          | In progress            |
 | ClassicalDeclaration           | 🔜          | In progress            |
 | ConstantDeclaration            | 🔜          | In progress            |
-| BinaryExpression               | 🔜          | In progress            |
-| UnaryExpression                | 🔜          | In progress            |
 | ClassicalAssignment            | 🔜          | In progress            |
+| Looping statements(eg. for)    | 📋          | Planned                |
 | AliasStatement                 | 📋          | Planned                |
 | IODeclaration                  | 📋          | Planned                |
-| Span                           | 📋          | Planned                |
 | RangeDefinition                | 📋          | Planned                |
+| Pragma                         | ❓          | Unsure                 |
+| Annotations                    | ❓          | Unsure                 |
+| Pulse-level ops (e.g. delay)   | ❌          | Not supported by QIR   |
+| Calibration ops                | ❌          | Not supported by QIR   |
+| Duration literals              | ❌          | Not supported by QIR   |
+| ComplexType                    | ❌          | Not supported by QIR   |
