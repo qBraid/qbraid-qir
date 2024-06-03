@@ -49,9 +49,7 @@ def _process_qasm(qasm: str) -> str:
     qasm = re.sub(r"^(output|return_value =)", r"// \1", qasm, flags=re.MULTILINE)
 
     replacements = {
-        "cnot ": "cx ",
-        "si ": "sdg ",
-        "ti ": "tdg ",
+        "ms": "rxx",
         "v ": "sx ",
         "vi ": "sxdg ",
         "phaseshift": "p",

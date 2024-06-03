@@ -453,7 +453,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         param_list = []
         for param in operation.arguments:
             param_value = self._evaluate_expression(param)
-            print(param_value)
+            # print(param_value)
             param_list.append(param_value)
 
         return param_list

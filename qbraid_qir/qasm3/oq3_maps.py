@@ -134,9 +134,22 @@ def u2_inv_gate(builder, phi, lam, qubits):
     """
     u3_inv_gate(builder, CONSTANTS_MAP["pi"] / 2, phi, lam, qubits)
 
+def sx_gate(builder, qubits):
+    """
+    Implements the Sqrt(X) gate using the following decomposition:
+        https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.SXGate
+    """
+    pyqir._native.h(builder, qubits)
+    pyqir._native.t_adj(builder, qubits)
+    pyqir._native.h(builder, qubits)
+    pyqir._native.t(builder, qubits)
+    pyqir._native.h(builder, qubits)
+    pyqir._native.t_adj(builder, qubits)
+    pyqir._native.h(builder, qubits)
 
 PYQIR_ONE_QUBIT_OP_MAP = {
     # Identity Gate
+    "i": id_gate,
     "id": id_gate,
     # Single-Qubit Clifford Gates
     "h": pyqir._native.h,
@@ -147,13 +160,18 @@ PYQIR_ONE_QUBIT_OP_MAP = {
     "s": pyqir._native.s,
     "t": pyqir._native.t,
     "sdg": pyqir._native.s_adj,
+    "si": pyqir._native.s_adj,
     "tdg": pyqir._native.t_adj,
+    "ti": pyqir._native.t_adj,
+    "v": sx_gate,
+    "sx": sx_gate,
 }
 
 PYQIR_ONE_QUBIT_ROTATION_MAP = {
     "rx": pyqir._native.rx,
     "ry": pyqir._native.ry,
     "rz": pyqir._native.rz,
+    "u": u3_gate,
     "U": u3_gate,
     "u3": u3_gate,
     "U3": u3_gate,
@@ -164,12 +182,14 @@ PYQIR_ONE_QUBIT_ROTATION_MAP = {
 PYQIR_TWO_QUBIT_OP_MAP = {
     "cx": pyqir._native.cx,
     "CX": pyqir._native.cx,
+    "cnot": pyqir._native.cx,
     "cz": pyqir._native.cz,
     "swap": pyqir._native.swap,
 }
 
 PYQIR_THREE_QUBIT_OP_MAP = {
     "ccx": pyqir._native.ccx,
+    "ccnot": pyqir._native.ccx,
 }
 
 
