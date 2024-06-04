@@ -136,8 +136,7 @@ def u2_inv_gate(builder, phi, lam, qubits):
 
 def sx_gate(builder, qubits):
     """
-    Implements the Sqrt(X) gate using the following decomposition:
-        https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.SXGate
+    Implements the Sqrt(X) gate as a decomposition of other gates.
     """
     pyqir._native.h(builder, qubits)
     pyqir._native.t_adj(builder, qubits)
@@ -146,6 +145,75 @@ def sx_gate(builder, qubits):
     pyqir._native.h(builder, qubits)
     pyqir._native.t_adj(builder, qubits)
     pyqir._native.h(builder, qubits)
+
+def sxdg_gate(builder, qubits):
+    """
+    Implements the conjugate transpose of the Sqrt(X) gate as a decomposition of other gates.
+    """
+    pyqir._native.h(builder, qubits)
+    pyqir._native.t(builder, qubits)
+    pyqir._native.h(builder, qubits)
+    pyqir._native.t_adj(builder, qubits)
+    pyqir._native.h(builder, qubits)
+    pyqir._native.t(builder, qubits)
+    pyqir._native.h(builder, qubits)
+
+# Unsure of all gate decompositions below this point
+def xx_gate(builder, theta, qubit0, qubit1):
+    """
+    Implements the XX gate as a decomposition of other gates.
+    """
+    qubits = [qubit0, qubit1]
+    pyqir._native.h(builder, qubits[0])
+    pyqir._native.h(builder, qubits[1])
+    pyqir._native.cz(builder, qubits[0], qubits[1])
+    pyqir._native.rz(builder, theta, qubits[0])
+    pyqir._native.cz(builder, qubits[0], qubits[1])
+    pyqir._native.h(builder, qubits[0])
+    pyqir._native.h(builder, qubits[1])
+
+def xy_gate(builder, theta, qubit0, qubit1):
+    """
+    Implements the XY gate as a decomposition of other gates.
+    """
+    qubits = [qubit0, qubit1]
+    pyqir._native.h(builder, qubits[0])
+    pyqir._native.h(builder, qubits[1])
+    pyqir._native.s(builder, qubits[0])
+    pyqir._native.s(builder, qubits[1])
+    pyqir._native.cz(builder, qubits[0], qubits[1])
+    pyqir._native.rx(builder, theta, qubits[0])
+    pyqir._native.cz(builder, qubits[0], qubits[1])
+    pyqir._native.s_adj(builder, qubits[0])
+    pyqir._native.s_adj(builder, qubits[1])
+    pyqir._native.h(builder, qubits[0])
+    pyqir._native.h(builder, qubits[1])
+
+def yy_gate(builder, theta, qubit0, qubit1):
+    """
+    Implements the YY gate as a decomposition of other gates.
+    """
+    qubits = [qubit0, qubit1]
+    pyqir._native.h(builder, qubits[0])
+    pyqir._native.h(builder, qubits[1])
+    pyqir._native.s_adj(builder, qubits[0])
+    pyqir._native.s_adj(builder, qubits[1])
+    pyqir._native.cz(builder, qubits[0], qubits[1])
+    pyqir._native.rz(builder, theta, qubits[0])
+    pyqir._native.cz(builder, qubits[0], qubits[1])
+    pyqir._native.s(builder, qubits[0])
+    pyqir._native.s(builder, qubits[1])
+    pyqir._native.h(builder, qubits[0])
+    pyqir._native.h(builder, qubits[1])
+
+def zz_gate(builder, theta, qubit0, qubit1):
+    """
+    Implements the ZZ gate as a decomposition of other gates.
+    """
+    qubits = [qubit0, qubit1]
+    pyqir._native.cz(builder, qubits[0], qubits[1])
+    pyqir._native.rz(builder, theta, qubits[0])
+    pyqir._native.rz(builder, theta, qubits[1])
 
 PYQIR_ONE_QUBIT_OP_MAP = {
     # Identity Gate
@@ -165,6 +233,8 @@ PYQIR_ONE_QUBIT_OP_MAP = {
     "ti": pyqir._native.t_adj,
     "v": sx_gate,
     "sx": sx_gate,
+    "vi": sxdg_gate,
+    "sxdg": sxdg_gate,
 }
 
 PYQIR_ONE_QUBIT_ROTATION_MAP = {
@@ -185,6 +255,10 @@ PYQIR_TWO_QUBIT_OP_MAP = {
     "cnot": pyqir._native.cx,
     "cz": pyqir._native.cz,
     "swap": pyqir._native.swap,
+    "xx": xx_gate,
+    "xy": xy_gate,
+    "yy": yy_gate,
+    "zz": zz_gate,
 }
 
 PYQIR_THREE_QUBIT_OP_MAP = {

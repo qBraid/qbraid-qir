@@ -50,8 +50,6 @@ def _process_qasm(qasm: str) -> str:
 
     replacements = {
         "ms": "rxx",
-        "v ": "sx ",
-        "vi ": "sxdg ",
         "phaseshift": "p",
         "cphaseshift": "cp",
     }
