@@ -23,7 +23,9 @@ from .visitor import BasicQasmVisitor
 
 
 def qasm3_to_qir(
-    program: Union[openqasm3.ast.Program, str], name: Optional[str] = None, **kwargs
+    program: Union[openqasm3.ast.Program, str],
+    name: Optional[str] = None,
+    **kwargs,
 ) -> Module:
     """Converts an OpenQASM 3 program to a PyQIR module.
 
