@@ -125,14 +125,12 @@ def test_one_qubit_rotation_gates():
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="xx, xy, yy, and zz not fully correct")
 def test_ising_coupling_gates():
     """Test converting ising coupling gate autoqasm to qir."""
     qasm = autoqasm_to_qir(ising_coupling_gates)
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="cv and cy not currently supported")
 def test_controlled_two_qubit_gates():
     """Test converting controlled two qubit gate autoqasm to qir."""
     qasm = autoqasm_to_qir(controlled_two_qubit_gates)
@@ -146,28 +144,26 @@ def test_swap_gates():
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="cswap not currently supported")
 def test_controlled_three_qubit_gates():
     """Test converting controlled three qubit gate autoqasm to qir."""
     qasm = autoqasm_to_qir(controlled_three_qubit_gates)
     assert isinstance(qasm, Module)
 
-
-@pytest.mark.skipif(True, reason="phaseshift not currently supported")
+@pytest.mark.skipif(True, reason="phaserx not currently supported")
 def test_phase_shift_gates():
     """Test converting phase shift gate autoqasm to qir."""
     qasm = autoqasm_to_qir(phase_shift_gates)
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="cphaseshift not currently supported")
+@pytest.mark.skipif(True, reason="cphaseshift00 01 10 not currently supported")
 def test_controlled_phase_shift_gates():
     """Test converting controlled phase shift gate autoqasm to qir."""
     qasm = autoqasm_to_qir(controlled_phase_shift_gates)
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="gphase not currently supported")
+@pytest.mark.skipif(True, reason="not sure if necessary")
 def test_global_phase_gates():
     """Test converting global phase gate autoqasm to qir."""
     qasm = autoqasm_to_qir(global_phase_gates)
@@ -187,7 +183,6 @@ def test_reset():
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="ecr not currently supported")
 def test_miscellaneous_gates():
     """Test converting miscellaneous gate autoqasm to qir."""
     qasm = autoqasm_to_qir(miscellaneous_gates)
@@ -244,12 +239,14 @@ def test_verbatim():
     qasm = autoqasm_to_qir(bell_state)
     assert isinstance(qasm, Module)
 
+
 @aq.main
 def my_program():
     ins.h(0)
     ins.cnot(0, 1)
     result = ins.measure([0, 1])
     return result
+
 
 @pytest.mark.skipif(True, reason="Measurement variable assignment is not currently supported.")
 def test_measurement_variable():
