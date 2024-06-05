@@ -19,7 +19,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install -e '.[lint]'
-          python3 -m pip install --upgrade black
+          python3 -m pip install 'black<=24.4.0'
       - name: Check isort, black, headers
         run: |
           black qbraid_qir tests tools examples --verbose --check
