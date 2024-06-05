@@ -7,7 +7,7 @@ on:
 
 jobs:
   main:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +19,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install -e '.[lint]'
+          python3 -m pip install --upgrade black
       - name: Check isort, black, headers
         run: |
           black qbraid_qir tests tools examples --verbose --check
