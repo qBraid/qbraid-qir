@@ -293,21 +293,21 @@ def gpi_gate(builder, theta, qubit):
     """
     Implements the gpi gate as a decomposition of other gates.
     """
-    pyqir._native.rx(builder, theta, qubit)
+    raise NotImplementedError("The GPI gate is not yet implemented.")
 
 
 def gpi2_gate(builder, theta, qubit):
     """
     Implements the gpi2 gate as a decomposition of other gates.
     """
-    pyqir._native.rx(builder, theta / 2, qubit)
+    raise NotImplementedError("The GPI2 gate is not yet implemented.")
 
 
 def ms_gate(builder, theta, phi, lam, qubit0, qubit1):
     """
     Implements the Molmer Sorenson gate as a decomposition of other gates.
     """
-
+    raise NotImplementedError("The MS gate is not yet implemented.")
 
 def ecr_gate(builder, qubit0, qubit1):
     """
