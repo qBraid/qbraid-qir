@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       - name: Install dependencies
@@ -21,6 +21,6 @@ jobs:
           python3 -m pip install -e '.[lint]'
       - name: Check isort, black, headers
         run: |
-          black --check qbraid_qir tests tools examples
+          black --check qbraid_qir tests tools examples --verbose
           isort --check-only qbraid_qir tests tools
           qbraid admin headers qbraid_qir tests
