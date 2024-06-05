@@ -56,7 +56,9 @@ PYQIR_OP_MAP = {
 }
 
 
-def map_cirq_op_to_pyqir_callable(operation: cirq.Operation) -> Tuple[Callable, str]:
+def map_cirq_op_to_pyqir_callable(
+    operation: cirq.Operation,
+) -> Tuple[Callable, str]:
     """
     Maps a Cirq operation to its corresponding PyQIR callable function.
 

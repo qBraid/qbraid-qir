@@ -80,7 +80,11 @@ def id_gate(builder, qubits):
 
 
 def u3_gate(
-    builder, theta: Union[int, float], phi: Union[int, float], lam: Union[int, float], qubits
+    builder,
+    theta: Union[int, float],
+    phi: Union[int, float],
+    lam: Union[int, float],
+    qubits,
 ):
     """
     Implements the U3 gate using the following decomposition:
@@ -106,7 +110,11 @@ def u3_gate(
 
 
 def u3_inv_gate(
-    builder, theta: Union[int, float], phi: Union[int, float], lam: Union[int, float], qubits
+    builder,
+    theta: Union[int, float],
+    phi: Union[int, float],
+    lam: Union[int, float],
+    qubits,
 ):
     """
     Implements the inverse of the U3 gate using the decomposition present in
@@ -243,7 +251,11 @@ def map_qasm_inv_op_to_pyqir_callable(op_name: str):
         # basic gates and we need to invert each of them
         return PYQIR_U_INV_ROTATION_MAP[op_name], 1, InversionOp.NO_OP
     if op_name in PYQIR_ROTATION_INVERSION_ONE_QUBIT_OP_MAP:
-        return PYQIR_ONE_QUBIT_ROTATION_MAP[op_name], 1, InversionOp.INVERT_ROTATION
+        return (
+            PYQIR_ONE_QUBIT_ROTATION_MAP[op_name],
+            1,
+            InversionOp.INVERT_ROTATION,
+        )
     raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
 
 

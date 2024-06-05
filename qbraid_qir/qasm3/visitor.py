@@ -377,7 +377,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             )
 
         def _build_qir_measurement(
-            src_name: str, src_id: Union[int, None], target_name: str, target_id: Union[int, None]
+            src_name: str,
+            src_id: Union[int, None],
+            target_name: str,
+            target_id: Union[int, None],
         ):
             src_id = 0 if src_id is None else src_id
             target_id = 0 if target_id is None else target_id
@@ -386,7 +389,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 self._module.context, self._qubit_labels[f"{src_name}_{src_id}"]
             )
             result = pyqir.result(
-                self._module.context, self._clbit_labels[f"{target_name}_{target_id}"]
+                self._module.context,
+                self._clbit_labels[f"{target_name}_{target_id}"],
             )
             pyqir._native.mz(self._builder, source_qubit, result)
 
@@ -563,7 +567,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             # TODO : update the arg value in expressions not just SINGLE identifiers
 
     def _validate_gate_call(
-        self, operation: QuantumGate, gate_definition: QuantumGateDefinition, qubits_in_op
+        self,
+        operation: QuantumGate,
+        gate_definition: QuantumGateDefinition,
+        qubits_in_op,
     ) -> None:
         if len(operation.arguments) != len(gate_definition.arguments):
             self._print_err_location(operation.span)
@@ -664,7 +671,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 power_value = power_value * abs(current_power)
             elif modifier_name == GateModifierName.inv:
                 inverse_value = not inverse_value
-            elif modifier_name in [GateModifierName.ctrl, GateModifierName.negctrl]:
+            elif modifier_name in [
+                GateModifierName.ctrl,
+                GateModifierName.negctrl,
+            ]:
                 self._print_err_location(operation.span)
                 raise NotImplementedError(
                     "Controlled modifier gates not yet supported in gate operation"
@@ -722,7 +732,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             base_size = variable.base_size
             left, right = 0, 0
             if qasm_type == Qasm3IntType:
-                left, right = -1 * (2 ** (base_size - 1)), 2 ** (base_size - 1) - 1
+                left, right = (
+                    -1 * (2 ** (base_size - 1)),
+                    2 ** (base_size - 1) - 1,
+                )
             else:
                 # would be uint only so we correctly get this
                 left, right = 0, 2**base_size - 1
@@ -1102,7 +1115,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             Tuple[Union[int, None], Union[str, None]]: The branch parameters
         """
         if isinstance(condition, UnaryExpression):
-            return condition.expression.index[0].value, condition.expression.collection.name
+            return (
+                condition.expression.index[0].value,
+                condition.expression.collection.name,
+            )
         if isinstance(condition, BinaryExpression):
             return condition.lhs.index[0].value, condition.lhs.collection.name
         if isinstance(condition, IndexExpression):
