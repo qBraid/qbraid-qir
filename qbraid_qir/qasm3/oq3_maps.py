@@ -164,7 +164,7 @@ def cv_gate(builder, qubit0, qubit1):
     pyqir._native.h(builder, qubit1)
     pyqir._native.x(builder, qubit0)
     pyqir._native.rz(builder, -CONSTANTS_MAP["pi"] / 4, qubit1)
-    
+
 
 def cy_gate(builder, qubit0, qubit1):
     """
@@ -274,13 +274,14 @@ def cswap_gate(builder, qubit0, qubit1, qubit2):
 def pswap_gate(builder, theta, qubit0, qubit1):
     """
     Implements the PSWAP gate as a decomposition of other gates.
-    
+
     """
     qubits = [qubit0, qubit1]
     pyqir._native.swap(builder, qubits[0], qubits[1])
     pyqir._native.cx(builder, qubits[0], qubits[1])
     u3_gate(builder, 0, 0, theta, qubits[1])
     pyqir._native.cx(builder, qubits[0], qubits[1])
+
 
 def cphaseshift_gate(builder, theta, qubit0, qubit1):
     """
@@ -303,7 +304,7 @@ def cphaseshift_gate(builder, theta, qubit0, qubit1):
 def cphaseshift00_gate(builder, theta, qubit0, qubit1):
     """
     Implements the controlled phase shift 00 gate as a decomposition of other gates.
-    
+
     """
     qubits = [qubit0, qubit1]
     pyqir._native.x(builder, qubits[0])
@@ -320,7 +321,7 @@ def cphaseshift00_gate(builder, theta, qubit0, qubit1):
 def cphaseshift01_gate(builder, theta, qubit0, qubit1):
     """
     Implements the controlled phase shift 01 gate as a decomposition of other gates.
-    
+
     """
     qubits = [qubit0, qubit1]
     pyqir._native.x(builder, qubits[0])
@@ -335,7 +336,7 @@ def cphaseshift01_gate(builder, theta, qubit0, qubit1):
 def cphaseshift10_gate(builder, theta, qubit0, qubit1):
     """
     Implements the controlled phase shift 10 gate as a decomposition of other gates.
-    
+
     """
     qubits = [qubit0, qubit1]
     u3_gate(builder, 0, 0, theta / 2, qubits[0])
@@ -361,22 +362,24 @@ def gpi2_gate(builder, theta, qubit):
     raise NotImplementedError("The GPI2 gate is not yet implemented.")
 
 
-def ms_gate(builder, theta, phi, lam, qubit0, qubit1):
+def ms_gate(builder, theta, phi, lam, qubit0, qubit1): # pylint: disable=too-many-arguments
     """
     Implements the Molmer Sorenson gate as a decomposition of other gates.
     """
     raise NotImplementedError("The MS gate is not yet implemented.")
 
+
 def ecr_gate(builder, qubit0, qubit1):
     """
     Implements the ECR gate as a decomposition of other gates.
-    
+
     """
     qubits = [qubit0, qubit1]
     pyqir._native.s(builder, qubits[0])
     pyqir._native.rx(builder, CONSTANTS_MAP["pi"] / 2, qubits[1])
     pyqir._native.cx(builder, qubits[0], qubits[1])
     pyqir._native.x(builder, qubits[0])
+
 
 def prx_gate(builder, theta, phi, qubit):
     """
@@ -386,6 +389,7 @@ def prx_gate(builder, theta, phi, qubit):
     phi_0 = CONSTANTS_MAP["pi"] / 2 - phi
     lambda_0 = -phi_0
     u3_gate(builder, theta_0, phi_0, lambda_0, qubit)
+
 
 PYQIR_ONE_QUBIT_OP_MAP = {
     # Identity Gate
@@ -406,7 +410,7 @@ PYQIR_ONE_QUBIT_OP_MAP = {
     "v": sx_gate,
     "sx": sx_gate,
     "vi": sxdg_gate,
-    "sxdg": sxdg_gate
+    "sxdg": sxdg_gate,
 }
 
 PYQIR_ONE_QUBIT_ROTATION_MAP = {
