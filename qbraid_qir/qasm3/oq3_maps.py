@@ -271,6 +271,17 @@ def cswap_gate(builder, qubit0, qubit1, qubit2):
     pyqir._native.cx(builder, qubits[2], qubits[1])
 
 
+def pswap_gate(builder, theta, qubit0, qubit1):
+    """
+    Implements the PSWAP gate as a decomposition of other gates.
+    
+    """
+    qubits = [qubit0, qubit1]
+    pyqir._native.swap(builder, qubits[0], qubits[1])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+    u3_gate(builder, 0, 0, theta, qubits[1])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+
 def cphaseshift_gate(builder, theta, qubit0, qubit1):
     """
     Implements the controlled phase shift gate as a decomposition of other gates.
@@ -367,6 +378,15 @@ def ecr_gate(builder, qubit0, qubit1):
     pyqir._native.cx(builder, qubits[0], qubits[1])
     pyqir._native.x(builder, qubits[0])
 
+def prx_gate(builder, theta, phi, qubit):
+    """
+    Implements the PRX gate as a decomposition of other gates.
+    """
+    theta_0 = theta
+    phi_0 = CONSTANTS_MAP["pi"] / 2 - phi
+    lambda_0 = -phi_0
+    u3_gate(builder, theta_0, phi_0, lambda_0, qubit)
+
 PYQIR_ONE_QUBIT_OP_MAP = {
     # Identity Gate
     "i": id_gate,
@@ -386,9 +406,7 @@ PYQIR_ONE_QUBIT_OP_MAP = {
     "v": sx_gate,
     "sx": sx_gate,
     "vi": sxdg_gate,
-    "sxdg": sxdg_gate,
-    "phaseshift": phaseshift_gate,
-    "p": phaseshift_gate,
+    "sxdg": sxdg_gate
 }
 
 PYQIR_ONE_QUBIT_ROTATION_MAP = {
@@ -401,6 +419,9 @@ PYQIR_ONE_QUBIT_ROTATION_MAP = {
     "U3": u3_gate,
     "U2": u2_gate,
     "u2": u2_gate,
+    "prx": prx_gate,
+    "phaseshift": phaseshift_gate,
+    "p": phaseshift_gate,
 }
 
 PYQIR_TWO_QUBIT_OP_MAP = {
@@ -415,6 +436,7 @@ PYQIR_TWO_QUBIT_OP_MAP = {
     "xy": xy_gate,
     "yy": yy_gate,
     "zz": zz_gate,
+    "pswap": pswap_gate,
     "cp": cphaseshift_gate,
     "cphaseshift": cphaseshift_gate,
     "cp00": cphaseshift00_gate,

@@ -137,7 +137,6 @@ def test_controlled_two_qubit_gates():
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="pswap not currently supported")
 def test_swap_gates():
     """Test converting swap gate autoqasm to qir."""
     qasm = autoqasm_to_qir(swap_gates)
@@ -149,7 +148,7 @@ def test_controlled_three_qubit_gates():
     qasm = autoqasm_to_qir(controlled_three_qubit_gates)
     assert isinstance(qasm, Module)
 
-@pytest.mark.skipif(True, reason="phaserx not currently supported")
+
 def test_phase_shift_gates():
     """Test converting phase shift gate autoqasm to qir."""
     qasm = autoqasm_to_qir(phase_shift_gates)
