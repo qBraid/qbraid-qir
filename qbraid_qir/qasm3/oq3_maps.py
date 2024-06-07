@@ -289,6 +289,53 @@ def cphaseshift_gate(builder, theta, qubit0, qubit1):
     pyqir._native.h(builder, qubits[1])
 
 
+def cphaseshift00_gate(builder, theta, qubit0, qubit1):
+    """
+    Implements the controlled phase shift 00 gate as a decomposition of other gates.
+    
+    """
+    qubits = [qubit0, qubit1]
+    pyqir._native.x(builder, qubits[0])
+    pyqir._native.x(builder, qubits[1])
+    u3_gate(builder, 0, 0, theta / 2, qubits[0])
+    u3_gate(builder, 0, 0, theta / 2, qubits[1])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+    u3_gate(builder, 0, 0, -theta / 2, qubits[1])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+    pyqir._native.x(builder, qubits[0])
+    pyqir._native.x(builder, qubits[1])
+
+
+def cphaseshift01_gate(builder, theta, qubit0, qubit1):
+    """
+    Implements the controlled phase shift 01 gate as a decomposition of other gates.
+    
+    """
+    qubits = [qubit0, qubit1]
+    pyqir._native.x(builder, qubits[0])
+    u3_gate(builder, 0, 0, theta / 2, qubits[1])
+    u3_gate(builder, 0, 0, theta / 2, qubits[0])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+    u3_gate(builder, 0, 0, -theta / 2, qubits[1])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+    pyqir._native.x(builder, qubits[0])
+
+
+def cphaseshift10_gate(builder, theta, qubit0, qubit1):
+    """
+    Implements the controlled phase shift 10 gate as a decomposition of other gates.
+    
+    """
+    qubits = [qubit0, qubit1]
+    u3_gate(builder, 0, 0, theta / 2, qubits[0])
+    pyqir._native.x(builder, qubits[1])
+    u3_gate(builder, 0, 0, theta / 2, qubits[1])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+    u3_gate(builder, 0, 0, -theta / 2, qubits[1])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+    pyqir._native.x(builder, qubits[1])
+
+
 def gpi_gate(builder, theta, qubit):
     """
     Implements the gpi gate as a decomposition of other gates.
@@ -370,6 +417,12 @@ PYQIR_TWO_QUBIT_OP_MAP = {
     "zz": zz_gate,
     "cp": cphaseshift_gate,
     "cphaseshift": cphaseshift_gate,
+    "cp00": cphaseshift00_gate,
+    "cphaseshift00": cphaseshift00_gate,
+    "cp01": cphaseshift01_gate,
+    "cphaseshift01": cphaseshift01_gate,
+    "cp10": cphaseshift10_gate,
+    "cphaseshift10": cphaseshift10_gate,
     "ecr": ecr_gate,
 }
 

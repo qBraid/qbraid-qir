@@ -156,7 +156,6 @@ def test_phase_shift_gates():
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="cphaseshift00 01 10 not currently supported")
 def test_controlled_phase_shift_gates():
     """Test converting controlled phase shift gate autoqasm to qir."""
     qasm = autoqasm_to_qir(controlled_phase_shift_gates)
