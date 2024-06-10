@@ -28,7 +28,6 @@ from openqasm3.ast import (
     AliasStatement,
     ArrayType,
     BinaryExpression,
-    BitstringLiteral,
     BooleanLiteral,
     BoolType,
     BranchingStatement,

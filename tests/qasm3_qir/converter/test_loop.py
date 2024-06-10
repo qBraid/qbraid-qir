@@ -14,7 +14,10 @@ converting OpenQASM3 programs that contain loops.
 
 """
 
+import pytest
+
 from qbraid_qir.qasm3 import qasm3_to_qir
+from qbraid_qir.qasm3.visitor import Qasm3ConversionError
 
 EXAMPLE_WITHOUT_LOOP = """
 OPENQASM 3.0;
@@ -266,3 +269,31 @@ def test_convert_qasm3_for_loop_discrete_set():
     )
     assert str(qir_expected) == str(qir_from_loop)
     assert str(qir_from_loop) == EXAMPLE_QIR_OUTPUT
+
+
+def test_convert_qasm3_for_loop_unsupported_type():
+    """Test correct error when converting a QASM3 program that contains a for loop initialized from
+    an unsupported type."""
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=(
+            "Unexpected type <class 'openqasm3.ast.BitstringLiteral'>"
+            " of set_declaration in loop."
+        ),
+    ):
+        _ = qasm3_to_qir(
+            """
+            OPENQASM 3.0;
+            include "stdgates.inc";
+
+            qubit[4] q;
+            bit[4] c;
+
+            h q;
+            for bit b in "001" { 
+                x q[b];
+            } 
+            measure q->c;
+            """,
+            name="test",
+        )
