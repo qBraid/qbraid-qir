@@ -15,6 +15,7 @@ Module mapping supported QASM gates/operations to pyqir functions.
 
 from typing import Union
 
+import numpy as np
 import pyqir
 from openqasm3.ast import (
     AngleType,
@@ -348,26 +349,57 @@ def cphaseshift10_gate(builder, theta, qubit0, qubit1):
     pyqir._native.x(builder, qubits[1])
 
 
-def gpi_gate(builder, theta, qubit):
+def gpi_gate(builder, phi, qubit):
     """
     Implements the gpi gate as a decomposition of other gates.
     """
-    raise NotImplementedError("The GPI gate is not yet implemented.")
+    theta_0 = CONSTANTS_MAP["pi"]
+    phi_0 = phi
+    lambda_0 = -phi_0 + CONSTANTS_MAP["pi"]
+    u3_gate(builder, theta_0, phi_0, lambda_0, qubit)
 
 
-def gpi2_gate(builder, theta, qubit):
+def gpi2_gate(builder, phi, qubit):
     """
     Implements the gpi2 gate as a decomposition of other gates.
     """
-    raise NotImplementedError("The GPI2 gate is not yet implemented.")
+    theta_0 = CONSTANTS_MAP["pi"] / 2
+    phi_0 = phi + 3 * CONSTANTS_MAP["pi"] / 2
+    lambda_0 = -phi_0 + CONSTANTS_MAP["pi"] / 2
+    u3_gate(builder, theta_0, phi_0, lambda_0, qubit)
 
 
-def ms_gate(builder, theta, phi, lam, qubit0, qubit1): # pylint: disable=too-many-arguments
+def ms_gate(builder, phi0, phi1, theta, qubit0, qubit1): # pylint: disable=too-many-arguments
     """
     Implements the Molmer Sorenson gate as a decomposition of other gates.
     """
-    raise NotImplementedError("The MS gate is not yet implemented.")
+    kak = np.array([[np.cos(theta / 2), 0, 0, -1j * np.exp(-1j * (phi0 + phi1)) * np.sin(theta / 2)], 
+           [0, np.cos(theta / 2), -1j * np.exp(-1j * (phi0 - phi1)) * np.sin(theta / 2), 0],
+           [0, -1j * np.exp(1j * (phi0 - phi1)) * np.sin(theta / 2), np.cos(theta / 2), 0],
+           [-1j * np.exp(1j * (phi0 + phi1)) * np.sin(theta / 2), 0, 0, np.cos(theta / 2)]])
+    qubits = [qubit0, qubit1]
+    ## two u3 gates idk the values. these are determined by kak.single_qubit_operations_before
+    ## https://github.com/quantumlib/Cirq/blob/v1.4.0/cirq-core/cirq/linalg/decompositions.py#L812-L881
+    # u3_gate(builder, idk, idk, idk, qubits[0])
+    # u3_gate(builder, idk, idk, idk, qubits[1])
 
+    sx_gate(builder, qubits[0])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+
+    # x pow, y pow, i think i did the expressions right
+    pyqir._native.rx(builder, ((1/2) - 2 * theta) * CONSTANTS_MAP["pi"], qubits[0])
+    pyqir._native.rx(builder, CONSTANTS_MAP["pi"] / 2, qubits[1])
+
+    pyqir._native.cx(builder, qubits[1], qubits[0])
+    sxdg_gate(builder, qubits[1])
+
+    pyqir._native.s(builder, qubits[1])
+    pyqir._native.cx(builder, qubits[0], qubits[1])
+    ## two u3 gates idk the values these are determined by kak.single_qubit_operations_after
+    # u3_gate(builder, idk, idk, idk, qubits[0])
+    # u3_gate(builder, idk, idk, idk, qubits[1])
+    raise NotImplementedError
+    
 
 def ecr_gate(builder, qubit0, qubit1):
     """

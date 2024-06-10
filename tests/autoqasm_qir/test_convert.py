@@ -168,7 +168,7 @@ def test_global_phase_gates():
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="gpi, gpi2, and ms not currently supported")
+@pytest.mark.skipif(True, reason="ms not currently supported")
 def test_ionq_gates():
     """Test converting ionq gate autoqasm to qir."""
     qasm = autoqasm_to_qir(ionq_gates)
