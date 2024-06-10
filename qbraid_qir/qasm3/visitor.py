@@ -26,7 +26,6 @@ import pyqir._native
 import pyqir.rt
 from openqasm3.ast import (
     AliasStatement,
-    ArrayLiteral,
     ArrayType,
     BinaryExpression,
     BitstringLiteral,
@@ -38,7 +37,6 @@ from openqasm3.ast import (
     ConstantDeclaration,
     DiscreteSet,
     DurationLiteral,
-    Expression,
     FloatLiteral,
 )
 from openqasm3.ast import FloatType as Qasm3FloatType
@@ -84,7 +82,6 @@ from .oq3_maps import (
 )
 
 _log = logging.getLogger(name=__name__)
-_log.setLevel(logging.INFO)
 
 
 class ProgramElementVisitor(metaclass=ABCMeta):
@@ -1180,31 +1177,17 @@ class BasicQasmVisitor(ProgramElementVisitor):
         )
 
     def _visit_forin_loop(self, statement: ForInLoop) -> None:
-        def _declare_loop_variable(statement: ForInLoop, init_exp: Expression):
-            self._visit_classical_declaration(
-                ClassicalDeclaration(statement.type, statement.identifier, init_exp)
-            )
-
         # Compute loop variable values
         if isinstance(statement.set_declaration, RangeDefinition):
             init_exp = statement.set_declaration.start
             startval = self._evaluate_expression(init_exp)
             range_def = statement.set_declaration
-            stepval = (
-                1 if range_def.step is None else self._evaluate_expression(range_def.step)
-            )  # Can be reused
+            stepval = 1 if range_def.step is None else self._evaluate_expression(range_def.step)
             endval = self._evaluate_expression(range_def.end)
             irange = list(range(startval, endval + stepval, stepval))
-        elif isinstance(statement.set_declaration, (DiscreteSet, ArrayLiteral)):
+        elif isinstance(statement.set_declaration, DiscreteSet):
             init_exp = statement.set_declaration.values[0]
             irange = [self._evaluate_expression(exp) for exp in statement.set_declaration.values]
-        elif isinstance(statement.set_declaration, BitstringLiteral):
-            bitstring = statement.set_declaration
-            s = bin(bitstring.value).removeprefix("0b")
-            if len(s) < bitstring.width:
-                s = "0" * (bitstring.width - len(s)) + s
-            init_exp = BooleanLiteral(bool(s[0]))
-            irange = [bool(b) for b in s]
         else:
             raise Qasm3ConversionError(
                 f"Unexpected type {type(statement.set_declaration)} of set_declaration in loop."
@@ -1215,7 +1198,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._push_scope({})  # loop scope
             if i is None:
                 # Initialize loop variable for first time in loop scope
-                _declare_loop_variable(statement, init_exp)
+                self._visit_classical_declaration(
+                    ClassicalDeclaration(statement.type, statement.identifier, init_exp)
+                )
             else:
                 # Update scope with current value of loop Variable
                 i.value = ival
@@ -1267,8 +1252,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._visit_branching_statement(statement)
         elif isinstance(statement, ForInLoop):
             self._visit_forin_loop(statement)
-        elif isinstance(statement, WhileLoop):
-            self._visit_while_loop(statement)
         elif isinstance(statement, SubroutineDefinition):
             raise NotImplementedError("OpenQASM 3 subroutines not yet supported")
         elif isinstance(statement, AliasStatement):
