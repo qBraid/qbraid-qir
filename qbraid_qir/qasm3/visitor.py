@@ -1262,7 +1262,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
         values = []
         for value in discrete_set.values:
-            if not isinstance(value, IntegerLiteral):  # pragma: no cover
+            if not isinstance(value, IntegerLiteral):
                 self._print_err_location(discrete_set.span)
                 raise Qasm3ConversionError(
                     f"Unsupported discrete set value {value} in discrete set"
@@ -1345,9 +1345,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 for i, qid in enumerate(qids):
                     self._qubit_labels[f"{alias_reg_name}_{i}"] = qid
                 alias_reg_size = len(qids)
-            else:  # pragma: no cover
-                self._print_err_location(statement.span)
-                raise Qasm3ConversionError(f"Unsupported aliasing {statement}")
 
         self._qreg_size_map[alias_reg_name] = alias_reg_size
 
