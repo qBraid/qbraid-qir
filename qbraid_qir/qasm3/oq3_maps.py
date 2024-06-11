@@ -30,6 +30,7 @@ from openqasm3.ast import (
 
 from .elements import InversionOp
 from .exceptions import Qasm3ConversionError
+from .linalg import kak_decomposition_angles
 
 OPERATOR_MAP = {
     "+": lambda x, y: x + y,
@@ -369,37 +370,34 @@ def gpi2_gate(builder, phi, qubit):
     u3_gate(builder, theta_0, phi_0, lambda_0, qubit)
 
 
-def ms_gate(builder, phi0, phi1, theta, qubit0, qubit1): # pylint: disable=too-many-arguments
+def ms_gate(builder, phi0, phi1, theta, qubit0, qubit1):  # pylint: disable=too-many-arguments
     """
     Implements the Molmer Sorenson gate as a decomposition of other gates.
     """
-    kak = np.array([[np.cos(theta / 2), 0, 0, -1j * np.exp(-1j * (phi0 + phi1)) * np.sin(theta / 2)], 
-           [0, np.cos(theta / 2), -1j * np.exp(-1j * (phi0 - phi1)) * np.sin(theta / 2), 0],
-           [0, -1j * np.exp(1j * (phi0 - phi1)) * np.sin(theta / 2), np.cos(theta / 2), 0],
-           [-1j * np.exp(1j * (phi0 + phi1)) * np.sin(theta / 2), 0, 0, np.cos(theta / 2)]])
+    mat = np.array(
+        [
+            [np.cos(theta / 2), 0, 0, -1j * np.exp(-1j * (phi0 + phi1)) * np.sin(theta / 2)],
+            [0, np.cos(theta / 2), -1j * np.exp(-1j * (phi0 - phi1)) * np.sin(theta / 2), 0],
+            [0, -1j * np.exp(1j * (phi0 - phi1)) * np.sin(theta / 2), np.cos(theta / 2), 0],
+            [-1j * np.exp(1j * (phi0 + phi1)) * np.sin(theta / 2), 0, 0, np.cos(theta / 2)],
+        ]
+    )
+    angles = kak_decomposition_angles(mat)
     qubits = [qubit0, qubit1]
-    ## two u3 gates idk the values. these are determined by kak.single_qubit_operations_before
-    ## https://github.com/quantumlib/Cirq/blob/v1.4.0/cirq-core/cirq/linalg/decompositions.py#L812-L881
-    # u3_gate(builder, idk, idk, idk, qubits[0])
-    # u3_gate(builder, idk, idk, idk, qubits[1])
 
+    u3_gate(builder, angles[0][0], angles[0][1], angles[0][2], qubits[0])
+    u3_gate(builder, angles[1][0], angles[1][1], angles[1][2], qubits[1])
     sx_gate(builder, qubits[0])
     pyqir._native.cx(builder, qubits[0], qubits[1])
-
-    # x pow, y pow, i think i did the expressions right
-    pyqir._native.rx(builder, ((1/2) - 2 * theta) * CONSTANTS_MAP["pi"], qubits[0])
+    pyqir._native.rx(builder, ((1 / 2) - 2 * theta) * CONSTANTS_MAP["pi"], qubits[0])
     pyqir._native.rx(builder, CONSTANTS_MAP["pi"] / 2, qubits[1])
-
     pyqir._native.cx(builder, qubits[1], qubits[0])
     sxdg_gate(builder, qubits[1])
-
     pyqir._native.s(builder, qubits[1])
     pyqir._native.cx(builder, qubits[0], qubits[1])
-    ## two u3 gates idk the values these are determined by kak.single_qubit_operations_after
-    # u3_gate(builder, idk, idk, idk, qubits[0])
-    # u3_gate(builder, idk, idk, idk, qubits[1])
-    raise NotImplementedError
-    
+    u3_gate(builder, angles[2][0], angles[2][1], angles[2][2], qubits[0])
+    u3_gate(builder, angles[3][0], angles[3][1], angles[3][2], qubits[1])
+
 
 def ecr_gate(builder, qubit0, qubit1):
     """
@@ -458,6 +456,8 @@ PYQIR_ONE_QUBIT_ROTATION_MAP = {
     "prx": prx_gate,
     "phaseshift": phaseshift_gate,
     "p": phaseshift_gate,
+    "gpi": gpi_gate,
+    "gpi2": gpi2_gate,
 }
 
 PYQIR_TWO_QUBIT_OP_MAP = {
@@ -482,6 +482,7 @@ PYQIR_TWO_QUBIT_OP_MAP = {
     "cp10": cphaseshift10_gate,
     "cphaseshift10": cphaseshift10_gate,
     "ecr": ecr_gate,
+    "ms": ms_gate,
 }
 
 PYQIR_THREE_QUBIT_OP_MAP = {
