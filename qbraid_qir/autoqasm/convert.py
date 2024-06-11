@@ -48,14 +48,7 @@ def _process_qasm(qasm: str) -> str:
     # Replace specific keywords with comments in a single step to avoid multiple replacements
     qasm = re.sub(r"^(output|return_value =)", r"// \1", qasm, flags=re.MULTILINE)
 
-    replacements = {
-        "ms": "rxx",
-        "phaseshift": "p",
-        "cphaseshift": "cp",
-    }
-
     # Insert and replace various gate definitions for compatibility
-    qasm = qasm3_compat.replace_commands(qasm, replacements)
     qasm = qasm3_compat._add_stdgates_include(qasm)
     qasm = qasm3_compat._insert_gate_defs(qasm)
 
