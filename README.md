@@ -10,6 +10,9 @@
   <a href='https://docs.qbraid.com/projects/qir/en/latest/?badge=latest'>
     <img src='https://readthedocs.com/projects/qbraid-qbraid-qir/badge/?version=latest&token=7656ee72b7a66dec6d78dda911ce808676dca55c3e86702d5e97191badfdf19c' alt='Documentation Status'/>
   </a>
+  <a href="https://codecov.io/gh/qBraid/qbraid-qir">
+    <img src="https://codecov.io/gh/qBraid/qbraid-qir/graph/badge.svg?token=GUQ3EN8DGI"/>
+  </a>
   <a href="https://pypi.org/project/qbraid-qir/">
     <img src="https://img.shields.io/pypi/v/qbraid-qir.svg?color=blue" alt="PyPI version"/>
   </a>
