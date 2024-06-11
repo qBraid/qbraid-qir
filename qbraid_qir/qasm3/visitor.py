@@ -1262,7 +1262,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
         values = []
         for value in discrete_set.values:
-            if not isinstance(value, IntegerLiteral): # pragma: no cover
+            if not isinstance(value, IntegerLiteral):  # pragma: no cover
                 self._print_err_location(discrete_set.span)
                 raise Qasm3ConversionError(
                     f"Unsupported discrete set value {value} in discrete set"
