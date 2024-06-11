@@ -34,11 +34,13 @@ from openqasm3.ast import (
     ClassicalAssignment,
     ClassicalDeclaration,
     ConstantDeclaration,
+    DiscreteSet,
     DurationLiteral,
     FloatLiteral,
 )
 from openqasm3.ast import FloatType as Qasm3FloatType
 from openqasm3.ast import (
+    ForInLoop,
     GateModifierName,
     Identifier,
     ImaginaryLiteral,
@@ -62,6 +64,7 @@ from openqasm3.ast import (
     Statement,
     SubroutineDefinition,
     UnaryExpression,
+    WhileLoop,
 )
 from pyqir import BasicBlock, Builder, Constant
 from pyqir import IntType as qirIntType
@@ -164,6 +167,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
     def _check_in_scope(self, var_name: str) -> bool:
         curr_scope = self._get_scope()
         return var_name in curr_scope
+
+    def _find_in_visible_scope(self, var_name: str) -> Union[Variable, None]:
+        for scope in reversed(self._scope):
+            if var_name in scope:
+                return scope[var_name]
+        return None
 
     def _update_scope(self, variable: Variable) -> None:
         if len(self._scope) == 0:
@@ -297,7 +306,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                         ]
                     )
                 else:
-                    qid = qubit.indices[0][0].value
+                    qid = self._evaluate_expression(qubit.indices[0][0])
                     self._validate_register_index(qid, qreg_size, qubit=True)
                     qreg_qids = [self._qubit_labels[f"{qreg_name}_{qid}"]]
                     openqasm_qubits.append(qubit)
@@ -944,11 +953,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(lvalue, IndexedIdentifier):
             var_name = var_name.name
 
-        if not self._check_in_scope(var_name):
+        if self._find_in_visible_scope(var_name) is None:
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Undefined variable {var_name} in assignment")
 
-        if self._get_scope()[var_name].is_constant:
+        var = self._find_in_visible_scope(var_name)
+        if var.is_constant:
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Assignment to constant variable {var_name} not allowed")
 
@@ -956,15 +966,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         # currently we support single array assignment only
         # range based assignment not supported yet
-        self._validate_variable_assignment_value(self._get_scope()[var_name], var_value)
+        self._validate_variable_assignment_value(var, var_value)
 
         # handle assignment for arrays
         if isinstance(lvalue, IndexedIdentifier):
             indices = lvalue.indices
             flat_index = self._analyse_classical_indices(indices, var_name)
-            self._get_scope()[var_name].value[flat_index] = var_value
+            var.value[flat_index] = var_value
         else:
-            self._get_scope()[var_name].value = var_value
+            var.value = var_value
 
     # pylint: disable-next=too-many-return-statements
     def _evaluate_expression(self, expression: Any) -> bool:
@@ -986,7 +996,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
 
         def _check_var_in_scope(var_name, span):
-            if not self._check_in_scope(var_name):
+            if self._find_in_visible_scope(var_name) is None:
                 self._print_err_location(span)
                 raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
 
@@ -998,11 +1008,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         def _get_var_value(var_name, indices=None):
             var_value = None
             if isinstance(expression, Identifier):
-                var_value = self._get_scope()[var_name].value
+                var_value = self._find_in_visible_scope(var_name).value
             else:
                 # indices is a list of singleton lists
                 flat_index = self._analyse_classical_indices(indices, var_name)
-                var_value = self._get_scope()[var_name].value[flat_index]
+                var_value = self._find_in_visible_scope(var_name).value[flat_index]
             return var_value
 
         def _analyse_index_expression(index_expr):
@@ -1165,6 +1175,43 @@ class BasicQasmVisitor(ProgramElementVisitor):
             one=lambda: _visit_statement_block(if_block),
         )
 
+    def _visit_forin_loop(self, statement: ForInLoop) -> None:
+        # Compute loop variable values
+        if isinstance(statement.set_declaration, RangeDefinition):
+            init_exp = statement.set_declaration.start
+            startval = self._evaluate_expression(init_exp)
+            range_def = statement.set_declaration
+            stepval = 1 if range_def.step is None else self._evaluate_expression(range_def.step)
+            endval = self._evaluate_expression(range_def.end)
+            irange = list(range(startval, endval + stepval, stepval))
+        elif isinstance(statement.set_declaration, DiscreteSet):
+            init_exp = statement.set_declaration.values[0]
+            irange = [self._evaluate_expression(exp) for exp in statement.set_declaration.values]
+        else:
+            raise Qasm3ConversionError(
+                f"Unexpected type {type(statement.set_declaration)} of set_declaration in loop."
+            )
+
+        i = None  # will store iteration Variable to update to loop scope
+        for ival in irange:
+            self._push_scope({})  # loop scope
+            if i is None:
+                # Initialize loop variable for first time in loop scope
+                self._visit_classical_declaration(
+                    ClassicalDeclaration(statement.type, statement.identifier, init_exp)
+                )
+            else:
+                # Update scope with current value of loop Variable
+                i.value = ival
+                self._update_scope(i)
+            for stmt in statement.block:
+                self.visit_statement(stmt)
+            i = self._get_scope()[statement.identifier.name]
+            self._pop_scope()  # scope not persistent between loop iterations
+
+    def _visit_while_loop(self, statement: WhileLoop) -> None:
+        pass
+
     def visit_contextual_statement(self, statement: Statement) -> None:
         pass
 
@@ -1202,6 +1249,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._visit_constant_declaration(statement)
         elif isinstance(statement, BranchingStatement):
             self._visit_branching_statement(statement)
+        elif isinstance(statement, ForInLoop):
+            self._visit_forin_loop(statement)
         elif isinstance(statement, SubroutineDefinition):
             raise NotImplementedError("OpenQASM 3 subroutines not yet supported")
         elif isinstance(statement, AliasStatement):
