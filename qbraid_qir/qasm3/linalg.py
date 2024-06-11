@@ -96,12 +96,13 @@ def orthogonal_bidiagonalize(mat1, mat2):
     """
     Find orthogonal matrices that diagonalize mat1 and mat2.
     """
+    atol = 1e-9
     base_left, base_diag, base_right = _helper_svd(mat1)
     base_diag = np.diag(base_diag)
 
     dim = base_diag.shape[0]
     rank = dim
-    while rank > 0 and base_diag[rank - 1, rank - 1] == 0:
+    while rank > 0 and np.all(np.less_equal(np.abs(base_diag[rank - 1, rank - 1]), atol)):
         rank -= 1
     base_diag = base_diag[:rank, :rank]
 
@@ -115,26 +116,9 @@ def orthogonal_bidiagonalize(mat1, mat2):
 
     left_adjust = _block_diag(overlap_adjust, extra_left_adjust)
     right_adjust = _block_diag(overlap_adjust.T, extra_right_adjust)
-    left = np.dot(base_left, left_adjust)
-    right = np.dot(base_right, right_adjust)
-
+    left = np.dot(left_adjust.T, base_left.T)
+    right = np.dot(base_right.T, right_adjust.T)
     return left, right
-
-
-def bidiagonalize_so(mat):
-    """
-    Find orthogonal L and R so that L @ mat @ R is diagonal.
-    """
-    left, right = orthogonal_bidiagonalize(np.real(mat), np.imag(mat))
-    with np.errstate(divide="ignore", invalid="ignore"):
-        if np.linalg.det(left) < 0:
-            left[0, :] *= -1
-        if np.linalg.det(right) < 0:
-            right[:, 0] *= -1
-
-    diag = np.dot(np.dot(left, mat), right)
-
-    return left, np.diag(diag), right
 
 
 def _kronecker_fator(mat):
@@ -246,8 +230,8 @@ def _kak_canonicalize_vector(x, y, z):
         negate(0, 2)
 
     return {
-        "single_qubit_operations_before": (left[1], left[0]),
-        "single_qubit_operations_after": (right[1], right[0]),
+        "single_qubit_operations_after": (left[1], left[0]),
+        "single_qubit_operations_before": (right[1], right[0]),
     }
 
 
@@ -277,11 +261,27 @@ def _deconstruct_matrix_to_angles(mat):
     return right_phase + diagonal_phase, rotation * 2, bottom_phase
 
 
+def so_bidiagonalize(mat):
+    """
+    Find special orthogonal L and R so that L @ mat @ R is diagonal.
+    """
+    left, right = orthogonal_bidiagonalize(np.real(mat), np.imag(mat))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        if np.linalg.det(left) < 0:
+            left[0, :] *= -1
+        if np.linalg.det(right) < 0:
+            right[:, 0] *= -1
+
+    diag = np.dot(np.dot(left, mat), right)
+
+    return left, np.diag(diag), right
+
+
 def kak_decomposition_angles(mat):
     """
     Decompose matrix into KAK decomposition, return all angles.
     """
-    left, d, right = bidiagonalize_so(KAK_MAGIC_DAG @ mat @ KAK_MAGIC)
+    left, d, right = so_bidiagonalize(KAK_MAGIC_DAG @ mat @ KAK_MAGIC)
 
     a1, a0 = _so4_to_su2(left.T)
     b1, b0 = _so4_to_su2(right.T)
@@ -293,14 +293,14 @@ def kak_decomposition_angles(mat):
     a1 = np.dot(a1, inner_cannon["single_qubit_operations_after"][0])
     a0 = np.dot(a0, inner_cannon["single_qubit_operations_after"][1])
 
-    rotation00, post_phase00, post_phase00 = _deconstruct_matrix_to_angles(b0)
-    rotation01, post_phase01, post_phase01 = _deconstruct_matrix_to_angles(b1)
-    rotation10, post_phase10, post_phase10 = _deconstruct_matrix_to_angles(a0)
-    rotation11, post_phase11, post_phase11 = _deconstruct_matrix_to_angles(a1)
+    pre_phase00, rotation00, post_phase00 = _deconstruct_matrix_to_angles(b1)
+    pre_phase01, rotation01, post_phase01 = _deconstruct_matrix_to_angles(b0)
+    pre_phase10, rotation10, post_phase10 = _deconstruct_matrix_to_angles(a1)
+    pre_phase11, rotation11, post_phase11 = _deconstruct_matrix_to_angles(a0)
 
     return [
-        [rotation00, post_phase00, post_phase00],
-        [rotation01, post_phase01, post_phase01],
-        [rotation10, post_phase10, post_phase10],
-        [rotation11, post_phase11, post_phase11],
+        [rotation00, post_phase00, pre_phase00],
+        [rotation01, post_phase01, pre_phase01],
+        [rotation10, post_phase10, pre_phase10],
+        [rotation11, post_phase11, pre_phase11],
     ]
