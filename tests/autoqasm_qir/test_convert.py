@@ -161,14 +161,6 @@ def test_controlled_phase_shift_gates():
     assert isinstance(qasm, Module)
 
 
-@pytest.mark.skipif(True, reason="not sure if necessary")
-def test_global_phase_gates():
-    """Test converting global phase gate autoqasm to qir."""
-    qasm = autoqasm_to_qir(global_phase_gates)
-    assert isinstance(qasm, Module)
-
-
-@pytest.mark.skipif(True, reason="ms not currently supported")
 def test_ionq_gates():
     """Test converting ionq gate autoqasm to qir."""
     qasm = autoqasm_to_qir(ionq_gates)
