@@ -19,9 +19,9 @@
   <a href="https://pypi.org/project/qbraid-qir/">
     <img src="https://img.shields.io/pypi/pyversions/qbraid-qir.svg?color=blue" alt="PyPI version"/>
   </a>
-  <a href="https://pepy.tech/project/qbraid-qir">
+<!--   <a href="https://pepy.tech/project/qbraid-qir">
     <img src="https://static.pepy.tech/badge/qbraid-qir" alt="Downloads"/>
-  </a>
+  </a> -->
   <a href='https://www.gnu.org/licenses/gpl-3.0.html'>
     <img src='https://img.shields.io/github/license/qBraid/qbraid.svg' alt='License'/>
   </a>
