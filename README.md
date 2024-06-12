@@ -10,15 +10,18 @@
   <a href='https://docs.qbraid.com/projects/qir/en/latest/?badge=latest'>
     <img src='https://readthedocs.com/projects/qbraid-qbraid-qir/badge/?version=latest&token=7656ee72b7a66dec6d78dda911ce808676dca55c3e86702d5e97191badfdf19c' alt='Documentation Status'/>
   </a>
+  <a href="https://codecov.io/gh/qBraid/qbraid-qir">
+    <img src="https://codecov.io/gh/qBraid/qbraid-qir/graph/badge.svg?token=GUQ3EN8DGI"/>
+  </a>
   <a href="https://pypi.org/project/qbraid-qir/">
     <img src="https://img.shields.io/pypi/v/qbraid-qir.svg?color=blue" alt="PyPI version"/>
   </a>
   <a href="https://pypi.org/project/qbraid-qir/">
     <img src="https://img.shields.io/pypi/pyversions/qbraid-qir.svg?color=blue" alt="PyPI version"/>
   </a>
-  <a href="https://pepy.tech/project/qbraid-qir">
+<!--   <a href="https://pepy.tech/project/qbraid-qir">
     <img src="https://static.pepy.tech/badge/qbraid-qir" alt="Downloads"/>
-  </a>
+  </a> -->
   <a href='https://www.gnu.org/licenses/gpl-3.0.html'>
     <img src='https://img.shields.io/github/license/qBraid/qbraid.svg' alt='License'/>
   </a>
