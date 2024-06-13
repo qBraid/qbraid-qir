@@ -384,10 +384,30 @@ def ms_gate(builder, phi0, phi1, theta, qubit0, qubit1):  # pylint: disable=too-
     """
     mat = np.array(
         [
-            [np.cos(np.pi * theta), 0, 0, -1j * np.exp(-1j * 2 * np.pi * (phi0 + phi1)) * np.sin(np.pi * theta)], 
-            [0, np.cos(np.pi * theta), -1j * np.exp(-1j * 2 * np.pi * (phi0 - phi1)) * np.sin(np.pi * theta), 0],
-            [0, -1j * np.exp(1j * 2 * np.pi * (phi0 - phi1)) * np.sin(np.pi * theta), np.cos(np.pi * theta), 0],
-            [-1j * np.exp(1j * 2 * np.pi * (phi0 + phi1)) * np.sin(np.pi * theta), 0, 0, np.cos(np.pi * theta)]
+            [
+                np.cos(np.pi * theta),
+                0,
+                0,
+                -1j * np.exp(-1j * 2 * np.pi * (phi0 + phi1)) * np.sin(np.pi * theta),
+            ],
+            [
+                0,
+                np.cos(np.pi * theta),
+                -1j * np.exp(-1j * 2 * np.pi * (phi0 - phi1)) * np.sin(np.pi * theta),
+                0,
+            ],
+            [
+                0,
+                -1j * np.exp(1j * 2 * np.pi * (phi0 - phi1)) * np.sin(np.pi * theta),
+                np.cos(np.pi * theta),
+                0,
+            ],
+            [
+                -1j * np.exp(1j * 2 * np.pi * (phi0 + phi1)) * np.sin(np.pi * theta),
+                0,
+                0,
+                np.cos(np.pi * theta),
+            ],
         ]
     )
     angles = kak_decomposition_angles(mat)
