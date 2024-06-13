@@ -430,15 +430,12 @@ def prx_gate(builder, theta, phi, qubit):
 
 
 PYQIR_ONE_QUBIT_OP_MAP = {
-    # Identity Gate
     "i": id_gate,
     "id": id_gate,
-    # Single-Qubit Clifford Gates
     "h": pyqir._native.h,
     "x": pyqir._native.x,
     "y": pyqir._native.y,
     "z": pyqir._native.z,
-    # Single-Qubit Non-Clifford Gates
     "s": pyqir._native.s,
     "t": pyqir._native.t,
     "sdg": pyqir._native.s_adj,
