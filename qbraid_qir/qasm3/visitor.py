@@ -34,11 +34,13 @@ from openqasm3.ast import (
     ClassicalAssignment,
     ClassicalDeclaration,
     ConstantDeclaration,
+    DiscreteSet,
     DurationLiteral,
     FloatLiteral,
 )
 from openqasm3.ast import FloatType as Qasm3FloatType
 from openqasm3.ast import (
+    ForInLoop,
     GateModifierName,
     Identifier,
     ImaginaryLiteral,
@@ -62,6 +64,7 @@ from openqasm3.ast import (
     Statement,
     SubroutineDefinition,
     UnaryExpression,
+    WhileLoop,
 )
 from pyqir import BasicBlock, Builder, Constant
 from pyqir import IntType as qirIntType
@@ -114,6 +117,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._measured_qubits = {}
         self._initialize_runtime = initialize_runtime
         self._record_output = record_output
+        self._curr_scope = 0
+        self._label_scope_level = {self._curr_scope: set()}
 
     def visit_qasm3_module(self, module: Qasm3Module) -> None:
         """
@@ -165,6 +170,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         curr_scope = self._get_scope()
         return var_name in curr_scope
 
+    def _find_in_visible_scope(self, var_name: str) -> Union[Variable, None]:
+        for scope in reversed(self._scope):
+            if var_name in scope:
+                return scope[var_name]
+        return None
+
     def _update_scope(self, variable: Variable) -> None:
         if len(self._scope) == 0:
             raise ValueError("No scope available to update")
@@ -213,6 +224,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         else:
             register_size = 1 if register.type.size is None else register.type.size.value
         register_name = register.qubit.name if is_qubit else register.identifier.name
+        self._label_scope_level[self._curr_scope].add(register_name)
 
         for i in range(register_size):
             # required if indices are not used while applying a gate or measurement
@@ -253,6 +265,37 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 f"{'qubit' if qubit else 'clbit'}"
             )
 
+    def _get_qubits_from_range_definition(
+        self, range_def: RangeDefinition, qreg_size: int, is_qubit_reg: bool
+    ) -> List[int]:
+        """Get the qubits from a range definition.
+        Args:
+            range_def (RangeDefinition): The range definition to get qubits from.
+            qreg_size (int): The size of the register.
+            is_qubit_reg (bool): Whether the register is a qubit register.
+        Returns:
+            List[int]: The list of qubit identifiers.
+        """
+        start_qid = 0 if range_def.start is None else range_def.start.value
+        end_qid = qreg_size if range_def.end is None else range_def.end.value
+        step = 1 if range_def.step is None else range_def.step.value
+        self._validate_register_index(start_qid, qreg_size, qubit=is_qubit_reg)
+        self._validate_register_index(end_qid - 1, qreg_size, qubit=is_qubit_reg)
+        return list(range(start_qid, end_qid, step))
+
+    def _check_if_name_in_scope(self, name: str, operation: Any) -> None:
+        """Check if a name is in scope to avoid duplicate declarations.
+        Args:
+            name (str): The name to check.
+        Returns:
+            bool: Whether the name is in scope.
+        """
+        for scope_level in range(0, self._curr_scope + 1):
+            if name in self._label_scope_level[scope_level]:
+                return None
+        self._print_err_location(operation.span)
+        raise Qasm3ConversionError(f"Variable {name} not in scope for operation {operation}")
+
     def _get_op_qubits(self, operation: Any, qir_form: bool = True) -> List[pyqir.qubit]:
         """Get the qubits for the operation.
 
@@ -274,30 +317,22 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     raise Qasm3ConversionError(
                         f"Missing register declaration for {qreg_name} in operation {operation}"
                     )
+                self._check_if_name_in_scope(qreg_name, operation)
                 qreg_size = self._qreg_size_map[qreg_name]
 
                 if isinstance(qubit.indices[0][0], RangeDefinition):
-                    start_qid = (
-                        0 if qubit.indices[0][0].start is None else qubit.indices[0][0].start.value
+                    qids = self._get_qubits_from_range_definition(
+                        qubit.indices[0][0], qreg_size, is_qubit_reg=True
                     )
-                    end_qid = (
-                        qreg_size
-                        if qubit.indices[0][0].end is None
-                        else qubit.indices[0][0].end.value
-                    )
-                    self._validate_register_index(start_qid, qreg_size, qubit=True)
-                    self._validate_register_index(end_qid - 1, qreg_size, qubit=True)
-                    qreg_qids = [
-                        self._qubit_labels[f"{qreg_name}_{i}"] for i in range(start_qid, end_qid)
-                    ]
+                    qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in qids]
                     openqasm_qubits.extend(
                         [
                             IndexedIdentifier(Identifier(qreg_name), [[IntegerLiteral(i)]])
-                            for i in range(start_qid, end_qid)
+                            for i in qids
                         ]
                     )
                 else:
-                    qid = qubit.indices[0][0].value
+                    qid = self._evaluate_expression(qubit.indices[0][0])
                     self._validate_register_index(qid, qreg_size, qubit=True)
                     qreg_qids = [self._qubit_labels[f"{qreg_name}_{qid}"]]
                     openqasm_qubits.append(qubit)
@@ -309,6 +344,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     raise Qasm3ConversionError(
                         f"Missing register declaration for {qreg_name} in operation {operation}"
                     )
+                self._check_if_name_in_scope(qreg_name, operation)
                 qreg_size = self._qreg_size_map[qreg_name]
                 openqasm_qubits.extend(
                     [
@@ -377,7 +413,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             )
 
         def _build_qir_measurement(
-            src_name: str, src_id: Union[int, None], target_name: str, target_id: Union[int, None]
+            src_name: str,
+            src_id: Union[int, None],
+            target_name: str,
+            target_id: Union[int, None],
         ):
             src_id = 0 if src_id is None else src_id
             target_id = 0 if target_id is None else target_id
@@ -386,7 +425,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 self._module.context, self._qubit_labels[f"{src_name}_{src_id}"]
             )
             result = pyqir.result(
-                self._module.context, self._clbit_labels[f"{target_name}_{target_id}"]
+                self._module.context,
+                self._clbit_labels[f"{target_name}_{target_id}"],
             )
             pyqir._native.mz(self._builder, source_qubit, result)
 
@@ -563,7 +603,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             # TODO : update the arg value in expressions not just SINGLE identifiers
 
     def _validate_gate_call(
-        self, operation: QuantumGate, gate_definition: QuantumGateDefinition, qubits_in_op
+        self,
+        operation: QuantumGate,
+        gate_definition: QuantumGateDefinition,
+        qubits_in_op,
     ) -> None:
         if len(operation.arguments) != len(gate_definition.arguments):
             self._print_err_location(operation.span)
@@ -664,7 +707,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 power_value = power_value * abs(current_power)
             elif modifier_name == GateModifierName.inv:
                 inverse_value = not inverse_value
-            elif modifier_name in [GateModifierName.ctrl, GateModifierName.negctrl]:
+            elif modifier_name in [
+                GateModifierName.ctrl,
+                GateModifierName.negctrl,
+            ]:
                 self._print_err_location(operation.span)
                 raise NotImplementedError(
                     "Controlled modifier gates not yet supported in gate operation"
@@ -722,7 +768,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             base_size = variable.base_size
             left, right = 0, 0
             if qasm_type == Qasm3IntType:
-                left, right = -1 * (2 ** (base_size - 1)), 2 ** (base_size - 1) - 1
+                left, right = (
+                    -1 * (2 ** (base_size - 1)),
+                    2 ** (base_size - 1) - 1,
+                )
             else:
                 # would be uint only so we correctly get this
                 left, right = 0, 2**base_size - 1
@@ -931,11 +980,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(lvalue, IndexedIdentifier):
             var_name = var_name.name
 
-        if not self._check_in_scope(var_name):
+        if self._find_in_visible_scope(var_name) is None:
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Undefined variable {var_name} in assignment")
 
-        if self._get_scope()[var_name].is_constant:
+        var = self._find_in_visible_scope(var_name)
+        if var.is_constant:
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Assignment to constant variable {var_name} not allowed")
 
@@ -943,15 +993,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         # currently we support single array assignment only
         # range based assignment not supported yet
-        self._validate_variable_assignment_value(self._get_scope()[var_name], var_value)
+        self._validate_variable_assignment_value(var, var_value)
 
         # handle assignment for arrays
         if isinstance(lvalue, IndexedIdentifier):
             indices = lvalue.indices
             flat_index = self._analyse_classical_indices(indices, var_name)
-            self._get_scope()[var_name].value[flat_index] = var_value
+            var.value[flat_index] = var_value
         else:
-            self._get_scope()[var_name].value = var_value
+            var.value = var_value
 
     # pylint: disable-next=too-many-return-statements
     def _evaluate_expression(self, expression: Any) -> bool:
@@ -973,7 +1023,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
 
         def _check_var_in_scope(var_name, span):
-            if not self._check_in_scope(var_name):
+            if self._find_in_visible_scope(var_name) is None:
                 self._print_err_location(span)
                 raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
 
@@ -985,11 +1035,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         def _get_var_value(var_name, indices=None):
             var_value = None
             if isinstance(expression, Identifier):
-                var_value = self._get_scope()[var_name].value
+                var_value = self._find_in_visible_scope(var_name).value
             else:
                 # indices is a list of singleton lists
                 flat_index = self._analyse_classical_indices(indices, var_name)
-                var_value = self._get_scope()[var_name].value[flat_index]
+                var_value = self._find_in_visible_scope(var_name).value[flat_index]
             return var_value
 
         def _analyse_index_expression(index_expr):
@@ -1102,7 +1152,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             Tuple[Union[int, None], Union[str, None]]: The branch parameters
         """
         if isinstance(condition, UnaryExpression):
-            return condition.expression.index[0].value, condition.expression.collection.name
+            return (
+                condition.expression.index[0].value,
+                condition.expression.collection.name,
+            )
         if isinstance(condition, BinaryExpression):
             return condition.lhs.index[0].value, condition.lhs.collection.name
         if isinstance(condition, IndexExpression):
@@ -1118,6 +1171,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
+        self._curr_scope += 1
+        self._label_scope_level[self._curr_scope] = set()
+
         condition = statement.condition
         positive_branching = self._analyse_branch_condition(condition)
 
@@ -1149,11 +1205,150 @@ class BasicQasmVisitor(ProgramElementVisitor):
             one=lambda: _visit_statement_block(if_block),
         )
 
+        del self._label_scope_level[self._curr_scope]
+        self._curr_scope -= 1
+
+    def _visit_forin_loop(self, statement: ForInLoop) -> None:
+        # Compute loop variable values
+        if isinstance(statement.set_declaration, RangeDefinition):
+            init_exp = statement.set_declaration.start
+            startval = self._evaluate_expression(init_exp)
+            range_def = statement.set_declaration
+            stepval = 1 if range_def.step is None else self._evaluate_expression(range_def.step)
+            endval = self._evaluate_expression(range_def.end)
+            irange = list(range(startval, endval + stepval, stepval))
+        elif isinstance(statement.set_declaration, DiscreteSet):
+            init_exp = statement.set_declaration.values[0]
+            irange = [self._evaluate_expression(exp) for exp in statement.set_declaration.values]
+        else:
+            raise Qasm3ConversionError(
+                f"Unexpected type {type(statement.set_declaration)} of set_declaration in loop."
+            )
+
+        i = None  # will store iteration Variable to update to loop scope
+        for ival in irange:
+            self._push_scope({})  # loop scope
+            if i is None:
+                # Initialize loop variable for first time in loop scope
+                self._visit_classical_declaration(
+                    ClassicalDeclaration(statement.type, statement.identifier, init_exp)
+                )
+            else:
+                # Update scope with current value of loop Variable
+                i.value = ival
+                self._update_scope(i)
+            for stmt in statement.block:
+                self.visit_statement(stmt)
+            i = self._get_scope()[statement.identifier.name]
+            self._pop_scope()  # scope not persistent between loop iterations
+
+    def _visit_while_loop(self, statement: WhileLoop) -> None:
+        pass
+
     def visit_contextual_statement(self, statement: Statement) -> None:
         pass
 
     def visit_scoped_statement(self, statement: Statement) -> None:
         pass
+
+    def _extract_values_from_discrete_set(self, discrete_set: DiscreteSet) -> List[int]:
+        """Extract the values from a discrete set.
+
+        Args:
+            discrete_set (DiscreteSet): The discrete set to extract values from.
+
+        Returns:
+            List[int]: The extracted values.
+        """
+        values = []
+        for value in discrete_set.values:
+            if not isinstance(value, IntegerLiteral):
+                self._print_err_location(discrete_set.span)
+                raise Qasm3ConversionError(
+                    f"Unsupported discrete set value {value} in discrete set"
+                )
+            values.append(value.value)
+        return values
+
+    def _visit_alias_statement(self, statement: AliasStatement) -> None:
+        """Visit an alias statement element.
+
+        Args:
+            statement (AliasStatement): The alias statement to visit.
+
+        Returns:
+            None
+        """
+        # pylint: disable=too-many-branches
+        target = statement.target
+        value = statement.value
+
+        alias_reg_name = target.name
+        alias_reg_size = None
+        aliased_reg_name = None
+        aliased_reg_size = None
+
+        self._label_scope_level[self._curr_scope].add(alias_reg_name)
+
+        if isinstance(value, Identifier):
+            aliased_reg_name = value.name
+        elif isinstance(value, IndexExpression):
+            aliased_reg_name = value.collection.name
+        else:
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(
+                f"Unsupported aliasing {statement} not supported at the moment"
+            )
+
+        if aliased_reg_name not in self._qreg_size_map:
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Qubit register {aliased_reg_name} not found for aliasing")
+
+        aliased_reg_size = self._qreg_size_map[aliased_reg_name]
+        if isinstance(value, Identifier):  # "let alias = q;"
+            for i in range(aliased_reg_size):
+                self._qubit_labels[f"{alias_reg_name}_{i}"] = self._qubit_labels[
+                    f"{aliased_reg_name}_{i}"
+                ]
+            alias_reg_size = aliased_reg_size
+        elif isinstance(value, IndexExpression):
+            if isinstance(value.index, DiscreteSet):  # "let alias = q[{0,1}];"
+                qids = self._extract_values_from_discrete_set(value.index)
+                for i, qid in enumerate(qids):
+                    self._validate_register_index(
+                        qid, self._qreg_size_map[aliased_reg_name], qubit=True
+                    )
+                    self._qubit_labels[f"{alias_reg_name}_{i}"] = self._qubit_labels[
+                        f"{aliased_reg_name}_{qid}"
+                    ]
+                alias_reg_size = len(qids)
+            elif len(value.index) != 1:  # like "let alias = q[0,1];"?
+                self._print_err_location(statement.span)
+                raise Qasm3ConversionError(
+                    "An index set can be specified by a single integer (signed or unsigned), "
+                    "a comma-separated list of integers contained in braces {a,b,c,…}, "
+                    "or a range"
+                )
+            elif isinstance(value.index[0], IntegerLiteral):  # "let alias = q[0];"
+                qid = value.index[0].value
+                self._validate_register_index(
+                    qid, self._qreg_size_map[aliased_reg_name], qubit=True
+                )
+                self._qubit_labels[f"{alias_reg_name}_0"] = value.index[0].value
+                alias_reg_size = 1
+            elif isinstance(value.index[0], RangeDefinition):  # "let alias = q[0:1:2];"
+                qids = self._get_qubits_from_range_definition(
+                    value.index[0],
+                    aliased_reg_size,
+                    is_qubit_reg=True,
+                )
+                for i, qid in enumerate(qids):
+                    self._qubit_labels[f"{alias_reg_name}_{i}"] = qid
+                alias_reg_size = len(qids)
+
+        self._qreg_size_map[alias_reg_name] = alias_reg_size
+
+        _log.debug("Added labels for aliasing '%s'", target)
 
     # pylint: disable-next=too-many-branches
     def visit_statement(self, statement: Statement) -> None:
@@ -1186,10 +1381,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._visit_constant_declaration(statement)
         elif isinstance(statement, BranchingStatement):
             self._visit_branching_statement(statement)
+        elif isinstance(statement, ForInLoop):
+            self._visit_forin_loop(statement)
         elif isinstance(statement, SubroutineDefinition):
             raise NotImplementedError("OpenQASM 3 subroutines not yet supported")
         elif isinstance(statement, AliasStatement):
-            raise NotImplementedError("OpenQASM 3 aliases not yet supported")
+            self._visit_alias_statement(statement)
         elif isinstance(statement, IODeclaration):
             raise NotImplementedError("OpenQASM 3 IO declarations not yet supported")
         else:

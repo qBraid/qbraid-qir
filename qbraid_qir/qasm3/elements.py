@@ -119,7 +119,14 @@ class Qasm3Module:
     """
 
     # pylint: disable-next=too-many-arguments
-    def __init__(self, name: str, module: Module, num_qubits: int, num_clbits: int, elements):
+    def __init__(
+        self,
+        name: str,
+        module: Module,
+        num_qubits: int,
+        num_clbits: int,
+        elements,
+    ):
         self._name = name
         self._module = module
         self._num_qubits = num_qubits

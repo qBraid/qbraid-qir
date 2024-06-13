@@ -45,3 +45,5 @@ from .convert import qasm3_to_qir
 from .elements import Qasm3Module
 from .exceptions import Qasm3ConversionError
 from .visitor import BasicQasmVisitor
+
+__all__ = ["qasm3_to_qir", "Qasm3Module", "Qasm3ConversionError", "BasicQasmVisitor"]

@@ -13,69 +13,229 @@ Module containing unit tests for converting OpenQASM 3 programs
 with alias statements to QIR.
 
 """
+
+import re
+
 import pytest
-from pyqir import Module
 
-from qbraid_qir.qasm3 import qasm3_to_qir
+from qbraid_qir.qasm3 import Qasm3ConversionError, qasm3_to_qir
+from tests.qir_utils import (
+    check_attributes,
+    check_single_qubit_gate_op,
+    check_three_qubit_gate_op,
+    check_two_qubit_gate_op,
+)
 
-qasm3_alias_program = """
-OPENQASM 3.0;
-// The 'stdgates.inc' include is supported, and the gates are only available
-// if it has correctly been included.
-include "stdgates.inc";
-
-// Parametrised inputs are supported.
-input float[64] a;
-
-qubit[3] q;
-bit[2] mid;
-bit[3] out;
-
-// Aliasing and re-aliasing are supported.
-let aliased = q[0:1];
-
-// Parametrised gates that make use of the stdlib.
-gate my_gate(a) c, t {
-  gphase(a / 2);
-  ry(a) c;
-  cx c, t;
-}
-
-// Gate modifiers work as well; this gate is equivalent to `p(-a) c;`.
-gate my_phase(a) c {
-  ctrl @ inv @ gphase(a) c;
-}
-
-// We handle mathematical expressions on gate creation and complex indexing
-// of temporary collections.
-my_gate(a * 2) aliased[0], q[{1, 2}][0];
-measure q[0] -> mid[0];
-measure q[1] -> mid[1];
-
-while (mid == "00") {
-  reset q[0];
-  reset q[1];
-  my_gate(a) q[0], q[1];
-  // We support the builtin mathematical symbols.
-  my_phase(a - pi/2) q[1];
-  mid[0] = measure q[0];
-  mid[1] = measure q[1];
-}
-
-// The condition resolver can also handle simple cases that don't look
-// _exactly_ like equality conditions.
-if (mid[0]) {
-  // There is limited support for aliasing within nested scopes.
-  let inner_alias = q[{0, 1}];
-  reset inner_alias;
-}
-
-out = measure q;
-"""
+from .test_if import compare_reference_ir, resources_file
 
 
-@pytest.mark.skip(reason="Aliases not supported yet")
 def test_alias():
     """Test converting OpenQASM 3 program with openqasm3.ast.AliasStatement."""
-    module = qasm3_to_qir(qasm3_alias_program, name="test")
-    assert isinstance(module, Module)
+
+    qasm3_alias_program = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    qubit[5] q;
+
+    let myqreg0 = q;
+    let myqreg1 = q[1];
+    let myqreg2 = q[1:];
+    let myqreg3 = q[:4];
+    let myqreg4 = q[1:4];
+    let myqreg5 = q[1:2:4];
+    let myqreg6 = q[{0, 1}];
+
+    x myqreg0[0];
+    h myqreg1;
+    cx myqreg2[0], myqreg2[1];
+    cx myqreg3[2], myqreg3[3];
+    ccx myqreg4;
+    swap myqreg5[0], myqreg5[1];
+    cz myqreg6;
+    """
+    result = qasm3_to_qir(qasm3_alias_program, name="test")
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 5)
+
+    check_single_qubit_gate_op(generated_qir, 1, [0], "x")
+    check_single_qubit_gate_op(generated_qir, 1, [1], "h")
+    check_two_qubit_gate_op(generated_qir, 2, [[1, 2], [2, 3]], "cx")
+    check_three_qubit_gate_op(generated_qir, 1, [[1, 2, 3]], "ccx")
+    check_two_qubit_gate_op(generated_qir, 1, [[1, 3]], "swap")
+    check_two_qubit_gate_op(generated_qir, 1, [[0, 1]], "cz")
+
+
+def test_alias_update():
+    """Test converting OpenQASM 3 program with alias update."""
+
+    qasm3_alias_program = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    qubit[4] q;
+
+    let alias = q[1:];
+    let alias = q[2:];
+
+    x alias[1];
+    """
+    result = qasm3_to_qir(qasm3_alias_program, name="test")
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 4)
+
+    check_single_qubit_gate_op(generated_qir, 1, [3], "x")
+
+
+def test_alias_wrong_indexing():
+    """Test converting OpenQASM 3 program with wrong alias indexing."""
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=re.escape(
+            r"An index set can be specified by a single integer (signed or unsigned), "
+            "a comma-separated list of integers contained in braces {a,b,c,…}, or a range"
+        ),
+    ):
+        qasm3_alias_program = """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        qubit[5] q;
+
+        let myqreg = q[1,2];
+
+        x myqreg[0];
+        """
+        _ = qasm3_to_qir(qasm3_alias_program, name="test")
+
+
+def test_alias_defined_before():
+    """Test converting OpenQASM 3 program with alias defined before the qubit register."""
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=re.escape(r"Qubit register q2 not found for aliasing"),
+    ):
+        qasm3_alias_program = """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        qubit[5] q1;
+
+        let myqreg = q2[1];
+        """
+        _ = qasm3_to_qir(qasm3_alias_program, name="test")
+
+
+def test_unsupported_alias():
+    """Test converting OpenQASM 3 program with unsupported alias."""
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Unsupported aliasing .*",
+    ):
+        qasm3_alias_program = """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        qubit[5] q;
+
+        let myqreg = q[0] ++ q[1];
+        """
+        _ = qasm3_to_qir(qasm3_alias_program, name="test")
+
+
+def test_alias_in_scope_1():
+    """Test converting OpenQASM 3 program with alias in scope."""
+    qasm = """
+    OPENQASM 3;
+    include "stdgates.inc";
+    qubit[4] q;
+    bit[4] c;
+
+    h q;
+    measure q -> c;
+    if(c[0]){
+        let alias = q[0:2];
+        x alias[0];
+        cx alias[0], alias[1];
+    }
+
+    if(c[1] == 1){
+        cx q[1], q[2];
+    }
+
+    if(!c[2]){
+        h q[2];
+    }
+    """
+    result = qasm3_to_qir(qasm)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 4, 4)
+    simple_file = resources_file("simple_if.ll")
+    compare_reference_ir(result.bitcode, simple_file)
+
+
+def test_alias_in_scope_2():
+    """Test converting OpenQASM 3 program with alias in scope."""
+    qasm = """
+    OPENQASM 3;
+    include "stdgates.inc";
+    qubit[4] q;
+    bit[4] c;
+
+    let alias = q[0:2];
+
+    h q;
+    measure q -> c;
+    if(c[0]){
+        x alias[0];
+        cx alias[0], alias[1];
+    }
+
+    if(c[1] == 1){
+        cx alias[1], q[2];
+    }
+
+    if(!c[2]){
+        h q[2];
+    }
+    """
+    result = qasm3_to_qir(qasm)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 4, 4)
+    simple_file = resources_file("simple_if.ll")
+    compare_reference_ir(result.bitcode, simple_file)
+
+
+def test_alias_out_of_scope():
+    """Test converting OpenQASM 3 program with alias out of scope."""
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Variable alias not in scope for operation .*",
+    ):
+        qasm = """
+        OPENQASM 3;
+        include "stdgates.inc";
+        qubit[4] q;
+        bit[4] c;
+
+        h q;
+        measure q -> c;
+        if(c[0]){
+            let alias = q[0:2];
+            x alias[0];
+            cx alias[0], alias[1];
+        }
+
+        if(c[1] == 1){
+            cx alias[1], q[2];
+        }
+
+        if(!c[2]){
+            h q[2];
+        }
+        """
+        _ = qasm3_to_qir(qasm)

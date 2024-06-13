@@ -1,4 +1,4 @@
-name: Formatting check
+name: Format
 
 on:
   pull_request:
@@ -6,21 +6,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  main:
+  check:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install -e '.[lint]'
+          python3 -m pip install tox>=4.2.0
       - name: Check isort, black, headers
         run: |
-          black --check qbraid_qir tests tools examples
-          isort --check-only qbraid_qir tests tools
-          qbraid admin headers qbraid_qir tests
+          tox -e format-check
