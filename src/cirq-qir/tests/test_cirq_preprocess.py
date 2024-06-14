@@ -15,7 +15,7 @@ import cirq
 import numpy as np
 import pytest
 
-from qbraid_qir.cirq.passes import preprocess_circuit
+from cirq_qir.passes import preprocess_circuit
 
 # pylint: disable=redefined-outer-name
 

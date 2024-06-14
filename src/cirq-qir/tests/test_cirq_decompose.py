@@ -17,7 +17,7 @@ import cirq
 import numpy as np
 from qbraid.interface import circuits_allclose
 
-from qbraid_qir.cirq.passes import _decompose_unsupported_gates
+from cirq_qir.passes import _decompose_unsupported_gates
 
 
 def test_only_supported_gates():

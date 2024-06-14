@@ -16,7 +16,7 @@ with alias statements to QIR.
 import pytest
 from pyqir import Module
 
-from qbraid_qir.qasm3 import qasm3_to_qir
+from openqasm3_qir import qasm3_to_qir
 
 qasm3_alias_program = """
 OPENQASM 3.0;

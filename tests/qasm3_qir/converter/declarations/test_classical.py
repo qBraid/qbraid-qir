@@ -14,8 +14,8 @@ Module containing unit tests for QASM3 to QIR conversion functions.
 """
 import pytest
 
-from qbraid_qir.qasm3.convert import qasm3_to_qir
-from qbraid_qir.qasm3.exceptions import Qasm3ConversionError
+from openqasm3_qir.convert import qasm3_to_qir
+from openqasm3_qir.exceptions import Qasm3ConversionError
 from tests.qasm3_qir.fixtures.variables import ASSIGNMENT_TESTS, DECLARATION_TESTS
 from tests.qir_utils import check_attributes, check_single_qubit_rotation_op
 

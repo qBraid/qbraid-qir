@@ -101,7 +101,7 @@ In [2]: qbraid_qir.__version__
 
 ```python
 import cirq
-from qbraid_qir.cirq import cirq_to_qir
+from cirq_qir import cirq_to_qir
 
 q0, q1 = cirq.LineQubit.range(2)
 
@@ -119,7 +119,7 @@ ir = str(module)
 ### OpenQASM 3 conversions
 
 ```python
-from qbraid_qir.qasm3 import qasm3_to_qir
+from openqasm3_qir import qasm3_to_qir
 
 program = """
 OPENQASM 3;
@@ -143,7 +143,7 @@ ir = str(module)
 ### Add QIR node to qBraid conversion graph
 
 ```python
-from qbraid_qir.cirq import cirq_to_qir
+from cirq_qir import cirq_to_qir
 from qbraid.transpiler import Conversion, ConversionGraph
 
 graph = ConversionGraph()

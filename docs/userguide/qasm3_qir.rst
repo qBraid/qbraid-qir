@@ -11,7 +11,7 @@ Convert an ``OpenQASM 3`` program to ``QIR`` code:
 .. code-block:: python
 
    from qbraid_qir import dumps
-   from qbraid_qir.qasm3 import qasm3_to_qir
+   from openqasm3_qir import qasm3_to_qir
 
    # create a test program
    program = """

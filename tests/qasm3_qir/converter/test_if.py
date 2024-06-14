@@ -19,7 +19,7 @@ from pathlib import Path
 import pyqir
 import pytest
 
-from qbraid_qir.qasm3 import Qasm3ConversionError, qasm3_to_qir
+from openqasm3_qir import Qasm3ConversionError, qasm3_to_qir
 from tests.qir_utils import check_attributes, get_entry_point_body
 
 RESOURCES_DIR = os.path.join(

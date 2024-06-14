@@ -174,8 +174,8 @@ This project was conceived in cooperation with the Quantum Open Source Foundatio
    :hidden:
 
    api/qbraid_qir
-   api/qbraid_qir.cirq
-   api/qbraid_qir.qasm3
+   api/cirq_qir
+   api/openqasm3_qir
 
 
 Indices and Tables

@@ -1,8 +1,8 @@
 :orphan:
 
-qbraid_qir.qasm3
+openqasm3_qir
 =================
 
-.. automodule:: qbraid_qir.qasm3
+.. automodule:: openqasm3_qir
    :undoc-members:
    :show-inheritance:

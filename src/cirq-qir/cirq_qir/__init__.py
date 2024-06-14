@@ -11,7 +11,7 @@
 """
 Module containing Cirq QIR functionality.
 
-.. currentmodule:: qbraid_qir.cirq
+.. currentmodule:: cirq_qir
 
 Functions
 -----------

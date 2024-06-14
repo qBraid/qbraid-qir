@@ -17,7 +17,7 @@ converting OpenQASM3 programs that contain subroutines.
 import openqasm3
 import pytest
 
-from qbraid_qir.qasm3 import qasm3_to_qir
+from openqasm3_qir import qasm3_to_qir
 
 # Equivalent OpenQASM 3 programs that apply a Hadamard gate and measure the qubit.
 # The first is uses the conventional synatx, while the second contains a subroutine.

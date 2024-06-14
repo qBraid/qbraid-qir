@@ -1,8 +1,8 @@
 :orphan:
 
-qbraid_qir.cirq
+cirq_qir
 ================
 
-.. automodule:: qbraid_qir.cirq
+.. automodule:: cirq_qir
    :undoc-members:
    :show-inheritance:

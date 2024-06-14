@@ -15,7 +15,7 @@ Tests the convert module of qasm3 to qir
 
 import pytest
 
-from qbraid_qir.qasm3.convert import qasm3_to_qir
+from openqasm3_qir.convert import qasm3_to_qir
 
 
 def test_correct_conversion():

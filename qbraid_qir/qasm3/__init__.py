@@ -11,7 +11,7 @@
 """
 Module containing OpenQASM 3 QIR functionality.
 
-.. currentmodule:: qbraid_qir.qasm3
+.. currentmodule:: openqasm3_qir
 
 Functions
 -----------

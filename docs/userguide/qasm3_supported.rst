@@ -6,7 +6,7 @@ QASM support
 Currently Supported Constructs
 ------------------------------
 
-The ``qbraid_qir.qasm3.qasm3_to_qir()`` converter supports the following OpenQASM 3 constructs:
+The ``openqasm3_qir.qasm3_to_qir()`` converter supports the following OpenQASM 3 constructs:
 
 1. **Register Declarations** : OpenQASM declarations of all forms ``qreg``, ``qubit``, ``bit`` and ``creg`` are supported. 
 

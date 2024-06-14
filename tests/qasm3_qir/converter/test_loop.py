@@ -16,8 +16,8 @@ converting OpenQASM3 programs that contain loops.
 
 import pytest
 
-from qbraid_qir.qasm3 import qasm3_to_qir
-from qbraid_qir.qasm3.visitor import Qasm3ConversionError
+from openqasm3_qir import qasm3_to_qir
+from openqasm3_qir.visitor import Qasm3ConversionError
 
 EXAMPLE_WITHOUT_LOOP = """
 OPENQASM 3.0;

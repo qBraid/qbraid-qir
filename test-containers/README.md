@@ -53,7 +53,7 @@ Convert a cirq program and save the output to a file
 import cirq
 
 from qbraid_qir import dumps
-from qbraid_qir.cirq import cirq_to_qir
+from cirq_qir import cirq_to_qir
 
 # create a test circuit
 q0, q1 = cirq.LineQubit.range(2)

@@ -16,7 +16,7 @@ import hashlib
 
 import cirq
 
-from qbraid_qir.cirq.elements import generate_module_id
+from cirq_qir.elements import generate_module_id
 
 
 def test_generate_module_id_format(cirq_bell):
