@@ -20,14 +20,15 @@ import pyqir
 import pytest
 
 from cirq_qir import CirqConversionError, cirq_to_qir
-from tests.cirq_qir.fixtures.basic_gates import (
+
+from .fixtures.basic_gates import (
     double_op_tests,
     measurement_tests,
     rotation_tests,
     single_op_tests,
     triple_op_tests,
 )
-from tests.qir_utils import (
+from .qir_utils import (
     assert_equal_qir,
     check_attributes,
     double_op_call_string,

@@ -13,5 +13,6 @@ Module defining exceptions for errors raised during Cirq conversions.
 
 """
 
+
 class CirqConversionError(Exception):
     """Class for errors raised when converting Cirq program to QIR."""
