@@ -29,7 +29,7 @@ requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://github.com/qBraid/qbraid-qir"
-Documentation = "https://docs.qbraid.com/projects/qir/en/stable/"
+Documentation = "https://docs.qbraid.com/qir"
 "Bug Tracker" = "https://github.com/qBraid/qbraid-qir/issues"
 Discord = "https://discord.gg/TPBU2sa8Et"
 "Launch on Lab" = "https://account.qbraid.com/?gitHubUrl=https://github.com/qBraid/qbraid-qir.git"

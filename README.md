@@ -7,7 +7,7 @@
   <!-- <a href="https://codecov.io/gh/qBraid/qbraid-qir" >
     <img src="https://codecov.io/gh/qBraid/qbraid-qir/graph/badge.svg?token=GUQ3EN8DGI"/>
   </a> -->
-  <a href='https://docs.qbraid.com/projects/qir/en/latest/?badge=latest'>
+  <a href='https://sdk.qbraid.com/projects/qir/en/latest/?badge=latest'>
     <img src='https://readthedocs.com/projects/qbraid-qbraid-qir/badge/?version=latest&token=7656ee72b7a66dec6d78dda911ce808676dca55c3e86702d5e97191badfdf19c' alt='Documentation Status'/>
   </a>
   <a href="https://codecov.io/gh/qBraid/qbraid-qir">
@@ -93,8 +93,8 @@ In [2]: qbraid_qir.__version__
 
 ## Resources
 
-- [User Guide](https://docs.qbraid.com/projects/qir/)
-- [API Reference](https://docs.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html)
+- [User Guide](https://docs.qbraid.com/qir/user-guide)
+- [API Reference](https://sdk.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html)
 - [Example Notebooks](examples)
 - [Test Containers](test-containers)
 
@@ -160,7 +160,7 @@ graph.plot()
 
 ## Architecture diagram
 
-qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/en/latest/sdk/transpiler.html#architecture) with qbraid-qir integration (left) mapped to language specific conversion step in QIR abstraction [layers](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html) (right).
+qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/qir/user-guide/overview#architecture-diagram) with qbraid-qir integration (left) mapped to language specific conversion step in QIR abstraction [layers](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html) (right).
 
 <img width="full" alt="architecture" src="https://github.com/qBraid/qbraid-qir/assets/46977852/36644614-2715-4f08-8a8c-8a2e61aebf38">
 
@@ -187,10 +187,10 @@ citation details, please refer to [CITATION.cff](CITATION.cff).
 @software{Gupta_qBraid-QIR_Python_package_2024,
 author = {Gupta, Harshit and Kushnir, Samuel and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
 license = {GPL-3.0},
-month = may,
+month = jun,
 title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
 url = {https://github.com/qBraid/qbraid-qir},
-version = {0.2.0},
+version = {0.2.1},
 year = {2024}
 }
 ```
