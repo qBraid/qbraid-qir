@@ -1,6 +1,3 @@
-Documentation
-==============
-   
 .. raw:: html
 
    <html>
@@ -49,7 +46,7 @@ Documentation
    </head>
    <body>
    <h1 style="text-align: center">
-      <img src="_static/logo.png" alt="qbraid logo" style="width:50px;height:50px;">
+      <img src="_static/logo.png" alt="qbraid logo" style="width:60px;height:60px;">
       <span> qBraid</span>
       <span style="color:#808080"> | QIR</span>
    </h1>
@@ -63,123 +60,67 @@ Documentation
 
 :Release: |release|
 
-Python package for generating QIR programs from Cirq, and other high-level quantum programming languages.
-This project aims to make QIR (Quantum Intermediate Representation) accessible via the qBraid-SDK
-`transpiler <https://docs.qbraid.com/en/latest/sdk/transpiler.html>`_, and by doing so, open the door
-to language-specific conversions from any and all high-level quantum languages supported by ``qbraid``.
+Overview
+---------
 
-"*Interoperability* opens doors to cross-fields problem-solving." \- QIR Alliance: `Why do we need it? <https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html>`_.
+Python package for generating `QIR <https://www.qir-alliance.org/qir-book/concepts/what-is-qir.html>`_ (Quantum Intermediate Representation)
+programs from various high-level quantum programming languages. This project acts as an extension to the qBraid-SDK `transpiler <https://docs.qbraid.com/sdk/user-guide/transpiler>`_,
+opening the door to language-specific conversions from any of the 10+ quantum program types `supported <https://docs.qbraid.com/sdk/user-guide/overview#supported-frontends>`_
+by ``qbraid``.
+
+> "*Interoperability* opens doors to cross-fields problem-solving." \- QIR Alliance: `Why do we need it? <https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html>`_.
 
 
 Installation
-^^^^^^^^^^^^^
+-------------
+
+qBraid-QIR requires Python 3.9 or greater. The base package can be installed with pip as follows:
 
 .. code-block:: bash
 
    pip install qbraid-qir
 
 
-Test container
-^^^^^^^^^^^^^^^^
-
-Docker image providing an environment for testing and executing QIR programs with the `qir-runner <https://github.com/qir-alliance/qir-runner>`_ package.
-
-Clone the ``qbraid-qir`` repository:
+To enable specific conversions such as Cirq to QIR or OpenQASM 3 to QIR, you can install one or both extras:
 
 .. code-block:: bash
 
-   git clone https://github.com/qBraid/qbraid-qir.git
-   cd qbraid-qir
+   pip install 'qbraid-qir[cirq,qasm3]'
 
 
-Build the QIR runner image:
+Resources
+----------
 
-.. code-block:: bash
+- `User Guide <https://docs.qbraid.com/qir/user-guide>`_
+- `Example Notebooks <https://github.com/qBraid/qbraid-qir/tree/main/examples>`_
+- `API Reference <https://sdk.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html>`_
 
-   docker build -t qbraid-test/qir-runner:latest qir_runner
-
-Start the container running a Jupyter Server with the JupyterLab frontend and expose
-the container's internal port ``8888`` to port ``8888`` of the host machine:
-
-.. code-block:: bash
-
-   docker run -p 8888:8888 qbraid-test/qir-runner:latest
-
-
-Visiting ``http://<hostname>:8888/?token=<token>`` in a browser will launch JupyterLab, where:
-
-- The hostname is the name of the computer running Docker (e.g. ``localhost``)
-- The token is the secret token printed in the console.
-
-Alternatively, you can open a shell inside the running container directly:
-
-.. code-block:: bash
-
-   docker exec -it <container_name> /bin/bash
-
-
-.. seealso::
-
-   https://github.com/qBraid/qbraid-qir/tree/main/test-containers
-
-
-Acknowledgements
-^^^^^^^^^^^^^^^^^^
-
-This project was conceived in cooperation with the Quantum Open Source Foundation (`QOSF <https://qosf.org/>`_).
-
-+-------------+-------------+-------------+-------------+
-| |qir|       | |qbraid|    | |cirq|      | |qosf|      |
-+-------------+-------------+-------------+-------------+
-
-.. |qir| image:: _static/pkg-logos/qir.png
-   :align: middle
-   :width: 100px
-   :target: QIR_
-
-.. |qbraid| image:: _static/pkg-logos/qbraid.png
-   :align: middle
-   :width: 100px
-   :target: qBraid_
-
-.. |cirq| image:: _static/pkg-logos/cirq.png
-   :align: middle
-   :width: 100px
-   :target: Cirq_
-
-.. |qosf| image:: _static/pkg-logos/qosf.png
-   :align: middle
-   :width: 100px
-   :target: QOSF_
-
-.. _QIR: https://www.qir-alliance.org/
-.. _qBraid: https://docs.qbraid.com/en/latest/
-.. _Cirq: https://quantumai.google/cirq
-.. _QOSF: https://qosf.org/
-
-|
 
 .. toctree::
    :maxdepth: 1
-   :caption: User Guide
+   :caption: SDK API Reference
    :hidden:
 
-   userguide/cirq_qir
-   userguide/qasm3_qir
-   userguide/qasm3_supported
+   qbraid <https://sdk.qbraid.com/en/latest/api/qbraid.html>
+   qbraid.programs <https://sdk.qbraid.com/en/latest/api/qbraid.programs.html>
+   qbraid.interface <https://sdk.qbraid.com/en/latest/api/qbraid.interface.html>
+   qbraid.transpiler <https://sdk.qbraid.com/en/latest/api/qbraid.transpiler.html>
+   qbraid.passes <https://sdk.qbraid.com/en/latest/api/qbraid.passes.html>
+   qbraid.runtime <https://sdk.qbraid.com/en/latest/api/qbraid.runtime.html>
+   qbraid.visualization <https://sdk.qbraid.com/en/latest/api/qbraid.visualization.html>
 
 .. toctree::
    :maxdepth: 1
-   :caption: API Reference
+   :caption: QIR API Reference
    :hidden:
 
    api/qbraid_qir
    api/qbraid_qir.cirq
    api/qbraid_qir.qasm3
 
+.. toctree::
+   :caption: CORE API Reference
+   :hidden:
 
-Indices and Tables
-------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
+   qbraid_core <https://sdk.qbraid.com/projects/core/en/latest/api/qbraid_core.html>
+   qbraid_core.services <https://sdk.qbraid.com/projects/core/en/latest/api/qbraid_core.services.html>
