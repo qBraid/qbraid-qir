@@ -60,6 +60,9 @@
 
 :Release: |release|
 
+Overview
+---------
+
 Python package for generating `QIR <https://www.qir-alliance.org/qir-book/concepts/what-is-qir.html>`_ (Quantum Intermediate Representation)
 programs from various high-level quantum programming languages. This project acts as an extension to the qBraid-SDK `transpiler <https://docs.qbraid.com/sdk/user-guide/transpiler>`_,
 opening the door to language-specific conversions from any of the 10+ quantum program types `supported <https://docs.qbraid.com/sdk/user-guide/overview#supported-frontends>`_
@@ -69,7 +72,7 @@ by ``qbraid``.
 
 
 Installation
-^^^^^^^^^^^^^
+-------------
 
 qBraid-QIR requires Python 3.9 or greater. The base package can be installed with pip as follows:
 
