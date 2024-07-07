@@ -14,7 +14,7 @@ import qbraid_qir
 
 # -- Project information -----------------------------------------------------
 
-project = "qbraid-qir"
+project = "qBraid"
 copyright = "2024, qBraid Development Team"
 author = "qBraid Development Team"
 
@@ -35,6 +35,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.coverage",
     "sphinx.ext.viewcode",
+    "sphinx_copybutton"
 ]
 
 # set_type_checking_flag = True

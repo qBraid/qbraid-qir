@@ -15,7 +15,7 @@ Module containing AutoQASM to qBraid QIR conversion functions
 import re
 from typing import TYPE_CHECKING
 
-import qbraid.transforms.qasm3.compat as qasm3_compat
+from qbraid.passes.qasm3.compat import add_stdgates_include, insert_gate_def
 
 from qbraid_qir.qasm3 import qasm3_to_qir
 
@@ -49,8 +49,9 @@ def _process_qasm(qasm: str) -> str:
     qasm = re.sub(r"^(output|return_value =)", r"// \1", qasm, flags=re.MULTILINE)
 
     # Insert and replace various gate definitions for compatibility
-    qasm = qasm3_compat._add_stdgates_include(qasm)
-    qasm = qasm3_compat._insert_gate_defs(qasm)
+    qasm = add_stdgates_include(qasm)
+    qasm = insert_gate_def(qasm, "iswap")
+    qasm = insert_gate_def(qasm, "sxdg")
 
     return qasm
 
