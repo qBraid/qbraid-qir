@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics"
 ]
 dependencies = ["pyqir>=0.10.0,<0.11.0", "numpy"]
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://github.com/qBraid/qbraid-qir"
