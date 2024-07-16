@@ -191,7 +191,6 @@ def test_inv_gate_modifier():
 
 
 def test_nested_gate_modifiers():
-
     complex_qir = qasm3_to_qir(
         """
     OPENQASM 3;
