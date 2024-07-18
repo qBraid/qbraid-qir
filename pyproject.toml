@@ -37,7 +37,7 @@ Discord = "https://discord.gg/TPBU2sa8Et"
 [project.optional-dependencies]
 cirq = ["cirq-core>=1.3.0,<1.5.0"]
 qasm3 = ["openqasm3[parser]>=0.4.0,<1.1.0"]
-test = ["qbraid>=0.7.1,<0.8.0", "pytest", "pytest-cov"]
+test = ["qbraid>=0.7.1,<0.8.0", "pytest", "pytest-cov", "autoqasm>=0.1.0"]
 lint = ["black[jupyter]", "isort", "pylint", "qbraid-cli>=0.8.3"]
 docs = ["sphinx>=7.3.7,<7.5.0", "sphinx-autodoc-typehints>=1.24,<2.3", "sphinx-rtd-theme~=2.0.0", "docutils<0.22", "sphinx-copybutton"]
 
