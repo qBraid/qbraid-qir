@@ -117,7 +117,6 @@ Resources
    api/qbraid_qir
    api/qbraid_qir.cirq
    api/qbraid_qir.qasm3
-   api/qbraid_qir.autoqasm
 
 .. toctree::
    :caption: CORE API Reference
