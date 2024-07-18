@@ -43,7 +43,7 @@ __all__ = [
     "dumps",
 ]
 
-_lazy_mods = ["cirq", "qasm3", "autoqasm"]
+_lazy_mods = ["cirq", "qasm3"]
 
 
 def __getattr__(name):
