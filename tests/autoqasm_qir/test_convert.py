@@ -26,7 +26,6 @@ from qbraid_qir.qasm3 import qasm3_to_qir
 
 if TYPE_CHECKING:
     from autoqasm.program import MainProgram
-    from pyqir import Module
 
 
 def _process_qasm(qasm: str) -> str:
