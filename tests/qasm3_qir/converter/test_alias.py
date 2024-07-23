@@ -89,6 +89,32 @@ def test_alias_update():
     check_single_qubit_gate_op(generated_qir, 1, [3], "x")
 
 
+def test_valid_alias_redefinition():
+    """Test converting OpenQASM 3 program with redefined alias in scope."""
+
+    qasm3_alias_program = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    qubit[5] q;
+    bit[5] c;
+    h q;
+    measure q -> c;
+
+    if (c[0] == 1) {
+        float[32] alias = 4.3;
+    }
+    // valid alias
+    let alias = q[2];
+    x alias;
+    """
+    result = qasm3_to_qir(qasm3_alias_program, name="test")
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 5, 5)
+    check_single_qubit_gate_op(generated_qir, 1, [2], "x")
+
+
 def test_alias_wrong_indexing():
     """Test converting OpenQASM 3 program with wrong alias indexing."""
     with pytest.raises(
@@ -107,6 +133,26 @@ def test_alias_wrong_indexing():
         let myqreg = q[1,2];
 
         x myqreg[0];
+        """
+        _ = qasm3_to_qir(qasm3_alias_program, name="test")
+
+
+def test_invalid_alias_redefinition():
+    """Test converting OpenQASM 3 program with redefined alias."""
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=re.escape(r"Re-declaration of variable 'alias'"),
+    ):
+        qasm3_alias_program = """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        qubit[5] q;
+        float[32] alias = 4.2;
+
+        let alias = q[2];
+
+        x alias;
         """
         _ = qasm3_to_qir(qasm3_alias_program, name="test")
 
