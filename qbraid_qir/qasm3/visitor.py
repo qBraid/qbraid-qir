@@ -1171,6 +1171,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
+        self._push_scope({})
         self._curr_scope += 1
         self._label_scope_level[self._curr_scope] = set()
 
@@ -1207,6 +1208,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         del self._label_scope_level[self._curr_scope]
         self._curr_scope -= 1
+        self._pop_scope()
 
     def _visit_forin_loop(self, statement: ForInLoop) -> None:
         # Compute loop variable values
@@ -1287,6 +1289,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         alias_reg_size = None
         aliased_reg_name = None
         aliased_reg_size = None
+
+        # Alias should not be redeclared earlier as a variable or a constant
+        if self._check_in_scope(alias_reg_name):
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Re-declaration of variable '{alias_reg_name}'")
 
         self._label_scope_level[self._curr_scope].add(alias_reg_name)
 
