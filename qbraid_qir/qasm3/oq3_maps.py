@@ -596,6 +596,10 @@ def map_qasm_inv_op_to_pyqir_callable(op_name: str):
     raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
 
 
+# IEEE 754 Standard for floats
+# https://openqasm.com/language/types.html#floating-point-numbers
+LIMITS_MAP = {"float_32": 1.70141183 * (10**38), "float_64": 10**308}
+
 CONSTANTS_MAP = {
     "pi": 3.141592653589793,
     "π": 3.141592653589793,
@@ -613,3 +617,6 @@ VARIABLE_TYPE_MAP = {
     AngleType: None,  # not sure
     ComplexType: complex,
 }
+
+# Reference : https://openqasm.com/language/types.html#arrays
+MAX_ARRAY_DIMENSIONS = 7

@@ -26,6 +26,7 @@ import pyqir._native
 import pyqir.rt
 from openqasm3.ast import (
     AliasStatement,
+    ArrayLiteral,
     ArrayType,
     BinaryExpression,
     BooleanLiteral,
@@ -74,6 +75,8 @@ from .elements import Context, InversionOp, Qasm3Module, Variable
 from .exceptions import Qasm3ConversionError
 from .oq3_maps import (
     CONSTANTS_MAP,
+    LIMITS_MAP,
+    MAX_ARRAY_DIMENSIONS,
     VARIABLE_TYPE_MAP,
     map_qasm_inv_op_to_pyqir_callable,
     map_qasm_op_to_pyqir_callable,
@@ -784,12 +787,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         elif type_to_match == float:
             base_size = variable.base_size
             left, right = 0, 0
-            # IEEE 754 Standard for floats
-            # https://openqasm.com/language/types.html#floating-point-numbers
+
             if base_size == 32:
-                left, right = -(1.70141183 * (10**38)), (1.70141183 * (10**38))
+                left, right = -(LIMITS_MAP["float_32"]), (LIMITS_MAP["float_32"])
             else:
-                left, right = -(10**308), (10**308)
+                left, right = -(LIMITS_MAP["float_64"]), (LIMITS_MAP["float_64"])
 
             if value < left or value > right:
                 raise Qasm3ConversionError(
@@ -800,6 +802,35 @@ class BasicQasmVisitor(ProgramElementVisitor):
             pass
         else:
             raise TypeError(f"Invalid type {type_to_match} for variable {variable.name}")
+
+    def _validate_array_assignment_values(
+        self, variable: Variable, dimensions: List[int], values: List[Any]
+    ) -> None:
+        """Validate the assignment of values to an array variable.
+
+        Args:
+            variable (Variable): The variable to assign to.
+            values (List[Any]): The values to assign.
+
+        Raises:
+            Qasm3ConversionError: If the values are not of the correct type.
+        """
+        # recursively check the array
+        if len(values) != dimensions[0]:
+            raise Qasm3ConversionError(
+                f"Invalid dimensions for array assignment to variable {variable.name}. "
+                f"Expected {dimensions[0]} but got {len(values)}"
+            )
+        for value in values:
+            if isinstance(value, list):
+                self._validate_array_assignment_values(variable, dimensions[1:], value)
+            else:
+                if len(dimensions) != 1:
+                    raise Qasm3ConversionError(
+                        f"Invalid dimensions for array assignment to variable {variable.name}. "
+                        f"Expected {len(dimensions)} but got 1"
+                    )
+                self._validate_variable_assignment_value(variable, value)
 
     def _visit_constant_declaration(self, statement: ConstantDeclaration) -> None:
         """
@@ -844,6 +875,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._validate_variable_assignment_value(variable, init_value)
         self._update_scope(variable)
 
+    # pylint: disable=too-many-branches
     def _visit_classical_declaration(self, statement: ClassicalDeclaration) -> None:
         """Visit a classical operation element.
 
@@ -862,13 +894,20 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
 
-        is_initialized = False
         init_value = None
         base_type = statement.type
         final_dimensions = []
 
         if isinstance(base_type, ArrayType):
             dimensions = base_type.dimensions
+
+            if len(dimensions) > MAX_ARRAY_DIMENSIONS:
+                self._print_err_location(statement.span)
+                raise Qasm3ConversionError(
+                    f"Invalid dimensions {len(dimensions)} for array declaration for {var_name}. "
+                    f"Max allowed dimensions is {MAX_ARRAY_DIMENSIONS}"
+                )
+
             base_type = base_type.base_type
             num_elements = 1
             for dim in dimensions:
@@ -881,13 +920,17 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 final_dimensions.append(dim_value)
                 num_elements *= dim_value
 
-            # we store the array as a list of elements
-            init_value = [None] * num_elements
+            init_value = None
+            for dim in reversed(final_dimensions):
+                init_value = [init_value for _ in range(dim)]
 
         if statement.init_expression:
-            init_value = self._evaluate_expression(statement.init_expression)
-            is_initialized = True
-            # TODO: account for array initializations and update the init_value
+            if isinstance(statement.init_expression, ArrayLiteral):
+                init_value = self._evaluate_array_initialization(
+                    statement.init_expression, final_dimensions, base_type
+                )
+            else:
+                init_value = self._evaluate_expression(statement.init_expression)
 
         if isinstance(base_type, BoolType):
             base_size = 1
@@ -908,9 +951,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         variable = Variable(var_name, base_type, base_size, final_dimensions, init_value)
 
-        if is_initialized:
-            self._validate_variable_assignment_value(variable, init_value)
-            # TODO: validate array initialization
+        if statement.init_expression:
+            # validate the init value(s)
+            if isinstance(init_value, list):
+                self._validate_array_assignment_values(variable, variable.dims, init_value)
+            else:
+                self._validate_variable_assignment_value(variable, init_value)
 
         self._update_scope(variable)
 
@@ -923,9 +969,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         Raises:
             Qasm3ConversionError: If the indices are invalid.
+
+        Returns:
+            List: The list of indices.
         """
-        flat_index = 0
-        multiplier = 1
+        indices_list = []
         var_dimensions = self._get_scope()[var_name].dims
 
         if not var_dimensions:
@@ -959,11 +1007,40 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 raise Qasm3ConversionError(
                     f"Index {index_value} out of bounds for dimension {i+1} of variable {var_name}"
                 )
-            # Column major representation: https://en.wikipedia.org/wiki/Row-_and_column-major_order
-            flat_index = flat_index + multiplier * index_value
-            multiplier = multiplier * curr_dimension
+            indices_list.append(index_value)
 
-        return flat_index
+        return indices_list
+
+    def _update_array_element(self, multi_dim_list, indices, value):
+        """Update the value of an array at the specified indices.
+
+        Args:
+            multi_dim_list (List): The multi-dimensional list to update.
+            indices (List[int]): The indices to update.
+            value (Any): The value to update.
+
+        Returns:
+            None
+        """
+        temp = multi_dim_list
+        for index in indices[:-1]:
+            temp = temp[index]
+        temp[indices[-1]] = value
+
+    def _find_array_element(self, multi_dim_list, indices):
+        """Find the value of an array at the specified indices.
+
+        Args:
+            multi_dim_list (List): The multi-dimensional list to search.
+            indices (List[int]): The indices to search.
+
+        Returns:
+            Any: The value at the specified indices.
+        """
+        temp = multi_dim_list
+        for index in indices:
+            temp = temp[index]
+        return temp
 
     def _visit_classical_assignment(self, statement: ClassicalAssignment) -> None:
         """Visit a classical assignment element.
@@ -980,11 +1057,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(lvalue, IndexedIdentifier):
             var_name = var_name.name
 
-        if self._find_in_visible_scope(var_name) is None:
+        var = self._find_in_visible_scope(var_name)
+
+        if var is None:
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Undefined variable {var_name} in assignment")
 
-        var = self._find_in_visible_scope(var_name)
         if var.is_constant:
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Assignment to constant variable {var_name} not allowed")
@@ -998,10 +1076,42 @@ class BasicQasmVisitor(ProgramElementVisitor):
         # handle assignment for arrays
         if isinstance(lvalue, IndexedIdentifier):
             indices = lvalue.indices
-            flat_index = self._analyse_classical_indices(indices, var_name)
-            var.value[flat_index] = var_value
+            validated_indices = self._analyse_classical_indices(indices, var_name)
+            self._update_array_element(var.value, validated_indices, var_value)
         else:
             var.value = var_value
+
+    def _evaluate_array_initialization(
+        self, array_literal: ArrayLiteral, dimensions: List[int], base_type: Any
+    ) -> List:
+        """Evaluate an array initialization.
+
+        Args:
+            array_literal (ArrayLiteral): The array literal to evaluate.
+            dimensions (List[int]): The dimensions of the array.
+            base_type (Any): The base type of the array.
+
+        Returns:
+            List: The evaluated array initialization.
+        """
+        init_values = []
+
+        for value in array_literal.values:
+            if isinstance(value, ArrayLiteral):
+                init_values.append(
+                    self._evaluate_array_initialization(value, dimensions[1:], base_type)
+                )
+            else:
+                eval_value = self._evaluate_expression(value)
+                if not isinstance(eval_value, VARIABLE_TYPE_MAP[base_type.__class__]):
+                    self._print_err_location(array_literal.span)
+                    raise Qasm3ConversionError(
+                        f"Invalid type {type(eval_value)} in array initialization. "
+                        f"Expected {base_type.__class__}"
+                    )
+                init_values.append(eval_value)
+
+        return init_values
 
     # pylint: disable-next=too-many-return-statements
     def _evaluate_expression(self, expression) -> bool:
@@ -1038,8 +1148,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 var_value = self._find_in_visible_scope(var_name).value
             else:
                 # indices is a list of singleton lists
-                flat_index = self._analyse_classical_indices(indices, var_name)
-                var_value = self._find_in_visible_scope(var_name).value[flat_index]
+                validated_indices = self._analyse_classical_indices(indices, var_name)
+                var_value = self._find_array_element(
+                    self._find_in_visible_scope(var_name).value, validated_indices
+                )
             return var_value
 
         def _analyse_index_expression(index_expr):

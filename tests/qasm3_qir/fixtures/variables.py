@@ -92,6 +92,43 @@ DECLARATION_TESTS = {
         """,
         "Invalid dimension size 2.1 in array declaration for x",
     ),
+    "extra_array_dimensions": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        array[int[32], 1, 2, 3, 4, 5, 6, 7, 8] x;
+        """,
+        "Invalid dimensions 8 for array declaration for x. Max allowed dimensions is 7",
+    ),
+    "dimension_mismatch_1": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        array[int[32], 1, 2] x = {1,2,3};
+        """,
+        "Invalid dimensions for array assignment to variable x. Expected 1 but got 3",
+    ),
+    "dimension_mismatch_2": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        array[int[32], 3, 1, 2] x = {1,2,3};
+        """,
+        "Invalid dimensions for array assignment to variable x. Expected 3 but got 1",
+    ),
+    "array_value_type_mismatch": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        array[int[32], 5] x = {1,2,3,4,5.3};
+        """,
+        "Invalid type <class 'float'> in array initialization. "
+        "Expected <class 'openqasm3.ast.IntType'>",
+    ),
 }
 
 ASSIGNMENT_TESTS = {
