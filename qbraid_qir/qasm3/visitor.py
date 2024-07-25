@@ -854,9 +854,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
 
-        # TODO: extend to checking that only CONST vars are allowed
-        # when instantiating a constant variable
-        init_value = self._evaluate_expression(statement.init_expression)
+        init_value = self._evaluate_expression(statement.init_expression, const_expr=True)
 
         base_type = statement.type
         if isinstance(base_type, BoolType):
@@ -864,8 +862,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         elif base_type.size is None:
             base_size = 32  # default for now
         else:
-            # TODO: ensure no NON-CONST vars are used in here
-            base_size = self._evaluate_expression(base_type.size)
+            base_size = self._evaluate_expression(base_type.size, const_expr=True)
             if not isinstance(base_size, int) or base_size <= 0:
                 self._print_err_location(statement.span)
                 raise Qasm3ConversionError(f"Invalid base size {base_size} for variable {var_name}")
@@ -952,7 +949,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
         variable = Variable(var_name, base_type, base_size, final_dimensions, init_value)
 
         if statement.init_expression:
-            # validate the init value(s)
             if isinstance(init_value, list):
                 self._validate_array_assignment_values(variable, variable.dims, init_value)
             else:
@@ -1114,12 +1110,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         return init_values
 
     # pylint: disable-next=too-many-return-statements
-    def _evaluate_expression(self, expression) -> bool:
-        """Evaluate an expression. Scalar types are assigned by
-           value and no referencing is done. (eg. strings in C)
+    def _evaluate_expression(self, expression: Any, const_expr: bool = False) -> bool:
+        """Evaluate an expression. Scalar types are assigned by value.
 
         Args:
             expression (Any): The expression to evaluate.
+            const_expr (bool): Whether the expression is a constant. Defaults to False.
 
         Returns:
             bool: The result of the evaluation.
@@ -1132,14 +1128,22 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._print_err_location(expression.span)
             raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
 
-        def _check_var_in_scope(var_name, span):
+        def _check_var_in_scope(var_name):
             if self._find_in_visible_scope(var_name) is None:
-                self._print_err_location(span)
+                self._print_err_location(expression.span)
                 raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
 
-        def _check_var_initialized(var_name, var_value, span):
+        def _check_var_constant(var_name):
+            const_var = self._find_in_visible_scope(var_name).is_constant
+            if const_expr and not const_var:
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Variable '{var_name}' is not a constant in given expression"
+                )
+
+        def _check_var_initialized(var_name, var_value):
             if var_value is None:
-                self._print_err_location(span)
+                self._print_err_location(expression.span)
                 raise Qasm3ConversionError(f"Uninitialized variable {var_name} in expression")
 
         def _get_var_value(var_name, indices=None):
@@ -1147,7 +1151,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if isinstance(expression, Identifier):
                 var_value = self._find_in_visible_scope(var_name).value
             else:
-                # indices is a list of singleton lists
                 validated_indices = self._analyse_classical_indices(indices, var_name)
                 var_value = self._find_array_element(
                     self._find_in_visible_scope(var_name).value, validated_indices
@@ -1158,59 +1161,51 @@ class BasicQasmVisitor(ProgramElementVisitor):
             indices = []
             var_name = None
 
-            # Recursive structure for IndexExpression, don't know exactly why
+            # Recursive structure for IndexExpression
             while isinstance(index_expr, IndexExpression):
                 indices.append(index_expr.index)
                 index_expr = index_expr.collection
 
-            # reverse indices as outermost was present first
-            indices = indices[::-1]
+            indices = indices[::-1]  # reverse indices as outermost was present first
             var_name = index_expr.name
 
             return var_name, indices
 
+        def process_variable(var_name, indices=None):
+            _check_var_in_scope(var_name)
+            _check_var_constant(var_name)
+            var_value = _get_var_value(var_name, indices)
+            _check_var_initialized(var_name, var_value)
+            return var_value
+
         if isinstance(expression, Identifier):
             var_name = expression.name
-
             if var_name in CONSTANTS_MAP:
                 return CONSTANTS_MAP[var_name]
-
-            _check_var_in_scope(var_name, expression.span)
-            var_value = _get_var_value(var_name)
-            _check_var_initialized(var_name, var_value, expression.span)
-
-            return var_value
+            return process_variable(var_name)
 
         if isinstance(expression, IndexExpression):
             var_name, indices = _analyse_index_expression(expression)
+            return process_variable(var_name, indices)
 
-            _check_var_in_scope(var_name, expression.span)
-            var_value = _get_var_value(var_name, indices)
-            _check_var_initialized(var_name, var_value, expression.span)
-
-            return var_value
-
-        if isinstance(expression, BooleanLiteral):
+        if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):
             return expression.value
-        if isinstance(expression, (IntegerLiteral, FloatLiteral)):
-            return expression.value
+
         if isinstance(expression, UnaryExpression):
             op = expression.op.name
             if op == "-":
                 op = "UMINUS"
-            operand = self._evaluate_expression(expression.expression)
-            if op == "~":
-                if not isinstance(operand, int):
-                    self._print_err_location(expression.span)
-                    raise Qasm3ConversionError(
-                        f"Unsupported expression type {type(operand)} in ~ operation"
-                    )
+            operand = self._evaluate_expression(expression.expression, const_expr)
+            if op == "~" and not isinstance(operand, int):
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Unsupported expression type {type(operand)} in ~ operation"
+                )
             return qasm3_expression_op_map(op, operand)
         if isinstance(expression, BinaryExpression):
-            lhs = self._evaluate_expression(expression.lhs)
-            op = expression.op.name
-            rhs = self._evaluate_expression(expression.rhs)
-            return qasm3_expression_op_map(op, lhs, rhs)
+            lhs = self._evaluate_expression(expression.lhs, const_expr)
+            rhs = self._evaluate_expression(expression.rhs, const_expr)
+            return qasm3_expression_op_map(expression.op.name, lhs, rhs)
 
         self._print_err_location(expression.span)
         raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")

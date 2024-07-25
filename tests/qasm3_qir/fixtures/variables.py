@@ -65,6 +65,24 @@ DECLARATION_TESTS = {
         """,
         "Invalid base size 32.1 for variable x",
     ),
+    "const_declaration_with_non_const": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        int[32] x = 5;
+        const int[32] y = x + 5;
+        """,
+        "Variable 'x' is not a constant in given expression",
+    ),
+    "const_declaration_with_non_const_size": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        int[32] x = 5;
+        const int[x] y = 5;
+        """,
+        "Variable 'x' is not a constant in given expression",
+    ),
     "invalid_float_size": (
         """
         OPENQASM 3.0;

@@ -54,6 +54,13 @@ def test_const_declarations():
     const bool boolean_var = true;
     const float[32] f = 0.00000023;
     const float[64] g = 2345623454564564564564545456456546456456456.0;
+
+    const int a1 = 5 + a;
+    const uint b1 = 10 + b;
+    const int[2*9] c1 = 1 + 2*c + a;
+    const uint[6-1] d1 = 2 + d;
+    const bool boolean_var1 = !boolean_var;
+    const float[32] f1 = 0.00000023 + f;
     """
 
     result = qasm3_to_qir(qasm3_string)
