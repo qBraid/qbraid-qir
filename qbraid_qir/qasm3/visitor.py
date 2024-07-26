@@ -81,6 +81,7 @@ from .oq3_maps import (
     map_qasm_inv_op_to_pyqir_callable,
     map_qasm_op_to_pyqir_callable,
     qasm3_expression_op_map,
+    qasm_variable_type_cast,
 )
 
 _log = logging.getLogger(name=__name__)
@@ -751,8 +752,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
             Qasm3ConversionError: If the value is not of the correct type.
         """
         # check 1 - type match
-        base_type = variable.base_type
-        qasm_type = base_type.__class__
+        qasm_type = variable.base_type.__class__
+        base_size = variable.base_size
+
         try:
             type_to_match = VARIABLE_TYPE_MAP[qasm_type]
         except KeyError as err:
@@ -760,12 +762,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 f"Invalid type {qasm_type} for variable {variable.name}"
             ) from err
 
-        if not isinstance(value, type_to_match):
-            raise Qasm3ConversionError(
-                f"Invalid assignment of type {type(value)} to variable {variable.name} "
-                f"of type {qasm_type}"
-            )
-
+        # For each type we will have a "castable" type set and its corresponding cast operation
+        type_casted_value = qasm_variable_type_cast(qasm_type, variable.name, base_size, value)
         # check 2 - range match , if bits mentioned in base size
         if type_to_match == int:
             base_size = variable.base_size
@@ -778,9 +776,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
             else:
                 # would be uint only so we correctly get this
                 left, right = 0, 2**base_size - 1
-            if value < left or value > right:
+            if type_casted_value < left or type_casted_value > right:
                 raise Qasm3ConversionError(
-                    f"Value {value} out of limits for variable {variable.name} "
+                    f"Value {type_casted_value} out of limits for variable {variable.name} "
                     f"with base size {base_size}"
                 )
 
@@ -793,7 +791,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             else:
                 left, right = -(LIMITS_MAP["float_64"]), (LIMITS_MAP["float_64"])
 
-            if value < left or value > right:
+            if type_casted_value < left or type_casted_value > right:
                 raise Qasm3ConversionError(
                     f"Value {value} out of limits for variable {variable.name} "
                     f"with base size {base_size}"
@@ -803,14 +801,16 @@ class BasicQasmVisitor(ProgramElementVisitor):
         else:
             raise TypeError(f"Invalid type {type_to_match} for variable {variable.name}")
 
+        return type_casted_value
+
     def _validate_array_assignment_values(
-        self, variable: Variable, dimensions: List[int], values: List[Any]
+        self, variable: Variable, dimensions: list[int], values: list
     ) -> None:
         """Validate the assignment of values to an array variable.
 
         Args:
             variable (Variable): The variable to assign to.
-            values (List[Any]): The values to assign.
+            values (list[Any]): The values to assign.
 
         Raises:
             Qasm3ConversionError: If the values are not of the correct type.
@@ -821,7 +821,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 f"Invalid dimensions for array assignment to variable {variable.name}. "
                 f"Expected {dimensions[0]} but got {len(values)}"
             )
-        for value in values:
+        for i, value in enumerate(values):
             if isinstance(value, list):
                 self._validate_array_assignment_values(variable, dimensions[1:], value)
             else:
@@ -830,7 +830,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                         f"Invalid dimensions for array assignment to variable {variable.name}. "
                         f"Expected {len(dimensions)} but got 1"
                     )
-                self._validate_variable_assignment_value(variable, value)
+                values[i] = self._validate_variable_assignment_value(variable, value)
 
     def _visit_constant_declaration(self, statement: ConstantDeclaration) -> None:
         """
@@ -869,7 +869,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         variable = Variable(var_name, base_type, base_size, [], init_value, is_constant=True)
 
-        self._validate_variable_assignment_value(variable, init_value)
+        # cast + validation
+        variable.value = self._validate_variable_assignment_value(variable, init_value)
+
         self._update_scope(variable)
 
     # pylint: disable=too-many-branches
@@ -952,7 +954,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if isinstance(init_value, list):
                 self._validate_array_assignment_values(variable, variable.dims, init_value)
             else:
-                self._validate_variable_assignment_value(variable, init_value)
+                variable.value = self._validate_variable_assignment_value(variable, init_value)
 
         self._update_scope(variable)
 
@@ -967,7 +969,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             Qasm3ConversionError: If the indices are invalid.
 
         Returns:
-            List: The list of indices.
+            list: The list of indices.
         """
         indices_list = []
         var_dimensions = self._get_scope()[var_name].dims
@@ -1011,8 +1013,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """Update the value of an array at the specified indices.
 
         Args:
-            multi_dim_list (List): The multi-dimensional list to update.
-            indices (List[int]): The indices to update.
+            multi_dim_list (list): The multi-dimensional list to update.
+            indices (list[int]): The indices to update.
             value (Any): The value to update.
 
         Returns:
@@ -1027,8 +1029,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """Find the value of an array at the specified indices.
 
         Args:
-            multi_dim_list (List): The multi-dimensional list to search.
-            indices (List[int]): The indices to search.
+            multi_dim_list (list): The multi-dimensional list to search.
+            indices (list[int]): The indices to search.
 
         Returns:
             Any: The value at the specified indices.
@@ -1067,7 +1069,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         # currently we support single array assignment only
         # range based assignment not supported yet
-        self._validate_variable_assignment_value(var, var_value)
+
+        # cast + validation
+        var_value = self._validate_variable_assignment_value(var, var_value)
 
         # handle assignment for arrays
         if isinstance(lvalue, IndexedIdentifier):
@@ -1078,17 +1082,17 @@ class BasicQasmVisitor(ProgramElementVisitor):
             var.value = var_value
 
     def _evaluate_array_initialization(
-        self, array_literal: ArrayLiteral, dimensions: List[int], base_type: Any
-    ) -> List:
+        self, array_literal: ArrayLiteral, dimensions: list[int], base_type
+    ) -> list:
         """Evaluate an array initialization.
 
         Args:
             array_literal (ArrayLiteral): The array literal to evaluate.
-            dimensions (List[int]): The dimensions of the array.
+            dimensions (list[int]): The dimensions of the array.
             base_type (Any): The base type of the array.
 
         Returns:
-            List: The evaluated array initialization.
+            list: The evaluated array initialization.
         """
         init_values = []
 
@@ -1099,18 +1103,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 )
             else:
                 eval_value = self._evaluate_expression(value)
-                if not isinstance(eval_value, VARIABLE_TYPE_MAP[base_type.__class__]):
-                    self._print_err_location(array_literal.span)
-                    raise Qasm3ConversionError(
-                        f"Invalid type {type(eval_value)} in array initialization. "
-                        f"Expected {base_type.__class__}"
-                    )
                 init_values.append(eval_value)
 
         return init_values
 
     # pylint: disable-next=too-many-return-statements
-    def _evaluate_expression(self, expression: Any, const_expr: bool = False) -> bool:
+    def _evaluate_expression(self, expression, const_expr: bool = False):
         """Evaluate an expression. Scalar types are assigned by value.
 
         Args:

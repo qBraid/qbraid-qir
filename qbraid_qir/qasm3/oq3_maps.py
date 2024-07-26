@@ -596,6 +596,45 @@ def map_qasm_inv_op_to_pyqir_callable(op_name: str):
     raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
 
 
+# pylint: disable=inconsistent-return-statements
+def qasm_variable_type_cast(openqasm_type, var_name, base_size, rhs_value):
+    """Cast the variable type to the type to match, if possible.
+
+    Args:
+        openqasm_type : The type of the variable.
+        type_of_rhs (type): The type to match.
+
+    Returns:
+        The casted variable type.
+
+    Raises:
+        Qasm3ConversionError: If the cast is not possible.
+    """
+    type_of_rhs = type(rhs_value)
+
+    if type_of_rhs not in VARIABLE_TYPE_CAST_MAP[openqasm_type]:
+        raise Qasm3ConversionError(
+            f"Cannot cast {type_of_rhs} to {openqasm_type}. "
+            f"Invalid assignment of type {type_of_rhs} to variable {var_name} "
+            f"of type {openqasm_type}"
+        )
+
+    if openqasm_type == BoolType:
+        return bool(rhs_value)
+    if openqasm_type == IntType:
+        return int(rhs_value)
+    if openqasm_type == UintType:
+        return int(rhs_value) % (2**base_size)
+    if openqasm_type == FloatType:
+        return float(rhs_value)
+    # not sure if we wanna hande array bit assignments too.
+    # For now, we only cater to single bit assignment.
+    if openqasm_type == BitType:
+        return bool(rhs_value)
+    if openqasm_type == AngleType:
+        return rhs_value  # not sure
+
+
 # IEEE 754 Standard for floats
 # https://openqasm.com/language/types.html#floating-point-numbers
 LIMITS_MAP = {"float_32": 1.70141183 * (10**38), "float_64": 10**308}
@@ -617,6 +656,17 @@ VARIABLE_TYPE_MAP = {
     AngleType: None,  # not sure
     ComplexType: complex,
 }
+
+# Reference: https://openqasm.com/language/types.html#allowed-casts
+VARIABLE_TYPE_CAST_MAP = {
+    BoolType: [int, float, bool],
+    IntType: [bool, int, float],
+    BitType: [bool, int],
+    UintType: [bool, int, float],
+    FloatType: [bool, int, float],
+    AngleType: [float],
+}
+
 
 # Reference : https://openqasm.com/language/types.html#arrays
 MAX_ARRAY_DIMENSIONS = 7
