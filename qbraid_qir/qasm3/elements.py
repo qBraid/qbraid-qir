@@ -65,7 +65,15 @@ class Variable:
     """
 
     # pylint: disable-next=too-many-arguments
-    def __init__(self, name, base_type, base_size, dims, value, is_constant=False):
+    def __init__(
+        self,
+        name: str,
+        base_type,
+        base_size: int,
+        dims: list[int],
+        value: Optional[Union[int, float, list]],
+        is_constant: bool = False,
+    ):
         self.name = name
         self.base_type = base_type
         self.base_size = base_size

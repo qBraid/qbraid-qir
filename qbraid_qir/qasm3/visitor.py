@@ -19,7 +19,7 @@ from abc import ABCMeta, abstractmethod
 
 # pylint: disable=too-many-instance-attributes,too-many-lines
 from collections import deque
-from typing import Any, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import pyqir
 import pyqir._native
@@ -210,7 +210,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """Visit a register element.
 
         Args:
-            register (Union[QubitDeclaration, ClassicalDeclaration]): The register name and size.
+            register (QubitDeclaration | ClassicalDeclaration): The register name and size.
 
         Returns:
             None
@@ -267,14 +267,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
     def _get_qubits_from_range_definition(
         self, range_def: RangeDefinition, qreg_size: int, is_qubit_reg: bool
-    ) -> List[int]:
+    ) -> list[int]:
         """Get the qubits from a range definition.
         Args:
             range_def (RangeDefinition): The range definition to get qubits from.
             qreg_size (int): The size of the register.
             is_qubit_reg (bool): Whether the register is a qubit register.
         Returns:
-            List[int]: The list of qubit identifiers.
+            list[int]: The list of qubit identifiers.
         """
         start_qid = 0 if range_def.start is None else range_def.start.value
         end_qid = qreg_size if range_def.end is None else range_def.end.value
@@ -283,7 +283,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._validate_register_index(end_qid - 1, qreg_size, qubit=is_qubit_reg)
         return list(range(start_qid, end_qid, step))
 
-    def _check_if_name_in_scope(self, name: str, operation: Any) -> None:
+    def _check_if_name_in_scope(self, name: str, operation) -> None:
         """Check if a name is in scope to avoid duplicate declarations.
         Args:
             name (str): The name to check.
@@ -296,14 +296,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._print_err_location(operation.span)
         raise Qasm3ConversionError(f"Variable {name} not in scope for operation {operation}")
 
-    def _get_op_qubits(self, operation: Any, qir_form: bool = True) -> List[pyqir.qubit]:
+    def _get_op_qubits(self, operation, qir_form: bool = True) -> list[pyqir.qubit]:
         """Get the qubits for the operation.
 
         Args:
             operation (Any): The operation to get qubits for.
 
         Returns:
-            List[pyqir.qubit]: The qubits for the operation.
+            list[pyqir.qubit]: The qubits for the operation.
         """
         qir_qubits = []
         openqasm_qubits = []
@@ -481,14 +481,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
     def _is_parametric_gate(self, operation: QuantumGate) -> bool:
         return len(operation.arguments) > 0
 
-    def _get_op_parameters(self, operation: QuantumGate) -> List[float]:
+    def _get_op_parameters(self, operation: QuantumGate) -> list[float]:
         """Get the parameters for the operation.
 
         Args:
             operation (QuantumGate): The operation to get parameters for.
 
         Returns:
-            List[float]: The parameters for the operation.
+            list[float]: The parameters for the operation.
         """
         param_list = []
         for param in operation.arguments:
@@ -684,7 +684,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 self._print_err_location(gate_op.span)
                 raise Qasm3ConversionError(f"Unsupported gate definition statement {gate_op}")
 
-    def _collapse_gate_modifiers(self, operation: QuantumGate) -> Tuple[Any, Any]:
+    def _collapse_gate_modifiers(self, operation: QuantumGate) -> tuple:
         """Collapse the gate modifiers of a gate operation.
            Some analysis is required to get this result.
            The basic idea is that any power operation is multiplied and inversions are toggled.
@@ -694,7 +694,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             operation (QuantumGate): The gate operation to collapse modifiers for.
 
         Returns:
-            Tuple[Any, Any]: The power and inverse values of the gate operation.
+            tuple[Any, Any]: The power and inverse values of the gate operation.
         """
         power_value, inverse_value = 1, False
 
@@ -737,7 +737,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             else:
                 self._visit_basic_gate_operation(operation, inverse_value)
 
-    def _validate_variable_assignment_value(self, variable: Variable, value: Any) -> None:
+    def _validate_variable_assignment_value(self, variable: Variable, value) -> None:
         """Validate the assignment of a value to a variable.
 
         Args:
@@ -914,11 +914,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         self._update_scope(variable)
 
-    def _analyse_classical_indices(self, indices: List[List[Any]], var_name: str) -> None:
+    def _analyse_classical_indices(self, indices: list[list], var_name: str) -> None:
         """Validate the indices for a classical variable.
 
         Args:
-            indices (List[List[Any]]): The indices to validate.
+            indices (list[list[Any]]): The indices to validate.
             var_name (str): The name of the variable.
 
         Raises:
@@ -1004,7 +1004,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             var.value = var_value
 
     # pylint: disable-next=too-many-return-statements
-    def _evaluate_expression(self, expression: Any) -> bool:
+    def _evaluate_expression(self, expression) -> bool:
         """Evaluate an expression. Scalar types are assigned by
            value and no referencing is done. (eg. strings in C)
 
@@ -1141,7 +1141,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             )
         return True
 
-    def _get_branch_params(self, condition) -> Tuple[Union[int, None], Union[str, None]]:
+    def _get_branch_params(self, condition) -> tuple[Union[int, None], Union[str, None]]:
         """
         Get the branch parameters from the branching condition
 
@@ -1149,7 +1149,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             condition (Any): The condition to analyse
 
         Returns:
-            Tuple[Union[int, None], Union[str, None]]: The branch parameters
+            tuple[Union[int, None], Union[str, None]]: The branch parameters
         """
         if isinstance(condition, UnaryExpression):
             return (
@@ -1253,14 +1253,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
     def visit_scoped_statement(self, statement: Statement) -> None:
         pass
 
-    def _extract_values_from_discrete_set(self, discrete_set: DiscreteSet) -> List[int]:
+    def _extract_values_from_discrete_set(self, discrete_set: DiscreteSet) -> list[int]:
         """Extract the values from a discrete set.
 
         Args:
             discrete_set (DiscreteSet): The discrete set to extract values from.
 
         Returns:
-            List[int]: The extracted values.
+            list[int]: The extracted values.
         """
         values = []
         for value in discrete_set.values:
