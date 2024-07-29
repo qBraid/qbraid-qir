@@ -209,17 +209,26 @@ def test_array_assignments():
     bool f = true;
 
     arr_int[0][1] = a*a;
+    arr_int[0,1] = a*a;
+
     arr_uint[0][1] = b*b;
+    arr_uint[0,1] = b*b;
+
     arr_float32[0][1] = c*c;
+    arr_float32[0,1] = c*c;
+    
     arr_float64[0][1] = d*d;
+    arr_float64[0,1] = d*d;
+
     arr_bool[0][1] = f;
+    arr_bool[0,1] = f;
 
     qubit q;
-    rx(arr_int[0][1]) q;
+    rx(arr_int[0,1]) q;
     rx(arr_uint[0][1]) q;
-    rx(arr_float32[0][1]) q;
+    rx(arr_float32[0,1]) q;
     rx(arr_float64[0][1]) q;
-    rx(arr_bool[0][1]) q;
+    rx(arr_bool[0,1]) q;
     """
 
     a = 2
