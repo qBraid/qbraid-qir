@@ -54,6 +54,13 @@ def test_const_declarations():
     const bool boolean_var = true;
     const float[32] f = 0.00000023;
     const float[64] g = 2345623454564564564564545456456546456456456.0;
+
+    const int a1 = 5 + a;
+    const uint b1 = 10 + b;
+    const int[2*9] c1 = 1 + 2*c + a;
+    const uint[6-1] d1 = 2 + d;
+    const bool boolean_var1 = !boolean_var;
+    const float[32] f1 = 0.00000023 + f;
     """
 
     result = qasm3_to_qir(qasm3_string)
@@ -106,6 +113,62 @@ def test_scalar_value_assignment():
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 1, 0)
     check_single_qubit_rotation_op(generated_qir, 2, [0, 0], [b, r + f * 4], "rx")
+
+
+def test_scalar_type_casts():
+    """Test type casts on scalar variables"""
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+    int[32] a = 5.1;
+    float[32] r = 245;
+    uint[4] b = -4; // -4 % 16 = 12
+    bit bit_var = 0;
+    bool f = 0;
+    bool g = 1;
+
+    qubit q;
+    rx(a) q;
+    rx(r) q;
+    rx(b) q;
+    rx(f) q;
+    rx(g) q;
+    
+    """
+    a = 5
+    r = 245
+    b = 12
+    f = 0
+    g = 1
+
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 1)
+    check_single_qubit_rotation_op(generated_qir, 5, [0, 0, 0, 0, 0], [a, r, b, f, g], "rx")
+
+
+def test_array_type_casts():
+    """Test type casts on  array variables"""
+
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+    array[int[32], 3, 2] arr_int = { {1, 2}, {3, 4}, {5, 6.2} };
+    array[uint[32], 3, 2] arr_uint = { {1, 2}, {3, 4}, {5, 6.2} };
+    array[bool, 3, 2] arr_bool = { {true, false}, {true, false}, {true, 12} };
+    array[float[32], 3, 2] arr_float32 = { {1.0, 2.0}, {3.0, 4.0}, {5.0, 6} };
+
+    qubit q;
+    rx(arr_int[2][1]) q; // should be 6
+    rx(arr_uint[2][1]) q; // should be 6
+    rx(arr_bool[2][1]) q; // should be 1 (true)
+    rx(arr_float32[2][1]) q; // should be 6.0
+
+    """
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_rotation_op(generated_qir, 4, [0, 0, 0, 0], [6, 6, 1, 6.0], "rx")
 
 
 # 5. Array declarations
@@ -210,6 +273,33 @@ def test_array_expressions():
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 1, 0)
     check_single_qubit_rotation_op(generated_qir, 2, [0, 0], [a * a + b * b, c * c + d * d], "rx")
+
+
+def test_array_initializations():
+    """Test array initializations"""
+
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+
+    array[int[32], 3, 2] arr_int = { {1, 2}, {3, 4}, {5, 6} };
+    array[uint[32], 3, 2] arr_uint = { {1, 2}, {3, 4}, {5, 6} };
+    array[float[32], 3, 2] arr_float32 = { {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0} };
+    array[float[64], 3, 2] arr_float64 = { {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0} };
+    array[bool, 3, 2] arr_bool = { {true, false}, {true, false}, {true, false} };
+
+    qubit q;
+    rx(arr_int[0][1]) q;
+    rx(arr_uint[0][1]) q;
+    rx(arr_float32[0][1]) q;
+    rx(arr_float64[0][1]) q;
+    rx(arr_bool[0][1]) q;
+    """
+
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_rotation_op(generated_qir, 5, [0, 0, 0, 0, 0], [2, 2, 2.0, 2.0, 0], "rx")
 
 
 @pytest.mark.parametrize("test_name", DECLARATION_TESTS.keys())

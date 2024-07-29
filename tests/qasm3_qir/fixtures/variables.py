@@ -65,6 +65,24 @@ DECLARATION_TESTS = {
         """,
         "Invalid base size 32.1 for variable x",
     ),
+    "const_declaration_with_non_const": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        int[32] x = 5;
+        const int[32] y = x + 5;
+        """,
+        "Variable 'x' is not a constant in given expression",
+    ),
+    "const_declaration_with_non_const_size": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        int[32] x = 5;
+        const int[x] y = 5;
+        """,
+        "Variable 'x' is not a constant in given expression",
+    ),
     "invalid_float_size": (
         """
         OPENQASM 3.0;
@@ -92,6 +110,33 @@ DECLARATION_TESTS = {
         """,
         "Invalid dimension size 2.1 in array declaration for x",
     ),
+    "extra_array_dimensions": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        array[int[32], 1, 2, 3, 4, 5, 6, 7, 8] x;
+        """,
+        "Invalid dimensions 8 for array declaration for x. Max allowed dimensions is 7",
+    ),
+    "dimension_mismatch_1": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        array[int[32], 1, 2] x = {1,2,3};
+        """,
+        "Invalid dimensions for array assignment to variable x. Expected 1 but got 3",
+    ),
+    "dimension_mismatch_2": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        array[int[32], 3, 1, 2] x = {1,2,3};
+        """,
+        "Invalid dimensions for array assignment to variable x. Expected 3 but got 1",
+    ),
 }
 
 ASSIGNMENT_TESTS = {
@@ -117,17 +162,17 @@ ASSIGNMENT_TESTS = {
         """,
         "Assignment to constant variable x not allowed",
     ),
-    "invalid_type": (
+    "invalid_assignment_type": (
         """
         OPENQASM 3.0;
         include "stdgates.inc";
 
-        int x = 3;
-        x = 4.3232;
+        bit x = 3.3;
         """,
         (
-            "Invalid assignment of type <class 'float'> to variable x "
-            "of type <class 'openqasm3.ast.IntType'>"
+            "Cannot cast <class 'float'> to <class 'openqasm3.ast.BitType'>. "
+            "Invalid assignment of type <class 'float'> to variable x of type "
+            "<class 'openqasm3.ast.BitType'>"
         ),
     ),
     "int_out_of_range": (
@@ -138,15 +183,6 @@ ASSIGNMENT_TESTS = {
         int[32] x = 1<<64;
         """,
         f"Value {2**64} out of limits for variable x with base size 32",
-    ),
-    "uint_out_of_range": (
-        """
-        OPENQASM 3.0;
-        include "stdgates.inc";
-
-        uint[32] x = -2;
-        """,
-        f"Value {-2} out of limits for variable x with base size 32",
     ),
     "float32_out_of_range": (
         """
