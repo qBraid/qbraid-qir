@@ -173,7 +173,7 @@ qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/qir/
 - For discussions, and specific questions about the qBraid-SDK, qBraid-QIR, or
   other topics, [join our discord community](https://discord.gg/TPBU2sa8Et)
 - For questions that are more suited for a forum, post to
-  [Quantum Computing Stack Exchange](https://quantumcomputing.stackexchange.com/)
+  [QCSE](https://quantumcomputing.stackexchange.com/)
   with the [`qbraid`](https://quantumcomputing.stackexchange.com/questions/tagged/qbraid) tag.
 - By participating, you are expected to uphold our [code of conduct](CODE_OF_CONDUCT).
 
@@ -183,15 +183,15 @@ If you use qBraid-QIR in your research, we kindly request that you cite it appro
 The BibTeX entry below is aligned with the latest stable release. For the most up-to-date
 citation details, please refer to [CITATION.cff](CITATION.cff).
 
-```tex
+```bibtex
 @software{Gupta_qBraid-QIR_Python_package_2024,
-author = {Gupta, Harshit and Kushnir, Samuel and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
-license = {GPL-3.0},
-month = jun,
-title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
-url = {https://github.com/qBraid/qbraid-qir},
-version = {0.2.1},
-year = {2024}
+  author = {Gupta, Harshit and Kushnir, Samuel and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
+  license = {GPL-3.0},
+  month = jun,
+  title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
+  url = {https://github.com/qBraid/qbraid-qir},
+  version = {0.2.1},
+  year = {2024}
 }
 ```
 
