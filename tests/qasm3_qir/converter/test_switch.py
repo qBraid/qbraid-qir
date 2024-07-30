@@ -111,6 +111,34 @@ def test_switch_identifier_case():
     check_single_qubit_gate_op(generated_qir, 1, [0], "x")
 
 
+def test_switch_const_int():
+    """Test converting OpenQASM 3 program switch and constant integer case."""
+
+    qasm3_switch_program = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+    
+    const int i = 4;
+    const int j = 5;
+    qubit q;
+
+    switch(i) {
+    case j-1 {
+        x q;
+    }
+    default {
+        z q;
+    }
+    }
+    """
+
+    result = qasm3_to_qir(qasm3_switch_program, name="test")
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 1)
+    check_single_qubit_gate_op(generated_qir, 1, [0], "x")
+
+
 def test_switch_duplicate_cases():
     """Test that switch raises error if duplicate values are present in case."""
 
@@ -295,5 +323,60 @@ def test_unsupported_statements_in_case(invalid_stmt):
     """
     )
     with pytest.raises(Qasm3ConversionError, match=r"Unsupported statement .*"):
+        qasm3_switch_program = base_invalid_program
+        qasm3_to_qir(qasm3_switch_program, name="test")
+
+
+def test_non_int_expression_case():
+    """Test that switch raises error if case expression is not an integer."""
+
+    base_invalid_program = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+    const int i = 4;
+    qubit q;
+
+    switch(i) {
+        case 4.3, 2 {
+            x q;
+        }
+        default {
+            z q;
+        }
+    }
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Invalid type .* for required type <class 'openqasm3.ast.IntType'>",
+    ):
+        qasm3_switch_program = base_invalid_program
+        qasm3_to_qir(qasm3_switch_program, name="test")
+
+
+def test_non_constant_expression_case():
+    """Test that switch raises error if case expression is not a constant."""
+
+    base_invalid_program = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+    int i = 4;
+    qubit q;
+    int j = 3;
+    int k = 2;
+
+    switch(i) {
+        case j + k {
+            x q;
+        }
+        default {
+            z q;
+        }
+    }
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError, match=r"Variable .* is not a constant in given expression"
+    ):
         qasm3_switch_program = base_invalid_program
         qasm3_to_qir(qasm3_switch_program, name="test")

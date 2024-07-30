@@ -278,6 +278,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
             variable (Variable): The variable to validate.
             reqd_type (any): The required Qasm3 type of the variable.
         """
+        if not reqd_type:
+            return True
         variable = self._find_in_visible_scope(var_name)
         return isinstance(variable.base_type, reqd_type)
 
@@ -1151,13 +1153,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         return var_name, indices
 
-    # pylint: disable-next=too-many-return-statements
-    def _evaluate_expression(self, expression, const_expr: bool = False):
+    # pylint: disable-next=too-many-return-statements, too-many-statements
+    def _evaluate_expression(self, expression, const_expr: bool = False, reqd_type=None):
         """Evaluate an expression. Scalar types are assigned by value.
 
         Args:
             expression (Any): The expression to evaluate.
             const_expr (bool): Whether the expression is a constant. Defaults to False.
+            reqd_type (Any): The required type of the expression. Defaults to None.
 
         Returns:
             bool: The result of the evaluation.
@@ -1183,6 +1186,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     f"Variable '{var_name}' is not a constant in given expression"
                 )
 
+        def _check_var_type(var_name, reqd_type):
+            if not self._validate_variable_type(var_name, reqd_type):
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Invalid type of variable {var_name} for required type {reqd_type}"
+                )
+
         def _check_var_initialized(var_name, var_value):
             if var_value is None:
                 self._print_err_location(expression.span)
@@ -1202,6 +1212,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         def process_variable(var_name, indices=None):
             _check_var_in_scope(var_name)
             _check_var_constant(var_name)
+            _check_var_type(var_name, reqd_type)
             var_value = _get_var_value(var_name, indices)
             _check_var_initialized(var_name, var_value)
             return var_value
@@ -1209,7 +1220,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(expression, Identifier):
             var_name = expression.name
             if var_name in CONSTANTS_MAP:
-                return CONSTANTS_MAP[var_name]
+                if not reqd_type or reqd_type == Qasm3FloatType:
+                    return CONSTANTS_MAP[var_name]
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Constant {var_name} not allowed in non-float expression"
+                )
             return process_variable(var_name)
 
         if isinstance(expression, IndexExpression):
@@ -1217,22 +1233,32 @@ class BasicQasmVisitor(ProgramElementVisitor):
             return process_variable(var_name, indices)
 
         if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):
+            if reqd_type:
+                if reqd_type == BoolType and isinstance(expression, BooleanLiteral):
+                    return expression.value
+                if reqd_type == Qasm3IntType and isinstance(expression, IntegerLiteral):
+                    return expression.value
+                if reqd_type == Qasm3FloatType and isinstance(expression, FloatLiteral):
+                    return expression.value
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Invalid type {type(expression)} for required type {reqd_type}"
+                )
             return expression.value
 
         if isinstance(expression, UnaryExpression):
-            op = expression.op.name
-            if op == "-":
-                op = "UMINUS"
-            operand = self._evaluate_expression(expression.expression, const_expr)
-            if op == "~" and not isinstance(operand, int):
+            operand = self._evaluate_expression(expression.expression, const_expr, reqd_type)
+            if expression.op.name == "~" and not isinstance(operand, int):
                 self._print_err_location(expression.span)
                 raise Qasm3ConversionError(
                     f"Unsupported expression type {type(operand)} in ~ operation"
                 )
-            return qasm3_expression_op_map(op, operand)
+            return qasm3_expression_op_map(
+                "UMINUS" if expression.op.name == "-" else expression.op.name, operand
+            )
         if isinstance(expression, BinaryExpression):
-            lhs = self._evaluate_expression(expression.lhs, const_expr)
-            rhs = self._evaluate_expression(expression.rhs, const_expr)
+            lhs = self._evaluate_expression(expression.lhs, const_expr, reqd_type)
+            rhs = self._evaluate_expression(expression.rhs, const_expr, reqd_type)
             return qasm3_expression_op_map(expression.op.name, lhs, rhs)
 
         self._print_err_location(expression.span)
@@ -1563,8 +1589,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 # using vars only within the scope AND each component is either a
                 # literal OR type int
                 case_val = self._evaluate_expression(
-                    case_expr, const_expr=True
-                )  # TODO: , reqd_type = Qasm3IntType)
+                    case_expr, const_expr=True, reqd_type=Qasm3IntType
+                )
 
                 if case_val in seen_values:
                     self._print_err_location(case_expr.span)
