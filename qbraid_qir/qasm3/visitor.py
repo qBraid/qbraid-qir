@@ -270,6 +270,16 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 f"{'qubit' if qubit else 'clbit'}"
             )
 
+    def _validate_variable_type(self, var_name: str, reqd_type):
+        """Validate the type of a variable.
+
+        Args:
+            variable (Variable): The variable to validate.
+            reqd_type (any): The required Qasm3 type of the variable.
+        """
+        variable = self._find_in_visible_scope(var_name)
+        return isinstance(variable.base_type, reqd_type)
+
     def _get_qubits_from_range_definition(
         self, range_def: RangeDefinition, qreg_size: int, is_qubit_reg: bool
     ) -> list[int]:
@@ -1495,12 +1505,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
         switch_target = statement.target
 
         # either identifier or indexed expression
-        # if isinstance(switch_target, Identifier):
-        #     switch_target_name = switch_target.name
-        # else:
-        #     switch_target_name, indices = self._analyse_index_expression(switch_target)
+        if isinstance(switch_target, Identifier):
+            switch_target_name = switch_target.name
+        else:
+            switch_target_name, _ = self._analyse_index_expression(switch_target)
 
-        # TODO: self._validate_variable_type(switch_target_name, Qasm3IntType)
+        if not self._validate_variable_type(switch_target_name, Qasm3IntType):
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Switch target {switch_target_name} must be of type int")
+
         switch_target_val = self._evaluate_expression(switch_target)
 
         if len(statement.cases) == 0:
@@ -1510,6 +1523,19 @@ class BasicQasmVisitor(ProgramElementVisitor):
         # 2. handle the cases of the switch stmt
         #    each element in the list of the values
         #    should be of const int type and no duplicates should be present
+
+        def evaluate_case(statements):
+            self._push_scope({})
+            self._curr_scope += 1
+            self._label_scope_level[self._curr_scope] = set()
+
+            for stmt in statements:
+                self.visit_statement(stmt)
+
+            del self._label_scope_level[self._curr_scope]
+            self._curr_scope -= 1
+            self._pop_scope()
+
         case_fulfilled = False
         for case in statement.cases:
             case_list = case[0]
@@ -1534,35 +1560,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     case_fulfilled = True
 
             if case_fulfilled:
-                # 4. each case has its own scope
-                self._push_scope({})
-                self._curr_scope += 1
-                self._label_scope_level[self._curr_scope] = set()
-
                 case_stmts = case[1].statements
-                for stmt in case_stmts:
-                    self.visit_statement(stmt)
-
-                # 5. remove the labels and pop the scope
-                del self._label_scope_level[self._curr_scope]
-                self._curr_scope -= 1
-                self._pop_scope()
+                evaluate_case(case_stmts)
                 break
 
         if not case_fulfilled and statement.default:
-            # 6. visit the default case
             default_stmts = statement.default.statements
-
-            self._push_scope({})
-            self._curr_scope += 1
-            self._label_scope_level[self._curr_scope] = set()
-
-            for stmt in default_stmts:
-                self.visit_statement(stmt)
-
-            del self._label_scope_level[self._curr_scope]
-            self._curr_scope -= 1
-            self._pop_scope()
+            evaluate_case(default_stmts)
 
     # pylint: disable-next=too-many-branches
     def visit_statement(self, statement: Statement) -> None:

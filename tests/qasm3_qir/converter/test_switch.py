@@ -158,3 +158,109 @@ def test_no_case_switch():
         """
 
         qasm3_to_qir(qasm3_switch_program, name="test")
+
+
+def test_nested_switch():
+    """Test that switch works correctly in case of nested switch"""
+
+    qasm3_switch_program = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+    
+    const int i = 1;
+    qubit q;
+
+    switch(i) {
+    case 1,3,5,7 {
+        int j = 4; // definition inside scope
+        switch(j) {
+        case 1,3,5,7 {
+            x q; 
+        }
+        case 2,4,6,8 {
+            y q; // this will be executed
+        }
+        default {
+            z q;
+        }
+        }
+    }
+    case 2,4,6,8 {
+        y q;
+    }
+    default {
+        z q;
+    }
+    
+    }
+    """
+
+    result = qasm3_to_qir(qasm3_switch_program, name="test")
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_gate_op(generated_qir, 1, [0], "y")
+
+
+@pytest.mark.parametrize("invalid_type", ["float", "bool", "bit"])
+def test_invalid_scalar_switch_target(invalid_type):
+    """Test that switch raises error if target is not an integer."""
+
+    base_invalid_program = (
+        """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+    """
+        + invalid_type
+        + """ i;
+
+    qubit q;
+
+    switch(i) {
+        case 4 {
+            x q;
+        }
+        default {
+            z q;
+        }
+    }
+    """
+    )
+
+    with pytest.raises(
+        Qasm3ConversionError, match=re.escape("Switch target i must be of type int")
+    ):
+        qasm3_switch_program = base_invalid_program
+        qasm3_to_qir(qasm3_switch_program, name="test")
+
+
+@pytest.mark.parametrize("invalid_type", ["float", "bool", "bit"])
+def test_invalid_array_switch_target(invalid_type):
+    """Test that switch raises error if target is array element and not an integer."""
+
+    base_invalid_program = (
+        """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+    array["""
+        + invalid_type
+        + """, 3, 2] i;
+
+    qubit q;
+
+    switch(i[0][1]) {
+        case 4 {
+            x q;
+        }
+        default {
+            z q;
+        }
+    }
+    """
+    )
+
+    with pytest.raises(
+        Qasm3ConversionError, match=re.escape("Switch target i must be of type int")
+    ):
+        qasm3_switch_program = base_invalid_program
+        qasm3_to_qir(qasm3_switch_program, name="test")
