@@ -78,6 +78,7 @@ from .oq3_maps import (
     CONSTANTS_MAP,
     LIMITS_MAP,
     MAX_ARRAY_DIMENSIONS,
+    SWITCH_BLACKLIST_STMTS,
     VARIABLE_TYPE_MAP,
     map_qasm_inv_op_to_pyqir_callable,
     map_qasm_op_to_pyqir_callable,
@@ -1524,12 +1525,29 @@ class BasicQasmVisitor(ProgramElementVisitor):
         #    each element in the list of the values
         #    should be of const int type and no duplicates should be present
 
-        def evaluate_case(statements):
+        def _validate_statement_type(statement):
+            stmt_type = statement.__class__
+            if stmt_type in SWITCH_BLACKLIST_STMTS:
+                if stmt_type == ClassicalDeclaration:
+                    if statement.type.__class__ == ArrayType:
+                        self._print_err_location(statement.span)
+                        raise Qasm3ConversionError(
+                            f"Unsupported statement {stmt_type} with {statement.type.__class__}"
+                            " in switch case block"
+                        )
+                else:
+                    self._print_err_location(statement.span)
+                    raise Qasm3ConversionError(
+                        f"Unsupported statement {stmt_type} in switch case block"
+                    )
+
+        def _evaluate_case(statements):
             self._push_scope({})
             self._curr_scope += 1
             self._label_scope_level[self._curr_scope] = set()
 
             for stmt in statements:
+                _validate_statement_type(stmt)
                 self.visit_statement(stmt)
 
             del self._label_scope_level[self._curr_scope]
@@ -1561,12 +1579,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
             if case_fulfilled:
                 case_stmts = case[1].statements
-                evaluate_case(case_stmts)
+                _evaluate_case(case_stmts)
                 break
 
         if not case_fulfilled and statement.default:
             default_stmts = statement.default.statements
-            evaluate_case(default_stmts)
+            _evaluate_case(default_stmts)
 
     # pylint: disable-next=too-many-branches
     def visit_statement(self, statement: Statement) -> None:

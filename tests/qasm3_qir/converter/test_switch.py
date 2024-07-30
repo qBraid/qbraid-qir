@@ -264,3 +264,36 @@ def test_invalid_array_switch_target(invalid_type):
     ):
         qasm3_switch_program = base_invalid_program
         qasm3_to_qir(qasm3_switch_program, name="test")
+
+
+@pytest.mark.parametrize(
+    "invalid_stmt",
+    ["def test1() { int i = 1; }", "array[int[32], 3, 2] arr_int;", "gate test_1() q { h q;}"],
+)
+def test_unsupported_statements_in_case(invalid_stmt):
+    """Test that switch raises error if invalid statements are present in the case block"""
+
+    base_invalid_program = (
+        """
+
+    OPENQASM 3.0;
+    include "stdgates.inc"; 
+    qubit q;
+    int i = 4;
+
+    switch(i) {
+        case 4 {
+            x q;
+    """
+        + invalid_stmt
+        + """
+        }
+        default {
+            z q;
+        }
+    }
+    """
+    )
+    with pytest.raises(Qasm3ConversionError, match=r"Unsupported statement .*"):
+        qasm3_switch_program = base_invalid_program
+        qasm3_to_qir(qasm3_switch_program, name="test")

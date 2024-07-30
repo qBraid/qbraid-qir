@@ -23,9 +23,13 @@ from openqasm3.ast import (
     ArrayType,
     BitType,
     BoolType,
+    ClassicalDeclaration,
     ComplexType,
     FloatType,
     IntType,
+    QuantumGateDefinition,
+    QubitDeclaration,
+    SubroutineDefinition,
     UintType,
 )
 
@@ -670,3 +674,12 @@ VARIABLE_TYPE_CAST_MAP = {
 
 # Reference : https://openqasm.com/language/types.html#arrays
 MAX_ARRAY_DIMENSIONS = 7
+
+# Reference : https://openqasm.com/language/classical.html#the-switch-statement
+# Paragraph 14
+SWITCH_BLACKLIST_STMTS = {
+    QubitDeclaration,
+    ClassicalDeclaration,
+    SubroutineDefinition,
+    QuantumGateDefinition,
+}
