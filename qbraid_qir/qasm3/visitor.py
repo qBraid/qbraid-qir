@@ -64,6 +64,7 @@ from openqasm3.ast import (
     Span,
     Statement,
     SubroutineDefinition,
+    SwitchStatement,
     UnaryExpression,
     WhileLoop,
 )
@@ -77,6 +78,7 @@ from .oq3_maps import (
     CONSTANTS_MAP,
     LIMITS_MAP,
     MAX_ARRAY_DIMENSIONS,
+    SWITCH_BLACKLIST_STMTS,
     VARIABLE_TYPE_MAP,
     map_qasm_inv_op_to_pyqir_callable,
     map_qasm_op_to_pyqir_callable,
@@ -268,6 +270,18 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 f"Index {index} out of range for register of size {size} in "
                 f"{'qubit' if qubit else 'clbit'}"
             )
+
+    def _validate_variable_type(self, var_name: str, reqd_type):
+        """Validate the type of a variable.
+
+        Args:
+            variable (Variable): The variable to validate.
+            reqd_type (any): The required Qasm3 type of the variable.
+        """
+        if not reqd_type:
+            return True
+        variable = self._find_in_visible_scope(var_name)
+        return isinstance(variable.base_type, reqd_type)
 
     def _get_qubits_from_range_definition(
         self, range_def: RangeDefinition, qreg_size: int, is_qubit_reg: bool
@@ -958,7 +972,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         self._update_scope(variable)
 
-    def _analyse_classical_indices(self, indices: list[list], var_name: str) -> None:
+    def _analyse_classical_indices(self, indices: list[IntegerLiteral], var_name: str) -> None:
         """Validate the indices for a classical variable.
 
         Args:
@@ -975,18 +989,17 @@ class BasicQasmVisitor(ProgramElementVisitor):
         var_dimensions = self._get_scope()[var_name].dims
 
         if not var_dimensions:
-            self._print_err_location(indices[0][0].span)
+            self._print_err_location(indices[0].span)
             raise Qasm3ConversionError(f"Indexing error. Variable {var_name} is not an array")
 
         if len(indices) != len(var_dimensions):
-            self._print_err_location(indices[0][0].span)
+            self._print_err_location(indices[0].span)
             raise Qasm3ConversionError(
                 f"Invalid number of indices for variable {var_name}. "
                 f"Expected {len(var_dimensions)} but got {len(indices)}"
             )
 
         for i, index in enumerate(indices):
-            index = index[0]
             if isinstance(index, RangeDefinition):
                 self._print_err_location(index.span)
                 raise Qasm3ConversionError(
@@ -1075,7 +1088,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         # handle assignment for arrays
         if isinstance(lvalue, IndexedIdentifier):
-            indices = lvalue.indices
+            # stupid indices structure in openqasm :/
+            if len(lvalue.indices[0]) > 1:
+                indices = lvalue.indices[0]
+            else:
+                indices = [idx[0] for idx in lvalue.indices]
+
             validated_indices = self._analyse_classical_indices(indices, var_name)
             self._update_array_element(var.value, validated_indices, var_value)
         else:
@@ -1107,13 +1125,42 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         return init_values
 
-    # pylint: disable-next=too-many-return-statements
-    def _evaluate_expression(self, expression, const_expr: bool = False):
+    def _analyse_index_expression(self, index_expr: IndexExpression) -> tuple[str, list[list]]:
+        """Analyse an index expression to get the variable name and indices.
+
+        Args:
+            index_expr (IndexExpression): The index expression to analyse.
+
+        Returns:
+            tuple[str, list[list]]: The variable name and indices.
+
+        """
+        indices = []
+        var_name = None
+        comma_separated = False
+
+        if isinstance(index_expr.collection, IndexExpression):
+            while isinstance(index_expr, IndexExpression):
+                indices.append(index_expr.index[0])
+                index_expr = index_expr.collection
+        else:
+            comma_separated = True
+            indices = index_expr.index
+
+        var_name = index_expr.collection.name if comma_separated else index_expr.name
+        if not comma_separated:
+            indices = indices[::-1]
+
+        return var_name, indices
+
+    # pylint: disable-next=too-many-return-statements, too-many-statements
+    def _evaluate_expression(self, expression, const_expr: bool = False, reqd_type=None):
         """Evaluate an expression. Scalar types are assigned by value.
 
         Args:
             expression (Any): The expression to evaluate.
             const_expr (bool): Whether the expression is a constant. Defaults to False.
+            reqd_type (Any): The required type of the expression. Defaults to None.
 
         Returns:
             bool: The result of the evaluation.
@@ -1139,6 +1186,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     f"Variable '{var_name}' is not a constant in given expression"
                 )
 
+        def _check_var_type(var_name, reqd_type):
+            if not self._validate_variable_type(var_name, reqd_type):
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Invalid type of variable {var_name} for required type {reqd_type}"
+                )
+
         def _check_var_initialized(var_name, var_value):
             if var_value is None:
                 self._print_err_location(expression.span)
@@ -1155,23 +1209,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 )
             return var_value
 
-        def _analyse_index_expression(index_expr):
-            indices = []
-            var_name = None
-
-            # Recursive structure for IndexExpression
-            while isinstance(index_expr, IndexExpression):
-                indices.append(index_expr.index)
-                index_expr = index_expr.collection
-
-            indices = indices[::-1]  # reverse indices as outermost was present first
-            var_name = index_expr.name
-
-            return var_name, indices
-
         def process_variable(var_name, indices=None):
             _check_var_in_scope(var_name)
             _check_var_constant(var_name)
+            _check_var_type(var_name, reqd_type)
             var_value = _get_var_value(var_name, indices)
             _check_var_initialized(var_name, var_value)
             return var_value
@@ -1179,30 +1220,45 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(expression, Identifier):
             var_name = expression.name
             if var_name in CONSTANTS_MAP:
-                return CONSTANTS_MAP[var_name]
+                if not reqd_type or reqd_type == Qasm3FloatType:
+                    return CONSTANTS_MAP[var_name]
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Constant {var_name} not allowed in non-float expression"
+                )
             return process_variable(var_name)
 
         if isinstance(expression, IndexExpression):
-            var_name, indices = _analyse_index_expression(expression)
+            var_name, indices = self._analyse_index_expression(expression)
             return process_variable(var_name, indices)
 
         if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):
+            if reqd_type:
+                if reqd_type == BoolType and isinstance(expression, BooleanLiteral):
+                    return expression.value
+                if reqd_type == Qasm3IntType and isinstance(expression, IntegerLiteral):
+                    return expression.value
+                if reqd_type == Qasm3FloatType and isinstance(expression, FloatLiteral):
+                    return expression.value
+                self._print_err_location(expression.span)
+                raise Qasm3ConversionError(
+                    f"Invalid type {type(expression)} for required type {reqd_type}"
+                )
             return expression.value
 
         if isinstance(expression, UnaryExpression):
-            op = expression.op.name
-            if op == "-":
-                op = "UMINUS"
-            operand = self._evaluate_expression(expression.expression, const_expr)
-            if op == "~" and not isinstance(operand, int):
+            operand = self._evaluate_expression(expression.expression, const_expr, reqd_type)
+            if expression.op.name == "~" and not isinstance(operand, int):
                 self._print_err_location(expression.span)
                 raise Qasm3ConversionError(
                     f"Unsupported expression type {type(operand)} in ~ operation"
                 )
-            return qasm3_expression_op_map(op, operand)
+            return qasm3_expression_op_map(
+                "UMINUS" if expression.op.name == "-" else expression.op.name, operand
+            )
         if isinstance(expression, BinaryExpression):
-            lhs = self._evaluate_expression(expression.lhs, const_expr)
-            rhs = self._evaluate_expression(expression.rhs, const_expr)
+            lhs = self._evaluate_expression(expression.lhs, const_expr, reqd_type)
+            rhs = self._evaluate_expression(expression.rhs, const_expr, reqd_type)
             return qasm3_expression_op_map(expression.op.name, lhs, rhs)
 
         self._print_err_location(expression.span)
@@ -1462,6 +1518,100 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         _log.debug("Added labels for aliasing '%s'", target)
 
+    def _visit_switch_statement(self, statement: SwitchStatement) -> None:
+        """Visit a switch statement element.
+
+        Args:
+            statement (SwitchStatement): The switch statement to visit.
+
+        Returns:
+            None
+        """
+
+        # 1. analyse the target - it should ONLY be int, not casted
+        switch_target = statement.target
+
+        # either identifier or indexed expression
+        if isinstance(switch_target, Identifier):
+            switch_target_name = switch_target.name
+        else:
+            switch_target_name, _ = self._analyse_index_expression(switch_target)
+
+        if not self._validate_variable_type(switch_target_name, Qasm3IntType):
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Switch target {switch_target_name} must be of type int")
+
+        switch_target_val = self._evaluate_expression(switch_target)
+
+        if len(statement.cases) == 0:
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError("Switch statement must have at least one case")
+
+        # 2. handle the cases of the switch stmt
+        #    each element in the list of the values
+        #    should be of const int type and no duplicates should be present
+
+        def _validate_statement_type(statement):
+            stmt_type = statement.__class__
+            if stmt_type in SWITCH_BLACKLIST_STMTS:
+                if stmt_type == ClassicalDeclaration:
+                    if statement.type.__class__ == ArrayType:
+                        self._print_err_location(statement.span)
+                        raise Qasm3ConversionError(
+                            f"Unsupported statement {stmt_type} with {statement.type.__class__}"
+                            " in switch case block"
+                        )
+                else:
+                    self._print_err_location(statement.span)
+                    raise Qasm3ConversionError(
+                        f"Unsupported statement {stmt_type} in switch case block"
+                    )
+
+        def _evaluate_case(statements):
+            self._push_scope({})
+            self._curr_scope += 1
+            self._label_scope_level[self._curr_scope] = set()
+
+            for stmt in statements:
+                _validate_statement_type(stmt)
+                self.visit_statement(stmt)
+
+            del self._label_scope_level[self._curr_scope]
+            self._curr_scope -= 1
+            self._pop_scope()
+
+        case_fulfilled = False
+        for case in statement.cases:
+            case_list = case[0]
+            seen_values = set()
+            for case_expr in case_list:
+                # 3. evaluate and verify that it is a const_expression
+                # using vars only within the scope AND each component is either a
+                # literal OR type int
+                case_val = self._evaluate_expression(
+                    case_expr, const_expr=True, reqd_type=Qasm3IntType
+                )
+
+                if case_val in seen_values:
+                    self._print_err_location(case_expr.span)
+                    raise Qasm3ConversionError(
+                        f"Duplicate case value {case_val} in switch statement"
+                    )
+
+                seen_values.add(case_val)
+
+                if case_val == switch_target_val:
+                    case_fulfilled = True
+
+            if case_fulfilled:
+                case_stmts = case[1].statements
+                _evaluate_case(case_stmts)
+                break
+
+        if not case_fulfilled and statement.default:
+            default_stmts = statement.default.statements
+            _evaluate_case(default_stmts)
+
     # pylint: disable-next=too-many-branches
     def visit_statement(self, statement: Statement) -> None:
         """Visit a statement element.
@@ -1495,10 +1645,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._visit_branching_statement(statement)
         elif isinstance(statement, ForInLoop):
             self._visit_forin_loop(statement)
-        elif isinstance(statement, SubroutineDefinition):
-            raise NotImplementedError("OpenQASM 3 subroutines not yet supported")
         elif isinstance(statement, AliasStatement):
             self._visit_alias_statement(statement)
+        elif isinstance(statement, SwitchStatement):
+            self._visit_switch_statement(statement)
+        elif isinstance(statement, SubroutineDefinition):
+            raise NotImplementedError("OpenQASM 3 subroutines not yet supported")
         elif isinstance(statement, IODeclaration):
             raise NotImplementedError("OpenQASM 3 IO declarations not yet supported")
         else:

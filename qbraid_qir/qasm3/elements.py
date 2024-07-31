@@ -70,8 +70,8 @@ class Variable:
         name: str,
         base_type,
         base_size: int,
-        dims: list[int],
-        value: Optional[Union[int, float, list]],
+        dims: list[int] = None,
+        value: Optional[Union[int, float, list]] = None,
         is_constant: bool = False,
     ):
         self.name = name

@@ -338,4 +338,24 @@ CUSTOM_GATE_INCORRECT_TESTS = {
         """,
         "Recursive definitions not allowed .*",
     ),
+    "duplicate_definition": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        gate custom_gate(a,b) p, q{
+            rx(a) p;
+            ry(b) q;
+        }
+
+        gate custom_gate(a,b) p, q{
+            rx(a) p;
+            ry(b) q;
+        }
+
+        qubit[2] q1;
+        custom_gate(0.5, 0.5) q1;  // duplicate definition
+        """,
+        "Duplicate gate definition for custom_gate",
+    ),
 }
