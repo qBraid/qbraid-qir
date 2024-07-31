@@ -20,7 +20,6 @@ import numpy as np
 import pyqir
 from openqasm3.ast import (
     AngleType,
-    ArrayType,
     BitType,
     BoolType,
     ClassicalDeclaration,
@@ -656,9 +655,8 @@ VARIABLE_TYPE_MAP = {
     UintType: int,
     BoolType: bool,
     FloatType: float,
-    ArrayType: None,  # not sure
-    AngleType: None,  # not sure
     ComplexType: complex,
+    # AngleType: None,  # not sure
 }
 
 # Reference: https://openqasm.com/language/types.html#allowed-casts

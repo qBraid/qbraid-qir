@@ -92,6 +92,15 @@ DECLARATION_TESTS = {
         """,
         "Invalid base size 23 for float variable x",
     ),
+    "unsupported_types": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        angle x = 3.4;
+        """,
+        "Invalid type <class 'openqasm3.ast.AngleType'> for variable x",
+    ),
     "imaginary_variable": (
         """
         OPENQASM 3.0;
@@ -174,6 +183,15 @@ ASSIGNMENT_TESTS = {
             "Invalid assignment of type <class 'float'> to variable x of type "
             "<class 'openqasm3.ast.BitType'>"
         ),
+    ),
+    "invalid_assignment_for_range": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        array[int[32], 4, 4] my_arr;
+        my_arr[0, 1:1] = 3;
+        """,
+        "Range based indexing .* not supported for classical variable .*",
     ),
     "int_out_of_range": (
         """

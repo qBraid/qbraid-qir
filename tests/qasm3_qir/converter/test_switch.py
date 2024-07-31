@@ -354,6 +354,34 @@ def test_non_int_expression_case():
         qasm3_to_qir(qasm3_switch_program, name="test")
 
 
+def test_non_int_variable_expression():
+    """Test that switch raises error if case expression has a non-int
+    variable in expression."""
+
+    base_invalid_program = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+    const int i = 4;
+    const float f = 4.0;
+    qubit q;
+
+    switch(i) {
+        case f, 2 {
+            x q;
+        }
+        default {
+            z q;
+        }
+    }
+    """
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Invalid type of variable .* for required type <class 'openqasm3.ast.IntType'>",
+    ):
+        qasm3_switch_program = base_invalid_program
+        qasm3_to_qir(qasm3_switch_program, name="test")
+
+
 def test_non_constant_expression_case():
     """Test that switch raises error if case expression is not a constant."""
 
