@@ -37,11 +37,13 @@ from openqasm3.ast import (
     ConstantDeclaration,
     DiscreteSet,
     DurationLiteral,
+    ExpressionStatement,
     FloatLiteral,
 )
 from openqasm3.ast import FloatType as Qasm3FloatType
 from openqasm3.ast import (
     ForInLoop,
+    FunctionCall,
     GateModifierName,
     Identifier,
     ImaginaryLiteral,
@@ -61,6 +63,7 @@ from openqasm3.ast import (
     QuantumReset,
     QubitDeclaration,
     RangeDefinition,
+    ReturnStatement,
     Span,
     Statement,
     SubroutineDefinition,
@@ -72,7 +75,7 @@ from pyqir import BasicBlock, Builder, Constant
 from pyqir import IntType as qirIntType
 from pyqir import PointerType
 
-from .elements import Context, InversionOp, Qasm3Module, Variable
+from .elements import InversionOp, Qasm3Module, Variable
 from .exceptions import Qasm3ConversionError
 from .oq3_maps import (
     CONSTANTS_MAP,
@@ -114,12 +117,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._builder = None
         self._entry_point = None
         self._scope = deque([{}])
-        self._context = Context.GLOBAL
         self._qubit_labels = {}
         self._clbit_labels = {}
         self._qreg_size_map = {}
         self._creg_size_map = {}
         self._custom_gates = {}
+        self._subroutine_defns = {}
         self._measured_qubits = {}
         self._initialize_runtime = initialize_runtime
         self._record_output = record_output
@@ -188,19 +191,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._scope[-1][variable.name] = variable
 
     def _in_global_scope(self) -> bool:
-        return len(self._scope) == 1 and self._context == Context.GLOBAL
+        return len(self._scope) == 1
 
     def _in_function(self) -> bool:
-        return len(self._scope) > 1 and self._context == Context.FUNCTION
-
-    def _set_context(self, context: Context) -> None:
-        self._context = context
-
-    def _in_loop(self) -> bool:
-        return self._context == Context.LOOP
-
-    def _in_ifblock(self) -> bool:
-        return self._context == Context.IF
+        return len(self._scope) > 1
 
     def record_output(self, module: Qasm3Module) -> None:
         if self._record_output is False:
@@ -282,6 +276,33 @@ class BasicQasmVisitor(ProgramElementVisitor):
             return True
         variable = self._find_in_visible_scope(var_name)
         return isinstance(variable.base_type, reqd_type)
+
+    def _validate_statement_type(
+        self, blacklisted_stmts: set, statement: Statement, construct: str
+    ):
+        """Validate the type of a statement.
+
+        Args:
+            blacklisted_stmts (set): The set of blacklisted statements.
+            statement (Statement): The statement to validate.
+
+        Raises:
+            Qasm3ConversionError: If the statement is not supported.
+        """
+        stmt_type = statement.__class__
+        if stmt_type in blacklisted_stmts:
+            if stmt_type == ClassicalDeclaration:
+                if statement.type.__class__ == ArrayType:
+                    self._print_err_location(statement.span)
+                    raise Qasm3ConversionError(
+                        f"Unsupported statement {stmt_type} with {statement.type.__class__}"
+                        " in {construct} block"
+                    )
+            else:
+                self._print_err_location(statement.span)
+                raise Qasm3ConversionError(
+                    f"Unsupported statement {stmt_type} in {construct} block"
+                )
 
     def _get_qubits_from_range_definition(
         self, range_def: RangeDefinition, qreg_size: int, is_qubit_reg: bool
@@ -1168,6 +1189,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Raises:
             Qasm3ConversionError: If the expression is not supported.
         """
+        if expression is None:
+            return None
 
         if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
             self._print_err_location(expression.span)
@@ -1260,6 +1283,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             lhs = self._evaluate_expression(expression.lhs, const_expr, reqd_type)
             rhs = self._evaluate_expression(expression.rhs, const_expr, reqd_type)
             return qasm3_expression_op_map(expression.op.name, lhs, rhs)
+
+        # TODO : Fn return values and other expressions not supported yet
+        # if isinstance(expression, FunctionCall):
+        #     pass
 
         self._print_err_location(expression.span)
         raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
@@ -1405,13 +1432,97 @@ class BasicQasmVisitor(ProgramElementVisitor):
             i = self._get_scope()[statement.identifier.name]
             self._pop_scope()  # scope not persistent between loop iterations
 
+    def _visit_subroutine_definition(self, statement: SubroutineDefinition) -> None:
+        """Visit a subroutine definition element.
+           Reference: https://openqasm.com/language/subroutines.html#subroutines
+
+        Args:
+            statement (SubroutineDefinition): The subroutine definition to visit.
+
+        Returns:
+            None
+        """
+        fn_name = statement.name.name
+        if fn_name in self._subroutine_defns:
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Redefinition of subroutine '{fn_name}'")
+
+        self._subroutine_defns[fn_name] = statement
+
+    def _validate_return_statement(self, subroutine_def, return_statement, return_value):
+        """Validate the return type of a function.
+
+        Args:
+            subroutine_def (SubroutineDefinition): The subroutine definition.
+            return_statement (ReturnStatement): The return statement.
+            return_value (Any): The return value.
+
+        Raises:
+            Qasm3ConversionError: If the return type is invalid.
+        """
+
+        if subroutine_def.return_type is None:
+            if return_value is not None:
+                self._print_err_location(return_statement.span)
+                raise Qasm3ConversionError(
+                    f"Return type mismatch for subroutine '{subroutine_def.name.name}'."
+                    f" Expected void but got {type(return_value)}"
+                )
+        # TODO: validation is required for return type
+
+    def _visit_function_call(self, statement: FunctionCall) -> None:
+        """Visit a function call element.
+
+        Args:
+            statement (FunctionCall): The function call to visit.
+
+        Returns:
+            None
+        """
+        fn_name = statement.name.name
+        if fn_name not in self._subroutine_defns:
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Undefined subroutine '{fn_name}' was called")
+
+        # Get the subroutine definition
+        subroutine_def = self._subroutine_defns[fn_name]
+
+        # TODO: validate the actual parameters against the formal parameters
+        if len(statement.arguments) != len(subroutine_def.arguments):
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(
+                f"Parameter count mismatch for subroutine '{fn_name}'. Expected "
+                f"{len(subroutine_def.arguments)} but got {len(statement.arguments)} in call"
+            )
+
+        # assume the parameter validation has been done and proceed with the call
+
+        # approach similar to the gate calls
+        function_ops = copy.deepcopy(subroutine_def.body)
+
+        # build scope
+        self._push_scope({})
+        self._curr_scope += 1
+        self._label_scope_level[self._curr_scope] = set()
+
+        for function_op in function_ops:
+            # TODO: modifications in this op may be required
+            if isinstance(function_op, ReturnStatement):
+                return_statement = function_op
+                break
+            self.visit_statement(function_op)
+
+        return_value = self._evaluate_expression(return_statement.expression)
+
+        self._validate_return_statement(subroutine_def, return_statement, return_value)
+
+        del self._label_scope_level[self._curr_scope]
+        self._curr_scope -= 1
+        self._pop_scope()
+
+        return return_value if subroutine_def.return_type is not None else None
+
     def _visit_while_loop(self, statement: WhileLoop) -> None:
-        pass
-
-    def visit_contextual_statement(self, statement: Statement) -> None:
-        pass
-
-    def visit_scoped_statement(self, statement: Statement) -> None:
         pass
 
     def _extract_values_from_discrete_set(self, discrete_set: DiscreteSet) -> list[int]:
@@ -1551,29 +1662,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
         #    each element in the list of the values
         #    should be of const int type and no duplicates should be present
 
-        def _validate_statement_type(statement):
-            stmt_type = statement.__class__
-            if stmt_type in SWITCH_BLACKLIST_STMTS:
-                if stmt_type == ClassicalDeclaration:
-                    if statement.type.__class__ == ArrayType:
-                        self._print_err_location(statement.span)
-                        raise Qasm3ConversionError(
-                            f"Unsupported statement {stmt_type} with {statement.type.__class__}"
-                            " in switch case block"
-                        )
-                else:
-                    self._print_err_location(statement.span)
-                    raise Qasm3ConversionError(
-                        f"Unsupported statement {stmt_type} in switch case block"
-                    )
-
         def _evaluate_case(statements):
             self._push_scope({})
             self._curr_scope += 1
             self._label_scope_level[self._curr_scope] = set()
 
             for stmt in statements:
-                _validate_statement_type(stmt)
+                self._validate_statement_type(SWITCH_BLACKLIST_STMTS, stmt, "switch")
                 self.visit_statement(stmt)
 
             del self._label_scope_level[self._curr_scope]
@@ -1650,7 +1745,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         elif isinstance(statement, SwitchStatement):
             self._visit_switch_statement(statement)
         elif isinstance(statement, SubroutineDefinition):
-            raise NotImplementedError("OpenQASM 3 subroutines not yet supported")
+            self._visit_subroutine_definition(statement)
+        elif isinstance(statement, ExpressionStatement):
+            self._visit_function_call(statement.expression)
+        elif isinstance(statement, FunctionCall):
+            self._visit_function_call(statement)
         elif isinstance(statement, IODeclaration):
             raise NotImplementedError("OpenQASM 3 IO declarations not yet supported")
         else:
