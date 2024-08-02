@@ -147,7 +147,7 @@ def test_redefinition_raises_error():
         qasm3_to_qir(qasm_str)
 
 
-def test_incorrect_param_count():
+def test_incorrect_param_count_1():
     """Test that calling a subroutine with incorrect number of parameters raises error."""
     qasm_str = """OPENQASM 3;
     include "stdgates.inc";
@@ -164,6 +164,27 @@ def test_incorrect_param_count():
         Qasm3ConversionError,
         match="Parameter count mismatch for subroutine"
         " 'my_function'. Expected 2 but got 1 in call",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_incorrect_param_count_2():
+    """Test that calling a subroutine with incorrect number of parameters raises error."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(int[32] q) {
+        h q;
+        return;
+    }
+    qubit q;
+    my_function(q, q);
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match="Parameter count mismatch for subroutine"
+        " 'my_function'. Expected 1 but got 2 in call",
     ):
         qasm3_to_qir(qasm_str)
 
@@ -189,5 +210,95 @@ def test_return_value_mismatch(data_type):
 
     with pytest.raises(
         Qasm3ConversionError, match=r"Return type mismatch for subroutine 'my_function'.*"
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+@pytest.mark.parametrize("keyword", ["pi", "euler", "tau"])
+def test_subroutine_keyword_naming(keyword):
+    """Test that using a keyword as a subroutine name raises error."""
+    qasm_str = f"""OPENQASM 3;
+    include "stdgates.inc";
+
+    def {keyword}(qubit q) {{
+        h q;
+        return;
+    }}
+    qubit q;
+    {keyword}(q);
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError, match=f"Subroutine name '{keyword}' is a reserved keyword"
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+@pytest.mark.parametrize("qubit_params", ["q", "q[:2]", "q[{0,1}]"])
+def test_qubit_size_arg_mismatch(qubit_params):
+    """Test that passing a qubit of different size raises error."""
+    qasm_str = (
+        """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit q) {
+        h q;
+        return;
+    }
+    qubit[2] q;
+    my_function("""
+        + qubit_params
+        + """);
+    """
+    )
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match="Qubit register size mismatch for function 'my_function'. "
+        "Expected 1 in variable 'q' but got 2",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_undeclared_register_usage():
+    """Test that using an undeclared register in a subroutine raises error."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit q) {
+        h q;
+        return;
+    }
+    qubit q;
+    int b;
+    my_function(b);
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match="Expecting qubit argument for 'q'. "
+        "Qubit register 'b' not found for function 'my_function'",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_type_mismatch_for_function():
+    """Test that using an undeclared register in a subroutine raises error."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(int[32] a, qubit q) {
+        h q;
+        return;
+    }
+    qubit q;
+    int[32] b = 4;
+    my_function(q, b);
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match="Expecting classical argument for 'a'. "
+        "Qubit register 'q' found for function 'my_function'",
     ):
         qasm3_to_qir(qasm_str)

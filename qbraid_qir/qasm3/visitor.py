@@ -28,10 +28,12 @@ from openqasm3.ast import (
     AliasStatement,
     ArrayLiteral,
     ArrayType,
+    AssignmentOperator,
     BinaryExpression,
     BooleanLiteral,
     BoolType,
     BranchingStatement,
+    ClassicalArgument,
     ClassicalAssignment,
     ClassicalDeclaration,
     ConstantDeclaration,
@@ -275,6 +277,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if not reqd_type:
             return True
         variable = self._find_in_visible_scope(var_name)
+        if not variable:
+            return False
         return isinstance(variable.base_type, reqd_type)
 
     def _validate_statement_type(
@@ -647,6 +651,16 @@ class BasicQasmVisitor(ProgramElementVisitor):
         gate_definition: QuantumGateDefinition,
         qubits_in_op,
     ) -> None:
+        """Validate the call of a gate operation.
+
+        Args:
+            operation (QuantumGate): The gate operation to validate.
+            gate_definition (QuantumGateDefinition): The gate definition to validate against.
+            qubits_in_op (int): The number of qubits in the operation.
+
+        Raises:
+            Qasm3ConversionError: If the number of parameters or qubits is invalid.
+        """
         if len(operation.arguments) != len(gate_definition.arguments):
             self._print_err_location(operation.span)
             raise Qasm3ConversionError(
@@ -1284,9 +1298,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
             rhs = self._evaluate_expression(expression.rhs, const_expr, reqd_type)
             return qasm3_expression_op_map(expression.op.name, lhs, rhs)
 
-        # TODO : Fn return values and other expressions not supported yet
-        # if isinstance(expression, FunctionCall):
-        #     pass
+        if isinstance(expression, FunctionCall):
+            # function will not return a reqd / const type
+            # Reference : https://openqasm.com/language/types.html#compile-time-constants
+            # para      : 5
+            return self._visit_function_call(expression)
 
         self._print_err_location(expression.span)
         raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
@@ -1443,13 +1459,23 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
         fn_name = statement.name.name
+
+        if fn_name in CONSTANTS_MAP:
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(f"Subroutine name '{fn_name}' is a reserved keyword")
+
         if fn_name in self._subroutine_defns:
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Redefinition of subroutine '{fn_name}'")
 
         self._subroutine_defns[fn_name] = statement
 
-    def _validate_return_statement(self, subroutine_def, return_statement, return_value):
+    def _validate_return_statement(
+        self,
+        subroutine_def: SubroutineDefinition,
+        return_statement: ReturnStatement,
+        return_value: any,
+    ):
         """Validate the return type of a function.
 
         Args:
@@ -1475,7 +1501,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         Args:
             statement (FunctionCall): The function call to visit.
-
         Returns:
             None
         """
@@ -1487,15 +1512,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         # Get the subroutine definition
         subroutine_def = self._subroutine_defns[fn_name]
 
-        # TODO: validate the actual parameters against the formal parameters
         if len(statement.arguments) != len(subroutine_def.arguments):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(
                 f"Parameter count mismatch for subroutine '{fn_name}'. Expected "
                 f"{len(subroutine_def.arguments)} but got {len(statement.arguments)} in call"
             )
-
-        # assume the parameter validation has been done and proceed with the call
 
         # approach similar to the gate calls
         function_ops = copy.deepcopy(subroutine_def.body)
@@ -1504,6 +1526,96 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._push_scope({})
         self._curr_scope += 1
         self._label_scope_level[self._curr_scope] = set()
+
+        # TODO: validate the actual parameters against the formal parameters
+        for actual_arg, formal_arg in zip(statement.arguments, subroutine_def.arguments):
+
+            actual_arg_name = None
+            if isinstance(actual_arg, Identifier):
+                actual_arg_name = actual_arg.name
+            elif isinstance(actual_arg, IndexExpression):
+                actual_arg_name = actual_arg.collection.name
+
+            if isinstance(formal_arg, ClassicalArgument):
+                # TODO: add the handling for access : mutable / readonly arrays
+
+                # variable mapping is equivalent to declaring the variable
+                # with the formal argument name and doing classical assignment
+                # in the scope of the function
+                self._visit_classical_declaration(
+                    ClassicalDeclaration(formal_arg.type, formal_arg.name, None)
+                )
+
+                if actual_arg_name in self._qreg_size_map:
+                    self._print_err_location(statement.span)
+                    raise Qasm3ConversionError(
+                        f"Expecting classical argument for '{formal_arg.name.name}'. "
+                        f"Qubit register '{actual_arg_name}' found for function '{fn_name}'"
+                    )
+
+                # we expect that actual arg type matches the formal arg type
+                # this is taken care of in the assignment validation
+
+                # NOTE: silent casting is present in the assignment validation
+                self._visit_classical_assignment(
+                    ClassicalAssignment(
+                        lvalue=formal_arg.name, op=AssignmentOperator(1), rvalue=actual_arg
+                    )
+                )
+
+            else:
+                formal_reg_name = formal_arg.name.name
+                formal_qubit_size = self._evaluate_expression(
+                    formal_arg.size, reqd_type=Qasm3IntType
+                )
+                if formal_qubit_size is None:
+                    formal_qubit_size = 1
+
+                # we expect that actual arg is qubit type only
+                if actual_arg_name not in self._qreg_size_map:
+                    self._print_err_location(statement.span)
+                    raise Qasm3ConversionError(
+                        f"Expecting qubit argument for '{formal_reg_name}'."
+                        f" Qubit register '{actual_arg_name}' not found for function '{fn_name}'"
+                    )
+
+                actual_qids = None
+                actual_qubits_size = None
+                if isinstance(actual_arg, Identifier):  # "my_function(q);"
+                    actual_qids = list(range(self._qreg_size_map[actual_arg_name]))
+                    actual_qubits_size = self._qreg_size_map[actual_arg_name]
+
+                elif isinstance(actual_arg, IndexExpression):
+                    if isinstance(actual_arg.index, DiscreteSet):  # "my_function(q[{0,1}]);"
+                        actual_qids = self._extract_values_from_discrete_set(actual_arg.index)
+                        for qid in actual_qids:
+                            self._validate_register_index(
+                                qid, self._qreg_size_map[actual_arg_name], qubit=True
+                            )
+                        actual_qubits_size = len(actual_qids)
+                    elif isinstance(actual_arg.index[0], IntegerLiteral):  # "my_function(q[0]);"
+                        actual_qids = [actual_arg.index[0].value]
+                        self._validate_register_index(
+                            actual_qids[0], self._qreg_size_map[actual_arg_name], qubit=True
+                        )
+                        actual_qubits_size = 1
+                    elif isinstance(
+                        actual_arg.index[0], RangeDefinition
+                    ):  # " my_function(q[0:1:2]);"
+                        actual_qids = self._get_qubits_from_range_definition(
+                            actual_arg.index[0],
+                            self._qreg_size_map[actual_arg_name],
+                            is_qubit_reg=True,
+                        )
+                        actual_qubits_size = len(actual_qids)
+
+                if formal_qubit_size != actual_qubits_size:
+                    self._print_err_location(statement.span)
+                    raise Qasm3ConversionError(
+                        f"Qubit register size mismatch for function '{fn_name}'. "
+                        f"Expected {formal_qubit_size} in variable '{formal_reg_name}' "
+                        f"but got {actual_qubits_size}"
+                    )
 
         for function_op in function_ops:
             # TODO: modifications in this op may be required
