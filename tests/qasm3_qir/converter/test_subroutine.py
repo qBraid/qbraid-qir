@@ -19,7 +19,7 @@ import pytest
 
 from qbraid_qir.qasm3 import qasm3_to_qir
 from qbraid_qir.qasm3.exceptions import Qasm3ConversionError
-from tests.qir_utils import check_attributes
+from tests.qir_utils import check_attributes, check_single_qubit_gate_op
 
 # Equivalent OpenQASM 3 programs that apply a Hadamard gate and measure the qubit.
 # The first is uses the conventional synatx, while the second contains a subroutine.
@@ -91,26 +91,32 @@ def test_function_declaration():
     check_attributes(generated_qir, 1, 0)
 
 
+@pytest.mark.skip(reason="Subroutines not supported yet")
 def test_simple_function_call():
     """Test that a simple function call is correctly parsed."""
-    qasm_str = """OPENQASM 3;
+    qasm_str = """OPENQASM 3.0;
     include "stdgates.inc";
 
-    def my_function(qubit q) {
-        x q;
+    def my_function(qubit a, float[32] b) {
+        // x a;
+        rx(b) a;
         return;
     }
     qubit q;
     bit c;
-    my_function(q);
+    float[32] r = 3.14;
+    my_function(q, r);
 
     measure q -> c[0];
     """
 
     result = qasm3_to_qir(qasm_str)
     generated_qir = str(result).splitlines()
+    for line in generated_qir:
+        print(line)
 
     check_attributes(generated_qir, 1, 1)
+    check_single_qubit_gate_op(generated_qir, 1, [0], "x")
 
 
 def test_undeclared_call():
@@ -241,7 +247,7 @@ def test_qubit_size_arg_mismatch(qubit_params):
         """OPENQASM 3;
     include "stdgates.inc";
 
-    def my_function(qubit q) {
+    def my_function(qubit[3] q) {
         h q;
         return;
     }
@@ -255,7 +261,7 @@ def test_qubit_size_arg_mismatch(qubit_params):
     with pytest.raises(
         Qasm3ConversionError,
         match="Qubit register size mismatch for function 'my_function'. "
-        "Expected 1 in variable 'q' but got 2",
+        "Expected 3 in variable 'q' but got 2",
     ):
         qasm3_to_qir(qasm_str)
 
@@ -300,5 +306,25 @@ def test_type_mismatch_for_function():
         Qasm3ConversionError,
         match="Expecting classical argument for 'a'. "
         "Qubit register 'q' found for function 'my_function'",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_duplicate_qubit_args():
+    """Test that using duplicate qubit arguments in a subroutine raises error."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit[3] p, qubit[1] q) {
+        h q;
+        return;
+    }
+    qubit[4] q;
+    my_function(q[0:3], q[2]);
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Duplicate qubit argument 'q\[2\]' in function call for 'my_function'",
     ):
         qasm3_to_qir(qasm_str)

@@ -38,6 +38,17 @@ class InversionOp(Enum):
     INVERT_ROTATION = 2
 
 
+class Context(Enum):
+    """
+    Enum for the different contexts in Qasm.
+    """
+
+    GLOBAL = "global"
+    BLOCK = "block"
+    FUNCTION = "function"
+    GATE = "gate"
+
+
 class Variable:
     """
     Class representing an openqasm variable.
