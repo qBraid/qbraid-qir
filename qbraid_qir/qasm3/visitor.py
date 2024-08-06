@@ -183,6 +183,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise IndexError("Context list is empty, can not pop")
         self._context.pop()
 
+    def _get_parent_scope(self) -> dict:
+        if len(self._scope) < 2:
+            raise IndexError("Parent scope not available")
+        return self._scope[-2]
+
     def _get_curr_scope(self) -> dict:
         if len(self._scope) == 0:
             raise IndexError("No scopes available to get")
@@ -199,6 +204,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
         return self._scope[0]
 
     def _check_in_scope(self, var_name: str) -> bool:
+        """
+        Checks if a variable is in scope.
+
+        Args:
+            var_name (str): The name of the variable to check.
+
+        Returns:
+            bool: True if the variable is in scope, False otherwise.
+        """
         global_scope = self._get_global_scope()
         curr_scope = self._get_curr_scope()
         if self._in_global_scope():
@@ -233,6 +247,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
         return False
 
     def _get_from_visible_scope(self, var_name: str) -> Union[Variable, None]:
+        """
+        Retrieves a variable from the visible scope.
+
+        Args:
+            var_name (str): The name of the variable to retrieve.
+
+        Returns:
+            Union[Variable, None]: The variable if found, None otherwise.
+        """
         global_scope = self._get_global_scope()
         curr_scope = self._get_curr_scope()
 
@@ -253,13 +276,47 @@ class BasicQasmVisitor(ProgramElementVisitor):
         return None
 
     def _add_var_in_scope(self, variable: Variable) -> None:
-        # it is a new variable to be added in the current scope
+        """Add a variable to the current scope.
+
+        Args:
+            variable (Variable): The variable to add.
+
+        Raises:
+            ValueError: If the variable already exists in the current scope.
+        """
         curr_scope = self._get_curr_scope()
         if variable.name in curr_scope:
             raise ValueError(f"Variable '{variable.name}' already exists in current scope")
         curr_scope[variable.name] = variable
 
+    def _delete_var_from_scope(self, var_name: str) -> None:
+        """
+        Deletes a variable from the current scope.
+
+        Args:
+            var_name (str): The name of the variable to be deleted.
+
+        Raises:
+            ValueError: If the variable is not found in the current scope.
+
+        Returns:
+            None
+        """
+        curr_scope = self._get_curr_scope()
+        if var_name not in curr_scope:
+            raise ValueError(f"Variable '{var_name}' not found in current scope")
+        del curr_scope[var_name]
+
     def _update_var_in_scope(self, variable: Variable) -> None:
+        """
+        Updates the variable in the current scope.
+
+        Args:
+            variable (Variable): The variable to be updated.
+
+        Raises:
+            ValueError: If no scope is available to update.
+        """
         if len(self._scope) == 0:
             raise ValueError("No scope available to update")
 
@@ -435,7 +492,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._print_err_location(operation.span)
         raise Qasm3ConversionError(f"Variable {name} not in scope for operation {operation}")
 
-    def _get_op_qubits(self, operation, qir_form: bool = True) -> list[pyqir.qubit]:
+    def _get_op_qubits(self, operation, qreg_size_map, qir_form: bool = True) -> list[pyqir.qubit]:
         """Get the qubits for the operation.
 
         Args:
@@ -447,23 +504,25 @@ class BasicQasmVisitor(ProgramElementVisitor):
         qir_qubits = []
         openqasm_qubits = []
         visited_qubits = set()
+        qreg_qids = []
         qubit_list = operation.qubits if isinstance(operation.qubits, list) else [operation.qubits]
         for qubit in qubit_list:
             if isinstance(qubit, IndexedIdentifier):
                 qreg_name = qubit.name.name
-                if qreg_name not in self._qreg_size_map:
+                if qreg_name not in qreg_size_map:
                     self._print_err_location(operation.span)
                     raise Qasm3ConversionError(
                         f"Missing register declaration for {qreg_name} in operation {operation}"
                     )
                 self._check_if_name_in_scope(qreg_name, operation)
-                qreg_size = self._qreg_size_map[qreg_name]
+                qreg_size = qreg_size_map[qreg_name]
 
                 if isinstance(qubit.indices[0][0], RangeDefinition):
                     qids = self._get_qubits_from_range_definition(
                         qubit.indices[0][0], qreg_size, is_qubit_reg=True
                     )
-                    qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in qids]
+                    if qir_form:
+                        qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in qids]
                     openqasm_qubits.extend(
                         [
                             IndexedIdentifier(Identifier(qreg_name), [[IntegerLiteral(i)]])
@@ -473,36 +532,37 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 else:
                     qid = self._evaluate_expression(qubit.indices[0][0])
                     self._validate_register_index(qid, qreg_size, qubit=True)
-                    qreg_qids = [self._qubit_labels[f"{qreg_name}_{qid}"]]
+                    if qir_form:
+                        qreg_qids = [self._qubit_labels[f"{qreg_name}_{qid}"]]
                     openqasm_qubits.append(qubit)
             else:
                 # or we have a single qreg name, which means all of qubits in that register
                 qreg_name = qubit.name
-                if qreg_name not in self._qreg_size_map:
+                if qreg_name not in qreg_size_map:
                     self._print_err_location(operation.span)
                     raise Qasm3ConversionError(
                         f"Missing register declaration for {qreg_name} in operation {operation}"
                     )
                 self._check_if_name_in_scope(qreg_name, operation)
-                qreg_size = self._qreg_size_map[qreg_name]
+                qreg_size = qreg_size_map[qreg_name]
                 openqasm_qubits.extend(
                     [
                         IndexedIdentifier(Identifier(qreg_name), [[IntegerLiteral(i)]])
                         for i in range(qreg_size)
                     ]
                 )
-                qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)]
-            for qid in qreg_qids:
-                if qid in visited_qubits:
-                    self._print_err_location(operation.span)
-                    raise Qasm3ConversionError(f"Duplicate qubit {qreg_name}[{qid}] argument")
-                visited_qubits.add(qid)
-            qir_qubits.extend([pyqir.qubit(self._module.context, n) for n in qreg_qids])
+                if qir_form:
+                    qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in range(qreg_size)]
 
-        if not qir_form:
-            return openqasm_qubits
+            if qir_form:
+                for qid in qreg_qids:
+                    if qid in visited_qubits:
+                        self._print_err_location(operation.span)
+                        raise Qasm3ConversionError(f"Duplicate qubit {qreg_name}[{qid}] argument")
+                    visited_qubits.add(qid)
+                qir_qubits.extend([pyqir.qubit(self._module.context, n) for n in qreg_qids])
 
-        return qir_qubits
+        return qir_qubits if qir_form else openqasm_qubits
 
     def _visit_measurement(self, statement: QuantumMeasurementStatement) -> None:
         """Visit a measurement statement element.
@@ -593,7 +653,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
         _log.debug("Visiting reset statement '%s'", str(statement))
-        qubit_ids = self._get_op_qubits(statement, True)
+        qubit_ids = self._get_op_qubits(statement, self._qreg_size_map, True)
         for qid in qubit_ids:
             pyqir._native.reset(self._builder, qid)
 
@@ -607,7 +667,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
         # if barrier is applied to ALL qubits at once, we are fine
-        barrier_qubits = self._get_op_qubits(barrier)
+        barrier_qubits = self._get_op_qubits(barrier, self._qreg_size_map)
         total_qubit_count = sum(self._qreg_size_map.values())
         if len(barrier_qubits) == total_qubit_count:
             pyqir._native.barrier(self._builder)
@@ -678,7 +738,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         _log.debug("Visiting basic gate operation '%s'", str(operation))
         op_name: str = operation.name.name
-        op_qubits = self._get_op_qubits(operation)
+        op_qubits = self._get_op_qubits(operation, self._qreg_size_map)
         inverse_action = None
         if not inverse:
             qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
@@ -789,7 +849,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         _log.debug("Visiting custom gate operation '%s'", str(operation))
         gate_name: str = operation.name.name
         gate_definition: QuantumGateDefinition = self._custom_gates[gate_name]
-        op_qubits = self._get_op_qubits(operation, qir_form=False)
+        op_qubits = self._get_op_qubits(operation, self._qreg_size_map, qir_form=False)
 
         self._validate_gate_call(operation, gate_definition, len(op_qubits))
         # we need this because the gates applied inside a gate definition use the
@@ -1248,6 +1308,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         else:
             var.value = var_value
 
+        self._update_var_in_scope(var)
+
     def _evaluate_array_initialization(
         self, array_literal: ArrayLiteral, dimensions: list[int], base_type
     ) -> list:
@@ -1591,6 +1653,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._print_err_location(statement.span)
             raise Qasm3ConversionError(f"Redefinition of subroutine '{fn_name}'")
 
+        if self._check_in_scope(fn_name):
+            self._print_err_location(statement.span)
+            raise Qasm3ConversionError(
+                f"Can not declare subroutine with name '{fn_name}' "
+                "as it is already declared as a variable"
+            )
+
         self._subroutine_defns[fn_name] = statement
 
     def _validate_return_statement(
@@ -1617,7 +1686,77 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     f"Return type mismatch for subroutine '{subroutine_def.name.name}'."
                     f" Expected void but got {type(return_value)}"
                 )
-        # TODO: validation is required for return type
+        # TODO: more validation is required for return type
+
+    def _transform_function_qubits(
+        self, gate_op: QuantumGate, formal_qreg_sizes: dict[str:int], qubit_map: dict[tuple:tuple]
+    ) -> None:
+        """Transform the qubits of a function call to the actual qubits.
+
+        Args:
+            gate_op (QuantumGate): The gate operation to transform.
+            formal_qreg_sizes (dict[str: int]): The formal qubit register sizes.
+            qubit_map (dict[tuple: tuple]): The mapping of formal qubits to actual qubits.
+
+        Returns:
+            None
+        """
+        expanded_op_qubits = self._get_op_qubits(gate_op, formal_qreg_sizes, qir_form=False)
+
+        transformed_qubits = []
+        for qubit in expanded_op_qubits:
+            formal_qreg_name = qubit.name.name
+            formal_qreg_idx = qubit.indices[0][0].value
+
+            # replace the formal qubit with the actual qubit
+            actual_qreg_name, actual_qreg_idx = qubit_map[(formal_qreg_name, formal_qreg_idx)]
+            transformed_qubits.append(
+                IndexedIdentifier(
+                    Identifier(actual_qreg_name),
+                    [[IntegerLiteral(actual_qreg_idx)]],
+                )
+            )
+
+        return transformed_qubits
+
+    def _get_target_qubits(self, target, qreg_size_map, target_name):
+        """Get the target qubits of a statement.
+
+        Args:
+            target (Any): The target of the statement.
+            qreg_size_map (dict[str: int]): The quantum register size map.
+            target_name (str): The name of the register.
+
+        Returns:
+            tuple: The target qubits.
+        """
+        target_qids = None
+        target_qubits_size = None
+
+        if isinstance(target, Identifier):  # "(q);"
+            target_qids = list(range(qreg_size_map[target_name]))
+            target_qubits_size = qreg_size_map[target_name]
+
+        elif isinstance(target, IndexExpression):
+            if isinstance(target.index, DiscreteSet):  # "(q[{0,1}]);"
+                target_qids = self._extract_values_from_discrete_set(target.index)
+                for qid in target_qids:
+                    self._validate_register_index(qid, qreg_size_map[target_name], qubit=True)
+                target_qubits_size = len(target_qids)
+            elif isinstance(target.index[0], IntegerLiteral):  # "(q[0]);"
+                target_qids = [target.index[0].value]
+                self._validate_register_index(
+                    target_qids[0], qreg_size_map[target_name], qubit=True
+                )
+                target_qubits_size = 1
+            elif isinstance(target.index[0], RangeDefinition):  # "(q[0:1:2]);"
+                target_qids = self._get_qubits_from_range_definition(
+                    target.index[0],
+                    qreg_size_map[target_name],
+                    is_qubit_reg=True,
+                )
+                target_qubits_size = len(target_qids)
+        return target_qids, target_qubits_size
 
     def _visit_function_call(self, statement: FunctionCall) -> None:
         """Visit a function call element.
@@ -1667,7 +1806,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     duplicate_qubit_detect_map[reg_name].add(idx)
 
         qubit_transform_map = {}  # {(formal arg, idx) : (actual arg, idx)}
-
+        formal_qreg_size_map = {}
         for actual_arg, formal_arg in zip(statement.arguments, subroutine_def.arguments):
 
             actual_arg_name = None
@@ -1697,11 +1836,24 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 # this is taken care of in the assignment validation
 
                 # NOTE: silent casting is present in the assignment validation
+
+                # NOTE: the parent scope MUST have a well-defined actual argument,
+                #       otherwise we would not have come to this stage of function call
+                #     : We need to add that variable from parent to current scope for the
+                #       declaration of the formal argument
+                #     : Post this, we will delete it.
+                #     : Ensure that a "copy" is used and not the actual variable object
+                #       to avoid any side-effects
+
+                actual_arg_variable = copy.deepcopy(self._get_parent_scope()[actual_arg_name])
+                self._add_var_in_scope(actual_arg_variable)
                 self._visit_classical_assignment(
                     ClassicalAssignment(
                         lvalue=formal_arg.name, op=AssignmentOperator(1), rvalue=actual_arg
                     )
                 )
+                self._delete_var_from_scope(actual_arg_name)
+
             else:
                 formal_reg_name = formal_arg.name.name
                 formal_qubit_size = self._evaluate_expression(
@@ -1709,6 +1861,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 )
                 if formal_qubit_size is None:
                     formal_qubit_size = 1
+                formal_qreg_size_map[formal_reg_name] = formal_qubit_size
+
+                self._label_scope_level[self._curr_scope].add(formal_reg_name)
 
                 # we expect that actual arg is qubit type only
                 if actual_arg_name not in self._qreg_size_map:
@@ -1718,35 +1873,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
                         f" Qubit register '{actual_arg_name}' not found for function '{fn_name}'"
                     )
 
-                actual_qids = None
-                actual_qubits_size = None
-                if isinstance(actual_arg, Identifier):  # "my_function(q);"
-                    actual_qids = list(range(self._qreg_size_map[actual_arg_name]))
-                    actual_qubits_size = self._qreg_size_map[actual_arg_name]
-
-                elif isinstance(actual_arg, IndexExpression):
-                    if isinstance(actual_arg.index, DiscreteSet):  # "my_function(q[{0,1}]);"
-                        actual_qids = self._extract_values_from_discrete_set(actual_arg.index)
-                        for qid in actual_qids:
-                            self._validate_register_index(
-                                qid, self._qreg_size_map[actual_arg_name], qubit=True
-                            )
-                        actual_qubits_size = len(actual_qids)
-                    elif isinstance(actual_arg.index[0], IntegerLiteral):  # "my_function(q[0]);"
-                        actual_qids = [actual_arg.index[0].value]
-                        self._validate_register_index(
-                            actual_qids[0], self._qreg_size_map[actual_arg_name], qubit=True
-                        )
-                        actual_qubits_size = 1
-                    elif isinstance(
-                        actual_arg.index[0], RangeDefinition
-                    ):  # " my_function(q[0:1:2]);"
-                        actual_qids = self._get_qubits_from_range_definition(
-                            actual_arg.index[0],
-                            self._qreg_size_map[actual_arg_name],
-                            is_qubit_reg=True,
-                        )
-                        actual_qubits_size = len(actual_qids)
+                actual_qids, actual_qubits_size = self._get_target_qubits(
+                    actual_arg, self._qreg_size_map, actual_arg_name
+                )
 
                 if formal_qubit_size != actual_qubits_size:
                     self._print_err_location(statement.span)
@@ -1766,10 +1895,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 return_statement = function_op
                 break
 
-            if isinstance(function_op, QuantumGate):
+            if isinstance(function_op, (QuantumGate, QuantumReset, QuantumBarrier)):
+                function_op.qubits = self._transform_function_qubits(
+                    function_op, formal_qreg_size_map, qubit_transform_map
+                )
+            elif isinstance(function_op, QuantumMeasurementStatement):
+                # TODO :handle measurement
                 pass
-                # self._transform_gate_params(function_op)
-                # self._transform_gate_qubits(function_op, qubit_transform_map)
+
             self.visit_statement(function_op)
 
         return_value = self._evaluate_expression(return_statement.expression)
@@ -1925,19 +2058,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         def _evaluate_case(statements):
             # can not put 'context' outside
-            # BECAUSE the case expression CAN CONTAIN VARS from global
-            # scope!
+            # BECAUSE the case expression CAN CONTAIN VARS from global scope
             self._push_context(Context.BLOCK)
             self._push_scope({})
-            self._curr_scope += 1
-            self._label_scope_level[self._curr_scope] = set()
 
             for stmt in statements:
                 self._validate_statement_type(SWITCH_BLACKLIST_STMTS, stmt, "switch")
                 self.visit_statement(stmt)
 
-            del self._label_scope_level[self._curr_scope]
-            self._curr_scope -= 1
             self._pop_scope()
             self._restore_context()
 
@@ -2014,8 +2142,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._visit_subroutine_definition(statement)
         elif isinstance(statement, ExpressionStatement):
             self._visit_function_call(statement.expression)
-        elif isinstance(statement, FunctionCall):
-            self._visit_function_call(statement)
         elif isinstance(statement, IODeclaration):
             raise NotImplementedError("OpenQASM 3 IO declarations not yet supported")
         else:
