@@ -14,13 +14,14 @@
 | Clbit Declarations             | ✅          | Completed              |
 | BinaryExpression               | ✅          | In progress            | 
 | UnaryExpression                | ✅          | In progress            |
+| ClassicalDeclaration           | ✅          | Completed              |
+| ConstantDeclaration            | ✅          | Completed              |
+| ClassicalAssignment            | ✅          | Completed              |
+| AliasStatement                 | ✅          | Completed              |
+| SwitchStatement                | ✅          | Completed              |
 | BranchingStatement             | 🔜          | In progress            |
 | SubroutineDefinition           | 🔜          | In progress            |
-| ClassicalDeclaration           | 🔜          | In progress            |
-| ConstantDeclaration            | 🔜          | In progress            |
-| ClassicalAssignment            | 🔜          | In progress            |
-| Looping statements(eg. for)    | 📋          | Planned                |
-| AliasStatement                 | 📋          | Planned                |
+| Looping statements(eg. for)    | 🔜          | In progress            |
 | IODeclaration                  | 📋          | Planned                |
 | RangeDefinition                | 📋          | Planned                |
 | Pragma                         | ❓          | Unsure                 |
