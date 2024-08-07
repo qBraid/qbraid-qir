@@ -136,7 +136,56 @@ def test_function_call_in_expression():
     check_single_qubit_gate_op(generated_qir, 1, [0], "h")
 
 
-@pytest.mark.skip(reason="To update parameter mapping with scope for custom gates")
+def test_function_call_with_return():
+    """Test that a function call with a return value is correctly parsed."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit q) -> float[32] {
+        h q;
+        return 3.14;
+    }
+    qubit q;
+    float[32] r = my_function(q);
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_gate_op(generated_qir, 1, [0], "h")
+
+
+def test_return_values_from_function():
+    """Test that the values returned from a function are used correctly in other function."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit q) -> float[32] {
+        h q;
+        return 3.14;
+    }
+    def my_function_2(qubit q, float[32] r) {
+        rx(r) q;
+        return;
+    }
+    qubit[2] q;
+    float[32] r1 = my_function(q[0]);
+    my_function_2(q[0], r1);
+
+    array[float[32], 1, 1] r2 = {{3.14}};
+    my_function_2(q[1], r2[0,0]);
+
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 2, 0)
+    check_single_qubit_gate_op(generated_qir, 1, [0], "h")
+    check_single_qubit_rotation_op(generated_qir, 2, [0, 1], [3.14, 3.14], "rx")
+
+
 def test_function_call_with_custom_gate():
     """Test that a function call with a custom gate is correctly parsed."""
     qasm_str = """OPENQASM 3.0;
@@ -145,8 +194,8 @@ def test_function_call_with_custom_gate():
     gate my_gate(a) q { rx(a) q; }
 
     def my_function(qubit a, float[32] b) {
-        my_gate(b) a;
         float[64] c = 2*b;
+        my_gate(b) a;
         my_gate(c) a;
         return;
     }
@@ -162,7 +211,30 @@ def test_function_call_with_custom_gate():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 1, 1)
-    check_single_qubit_rotation_op(generated_qir, 2, [0, 0], [3.14, 6.28], "my_gate")
+    check_single_qubit_rotation_op(generated_qir, 2, [0, 0], [3.14, 6.28], "rx")
+
+
+@pytest.mark.skip(reason="Not implemented for loop statement updates in scope")
+def test_function_with_loop():
+    """Test that a function with a loop is correctly parsed."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit[3] q2) {
+        for int[32] i in [0:2] {
+            h q2[i];
+        }
+        return;
+    }
+    qubit[3] q1;
+    my_function(q1);
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 3, 0)
+    check_single_qubit_gate_op(generated_qir, 3, [0, 1, 2], "h")
 
 
 @pytest.mark.parametrize("data_type", ["int[32] a = 1;", "float[32] a = 1.0;", "bit a = 0;"])

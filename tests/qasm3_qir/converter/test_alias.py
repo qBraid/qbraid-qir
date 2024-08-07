@@ -137,6 +137,25 @@ def test_alias_wrong_indexing():
         _ = qasm3_to_qir(qasm3_alias_program, name="test")
 
 
+def test_alias_invalid_discrete_indexing():
+    """Test converting OpenQASM 3 program with invalid alias discrete indexing."""
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Unsupported discrete set value .*",
+    ):
+        qasm3_alias_program = """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        qubit[5] q;
+
+        let myqreg = q[{0.1}];
+
+        x myqreg[0];
+        """
+        _ = qasm3_to_qir(qasm3_alias_program, name="test")
+
+
 def test_invalid_alias_redefinition():
     """Test converting OpenQASM 3 program with redefined alias."""
     with pytest.raises(

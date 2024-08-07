@@ -83,6 +83,21 @@ SUBROUTINE_INCORRECT_TESTS = {
         """,
         "Return type mismatch for subroutine 'my_function'.",
     ),
+    "return_value_mismatch_2": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        def my_function(qubit q) -> int[32] {
+            h q;
+            int[32] a = 1;
+            return ;
+        }
+        qubit q;
+        my_function(q);
+        """,
+        "Return type mismatch for subroutine 'my_function'.",
+    ),
     "subroutine_keyword_naming": (
         """
         OPENQASM 3;
@@ -168,5 +183,19 @@ SUBROUTINE_INCORRECT_TESTS = {
         my_function(q[0:3], q[2]);
         """,
         r"Duplicate qubit argument 'q\[2\]' in function call for 'my_function'",
+    ),
+    "undefined_variable_in_actual_arg": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        def my_function(int [32] a) {
+            h q;
+            return;
+        }
+        qubit q;
+        my_function(b);
+        """,
+        "Undefined variable 'b' used for function 'my_function'",
     ),
 }
