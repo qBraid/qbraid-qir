@@ -33,21 +33,20 @@ def generate_module_id() -> str:
     return f"program-{generated_id}"
 
 
-class Context(Enum):
-    """
-    Enum for the different contexts in QIR.
-
-    """
-
-    GLOBAL = "global"
-    IF = "if"
-    LOOP = "loop"
-    FUNCTION = "function"
-
-
 class InversionOp(Enum):
     NO_OP = 1
     INVERT_ROTATION = 2
+
+
+class Context(Enum):
+    """
+    Enum for the different contexts in Qasm.
+    """
+
+    GLOBAL = "global"
+    BLOCK = "block"
+    FUNCTION = "function"
+    GATE = "gate"
 
 
 class Variable:
