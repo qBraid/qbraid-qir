@@ -40,6 +40,24 @@ DECLARATION_TESTS = {
         """,
         "Re-declaration of variable x",
     ),
+    "variable_redeclaration_with_qubits_1": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        int x;
+        qubit x;
+        """,
+        "Invalid declaration of register with name 'x'",
+    ),
+    "variable_redeclaration_with_qubits_2": (
+        """
+        OPENQASM 3.0;
+        include "stdgates.inc";
+        qubit x;
+        int x;
+        """,
+        "Re-declaration of variable x",
+    ),
     "const_variable_redeclaration": (
         """
         OPENQASM 3.0;

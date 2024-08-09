@@ -40,6 +40,19 @@ SUBROUTINE_INCORRECT_TESTS = {
         """,
         "Redefinition of subroutine 'my_function'",
     ),
+    "redefinition_raises_error_2": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+        def my_function(qubit q) {
+            int[32] q = 1;
+            return;
+        }
+        qubit q;
+        my_function(q);
+        """,
+        "Re-declaration of variable q",
+    ),
     "incorrect_param_count_1": (
         """
         OPENQASM 3;

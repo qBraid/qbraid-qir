@@ -390,16 +390,35 @@ class BasicQasmVisitor(ProgramElementVisitor):
         else:
             register_size = 1 if register.type.size is None else register.type.size.value
         register_name = register.qubit.name if is_qubit else register.identifier.name
-        self._label_scope_level[self._curr_scope].add(register_name)
+
+        size_map = self._qreg_size_map if is_qubit else self._creg_size_map
+        label_map = self._qubit_labels if is_qubit else self._clbit_labels
+
+        if self._check_in_scope(register_name):
+            self._print_err_location(register.span)
+            raise Qasm3ConversionError(
+                f"Invalid declaration of register with name '{register_name}'"
+            )
+
+        if is_qubit:  # as bit type vars are added in classical decl handler
+            self._add_var_in_scope(
+                Variable(
+                    register_name,
+                    QubitDeclaration,
+                    register_size,
+                    None,
+                    None,
+                    False,
+                )
+            )
 
         for i in range(register_size):
             # required if indices are not used while applying a gate or measurement
-            if is_qubit:
-                self._qreg_size_map[f"{register_name}"] = register_size
-                self._qubit_labels[f"{register_name}_{i}"] = current_size + i
-            else:
-                self._creg_size_map[f"{register_name}"] = register_size
-                self._clbit_labels[f"{register_name}_{i}"] = current_size + i
+            size_map[f"{register_name}"] = register_size
+            label_map[f"{register_name}_{i}"] = current_size + i
+
+        self._label_scope_level[self._curr_scope].add(register_name)
+
         _log.debug("Added labels for register '%s'", str(register))
 
     def _print_err_location(self, element: Span) -> str:
@@ -1916,8 +1935,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 formal_qubit_size = 1
             formal_qreg_size_map[formal_reg_name] = formal_qubit_size
 
-            self._label_scope_level[self._curr_scope].add(formal_reg_name)
-
             # we expect that actual arg is qubit type only
             if actual_arg_name not in self._qreg_size_map:
                 self._print_err_location(statement.span)
@@ -1925,6 +1942,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     f"Expecting qubit argument for '{formal_reg_name}'."
                     f" Qubit register '{actual_arg_name}' not found for function '{fn_name}'"
                 )
+            self._label_scope_level[self._curr_scope].add(formal_reg_name)
+
+            self._add_var_in_scope(
+                Variable(formal_reg_name, QubitDeclaration, formal_qubit_size, None, None, False)
+            )
 
             actual_qids, actual_qubits_size = self._get_target_qubits(
                 actual_arg, self._qreg_size_map, actual_arg_name
