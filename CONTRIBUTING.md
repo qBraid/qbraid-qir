@@ -20,9 +20,15 @@ cd qbraid-qir
 pip install -e '.[qasm3,cirq]'
 ```
 
-## Pull request checklist
+## Pull requests
 
 Before submitting a pull request (PR), ensure your contributions comply with the [Developer's Certificate of Origin](https://developercertificate.org/), confirming your right to submit the work under this project's license. Contributors are encouraged to [sign commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits), however, it is not required.
+
+For code changes, please ensure that:
+1. All new code includes corresponding unit tests and satisfies code coverage.
+2. Docstrings are thorough and accurate for both new and updated features.
+3. All integration tests, including docs and linters, are passing.
+4. New functions and classes are annotated with Python type hints to support `py.typed`.
 
 ### Run tests
 
