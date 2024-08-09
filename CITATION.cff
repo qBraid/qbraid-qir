@@ -9,12 +9,12 @@ authors:
   - given-names: Harshit
     family-names: Gupta
     affiliation: qBraid Co.
-  - given-names: Samuel
-    family-names: Kushnir
-    affiliation: University of Maryland
   - given-names: Rohan
     family-names: Jain
     affiliation: Carnegie Mellon University
+  - given-names: Samuel
+    family-names: Kushnir
+    affiliation: University of Maryland
   - given-names: Priyansh
     family-names: Parakh
     affiliation: University of Toronto
@@ -22,8 +22,8 @@ authors:
     family-names: Hill
     affiliation: qBraid Co.
 repository-code: 'https://github.com/qBraid/qbraid-qir'
-url: 'https://sdk.qbraid.com/projects/qir/en/v0.2.1/'
-repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.2.1'
+url: 'https://sdk.qbraid.com/projects/qir/en/v0.2.2/'
+repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.2.2'
 keywords:
   - python
   - quantum-computing
@@ -32,5 +32,5 @@ keywords:
   - cirq
   - openasm
 license: GPL-3.0
-version: 0.2.1
-date-released: '2024-06-25'
+version: 0.2.2
+date-released: '2024-08-09'

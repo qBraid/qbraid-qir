@@ -81,11 +81,11 @@ qBraid-QIR requires Python 3.9 or greater. The base package can be installed wit
    pip install qbraid-qir
 
 
-To enable specific conversions such as Cirq to QIR or OpenQASM 3 to QIR, you can install one or both extras:
+To enable specific conversions such as OpenQASM 3 to QIR or Cirq to QIR, you can install one or both extras:
 
 .. code-block:: bash
 
-   pip install 'qbraid-qir[cirq,qasm3]'
+   pip install 'qbraid-qir[qasm3,cirq]'
 
 
 Resources
@@ -93,7 +93,8 @@ Resources
 
 - `User Guide <https://docs.qbraid.com/qir/user-guide>`_
 - `Example Notebooks <https://github.com/qBraid/qbraid-qir/tree/main/examples>`_
-- `API Reference <https://sdk.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html>`_
+- `API Reference <https://sdk.qbraid.com/projects/qir/en/stable/api/qbraid_qir.html>`_
+- `Source Code <https://github.com/qBraid/qbraid-qir>_`
 
 
 .. toctree::
@@ -101,13 +102,13 @@ Resources
    :caption: SDK API Reference
    :hidden:
 
-   qbraid <https://sdk.qbraid.com/en/latest/api/qbraid.html>
-   qbraid.programs <https://sdk.qbraid.com/en/latest/api/qbraid.programs.html>
-   qbraid.interface <https://sdk.qbraid.com/en/latest/api/qbraid.interface.html>
-   qbraid.transpiler <https://sdk.qbraid.com/en/latest/api/qbraid.transpiler.html>
-   qbraid.passes <https://sdk.qbraid.com/en/latest/api/qbraid.passes.html>
-   qbraid.runtime <https://sdk.qbraid.com/en/latest/api/qbraid.runtime.html>
-   qbraid.visualization <https://sdk.qbraid.com/en/latest/api/qbraid.visualization.html>
+   qbraid <https://sdk.qbraid.com/en/stable/api/qbraid.html>
+   qbraid.programs <https://sdk.qbraid.com/en/stable/api/qbraid.programs.html>
+   qbraid.interface <https://sdk.qbraid.com/en/stable/api/qbraid.interface.html>
+   qbraid.transpiler <https://sdk.qbraid.com/en/stable/api/qbraid.transpiler.html>
+   qbraid.passes <https://sdk.qbraid.com/en/stable/api/qbraid.passes.html>
+   qbraid.runtime <https://sdk.qbraid.com/en/stable/api/qbraid.runtime.html>
+   qbraid.visualization <https://sdk.qbraid.com/en/stable/api/qbraid.visualization.html>
 
 .. toctree::
    :maxdepth: 1
@@ -122,5 +123,5 @@ Resources
    :caption: CORE API Reference
    :hidden:
 
-   qbraid_core <https://sdk.qbraid.com/projects/core/en/latest/api/qbraid_core.html>
-   qbraid_core.services <https://sdk.qbraid.com/projects/core/en/latest/api/qbraid_core.services.html>
+   qbraid_core <https://sdk.qbraid.com/projects/core/en/stable/api/qbraid_core.html>
+   qbraid_core.services <https://sdk.qbraid.com/projects/core/en/stable/api/qbraid_core.services.html>
