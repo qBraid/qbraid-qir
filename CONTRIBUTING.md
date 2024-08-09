@@ -17,10 +17,12 @@ Before you start working on a new feature or a fix, here's how you can contribut
 ```shell
 git clone https://github.com/qBraid/qbraid-qir.git
 cd qbraid-qir
-pip install -e '.[cirq,qasm3]'
+pip install -e '.[qasm3,cirq]'
 ```
 
 ## Pull request checklist
+
+Before submitting a pull request (PR), ensure your contributions comply with the [Developer's Certificate of Origin](https://developercertificate.org/), confirming your right to submit the work under this project's license. Contributors are encouraged to [sign commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits), however, it is not required.
 
 ### Run tests
 
@@ -51,10 +53,10 @@ pytest --cov=qbraid_qir --cov-report=term tests/
 
 Workflow: [`docs.yml`](.github/workflows/docs.yml)
 
-- [ ] Docs builds are passing
-- [ ] New/modified code has appropriate docstrings
-- [ ] Tree stubs are updated, if applicable
-- [ ] Examples on how to use new/updated features added to User Guide
+- [ ] Docs builds are passing.
+- [ ] New/modified code has appropriate docstrings.
+- [ ] Tree stubs are updated, if applicable.
+- [ ] README and/or example notebooks are updated, if applicable.
 
 Static docs pages (e.g. User Guide) are written using reStructuredText (reST), which is the default plaintext markup language used by [Sphinx](https://docs.readthedocs.io/en/stable/intro/getting-started-with-sphinx.html). It's pretty straightforward once you get the hang of it. If you're unfamiliar, [reStructuredText Primer](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html#restructuredtext-primer) is a good place to start.
 

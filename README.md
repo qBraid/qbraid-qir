@@ -4,9 +4,6 @@
   <a href='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml'>
       <img src='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml/badge.svg' alt='CI'>
   </a>
-  <!-- <a href="https://codecov.io/gh/qBraid/qbraid-qir" >
-    <img src="https://codecov.io/gh/qBraid/qbraid-qir/graph/badge.svg?token=GUQ3EN8DGI"/>
-  </a> -->
   <a href='https://sdk.qbraid.com/projects/qir/en/latest/?badge=latest'>
     <img src='https://readthedocs.com/projects/qbraid-qbraid-qir/badge/?version=latest&token=7656ee72b7a66dec6d78dda911ce808676dca55c3e86702d5e97191badfdf19c' alt='Documentation Status'/>
   </a>
@@ -38,7 +35,7 @@ qBraid-SDK extension providing support for QIR conversions.
 
 <img align="right" width="100" alt="qir" src="https://qbraid-static.s3.amazonaws.com/logos/qir.png">
 
-This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/en/latest/sdk/overview.html#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
+This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/sdk/user-guide/overview#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
 
 ## Installation
 
@@ -52,16 +49,16 @@ pip install qbraid-qir
 
 qBraid-QIR offers integrations that require extra (optional) dependencies, which can be installed as follows:
 
-For Cirq to QIR conversions, install the `cirq` extra:
-
-```shell
-pip install 'qbraid-qir[cirq]'
-```
-
 For OpenQASM 3 to QIR conversions, install the `qasm3` extra:
 
 ```shell
 pip install 'qbraid-qir[qasm3]'
+```
+
+For Cirq to QIR conversions, install the `cirq` extra:
+
+```shell
+pip install 'qbraid-qir[cirq]'
 ```
 
 ### Install from source
@@ -78,7 +75,7 @@ pip install .
 To include optional dependencies when installing from source, use the same "extras_require" format, e.g.
 
 ```shell
-pip install '.[cirq,qasm3]'
+pip install '.[qasm3,cirq]'
 ```
 
 ## Check version
@@ -94,30 +91,11 @@ In [2]: qbraid_qir.__version__
 ## Resources
 
 - [User Guide](https://docs.qbraid.com/qir/user-guide)
-- [API Reference](https://sdk.qbraid.com/projects/qir/en/latest/api/qbraid_qir.html)
+- [API Reference](https://sdk.qbraid.com/projects/qir/en/stable/api/qbraid_qir.html)
 - [Example Notebooks](examples)
 - [Test Containers](test-containers)
 
 ## Usage examples
-
-### Cirq conversions
-
-```python
-import cirq
-from qbraid_qir.cirq import cirq_to_qir
-
-q0, q1 = cirq.LineQubit.range(2)
-
-circuit = cirq.Circuit(
-  cirq.H(q0),
-  cirq.CNOT(q0, q1),
-  cirq.measure(q0, q1)
-)
-
-module = cirq_to_qir(circuit, name="my-circuit")
-
-ir = str(module)
-```
 
 ### OpenQASM 3 conversions
 
@@ -143,19 +121,23 @@ module = qasm3_to_qir(program, name="my-program")
 ir = str(module)
 ```
 
-### Add QIR node to qBraid conversion graph
+### Cirq conversions
 
 ```python
+import cirq
 from qbraid_qir.cirq import cirq_to_qir
-from qbraid.transpiler import Conversion, ConversionGraph
 
-graph = ConversionGraph()
+q0, q1 = cirq.LineQubit.range(2)
 
-conversion = Conversion("cirq", "qir", cirq_to_qir)
+circuit = cirq.Circuit(
+  cirq.H(q0),
+  cirq.CNOT(q0, q1),
+  cirq.measure(q0, q1)
+)
 
-graph.add_conversion(conversion)
+module = cirq_to_qir(circuit, name="my-circuit")
 
-graph.plot()
+ir = str(module)
 ```
 
 ## Architecture diagram
@@ -170,7 +152,7 @@ qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/qir/
   [CONTRIBUTING.md](CONTRIBUTING.md)
 - For feature requests and bug reports:
   [Submit an issue](https://github.com/qBraid/qbraid-qir/issues)
-- For discussions, and specific questions about the qBraid-SDK, qBraid-QIR, or
+- For discussions, and specific questions about qBraid-QIR, or
   other topics, [join our discord community](https://discord.gg/TPBU2sa8Et)
 - For questions that are more suited for a forum, post to
   [QCSE](https://quantumcomputing.stackexchange.com/)
@@ -185,12 +167,12 @@ citation details, please refer to [CITATION.cff](CITATION.cff).
 
 ```bibtex
 @software{Gupta_qBraid-QIR_Python_package_2024,
-  author = {Gupta, Harshit and Kushnir, Samuel and Jain, Rohan and Parakh, Priyansh and Hill, Ryan James},
+  author = {Gupta, Harshit and Jain, Rohan and Kushnir, Samuel and Parakh, Priyansh and Hill, Ryan James},
   license = {GPL-3.0},
-  month = jun,
+  month = aug,
   title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
   url = {https://github.com/qBraid/qbraid-qir},
-  version = {0.2.1},
+  version = {0.2.2},
   year = {2024}
 }
 ```
