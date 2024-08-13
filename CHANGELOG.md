@@ -21,6 +21,7 @@ Types of changes:
 ### 📜  Documentation 
 * Housekeeping updates for release ( [#135](https://github.com/qBraid/qbraid-qir/pull/135) )
 * Update `CHANGELOG.md` to add new template ( [#137](https://github.com/qBraid/qbraid-qir/pull/137) )
+* Update `CONTRIBUTING.md` to mention changelog updates ( [#140](https://github.com/qBraid/qbraid-qir/pull/140) )
 
 ### 🐛  Bug Fixes
 
