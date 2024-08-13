@@ -214,6 +214,87 @@ def test_function_call_with_custom_gate():
     check_single_qubit_rotation_op(generated_qir, 2, [0, 0], [3.14, 6.28], "rx")
 
 
+def test_function_call_from_within_fn():
+    """Test that a function call from within another function is correctly converted."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit q) {
+        h q;
+        return;
+    }
+
+    def my_function_2(qubit[2] q) {
+        my_function(q[1]);
+        return;
+    }
+    qubit[2] q;
+    my_function_2(q);
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 2, 0)
+    check_single_qubit_gate_op(generated_qir, 1, [1], "h")
+
+
+def test_subroutine_inside_switch():
+    """Test that a subroutine inside a switch statement is correctly parsed."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit q, float[32] b) {
+        rx(b) q;
+        return;
+    }
+
+    qubit[2] q;
+    int i = 1;
+    float[32] r = 3.14;
+
+    switch(i) {
+        case 1 {
+            my_function(q[0], r);
+        }
+        default {
+            x q;
+        }
+    }
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 2, 0)
+    check_single_qubit_rotation_op(generated_qir, 1, [0], [3.14], "rx")
+
+
+def test_function_executed_in_loop():
+    """Test that a function executed in a loop is correctly parsed."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit q_arg, float[32] b) {
+        rx(b) q_arg;
+        return;
+    }
+    qubit[5] q;
+
+    int[32] n = 3;
+    float[32] b = 3.14;
+
+    for int i in [0:n] {
+        my_function(q[i], i*b);
+    }
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 5, 0)
+    check_single_qubit_rotation_op(generated_qir, 3, list(range(3)), [0, 3.14, 2 * 3.14], "rx")
+
+
 @pytest.mark.skip(reason="Not implemented for loop statement updates in scope")
 def test_function_with_loop():
     """Test that a function with a loop is correctly parsed."""

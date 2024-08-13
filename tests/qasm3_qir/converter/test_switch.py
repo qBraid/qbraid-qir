@@ -219,7 +219,6 @@ def test_nested_switch():
     default {
         z q;
     }
-    
     }
     """
 
