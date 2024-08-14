@@ -43,6 +43,25 @@ def test_reset_operations():
     check_resets(generated_qir, expected_resets=5, qubit_list=[0, 2, 5, 3, 4])
 
 
+def test_reset_inside_function():
+    """Test that a qubit reset inside a function is correctly parsed."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit a) {
+        reset a;
+        return;
+    }
+    qubit[3] q;
+    my_function(q[1]);
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 3, 0)
+    check_resets(generated_qir, 1, [1])
+
+
 def test_incorrect_resets():
     undeclared = """
     OPENQASM 3;

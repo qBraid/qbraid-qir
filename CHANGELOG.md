@@ -24,6 +24,7 @@ Types of changes:
 * Update `CONTRIBUTING.md` to mention changelog updates ( [#140](https://github.com/qBraid/qbraid-qir/pull/140) )
 
 ### 🐛  Bug Fixes
+* Fix function block issues where qubit references were not getting populated correctly. Users can now use `for`, `switch` and other constructs inside functions. ( [#141](https://github.com/qBraid/qbraid-qir/pull/141) )
 
 ### ⬇️  Dependency Updates 
 
