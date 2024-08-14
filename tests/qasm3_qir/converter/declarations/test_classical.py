@@ -90,6 +90,30 @@ def test_scalar_assignments():
     check_attributes(generated_qir, 0, 0)
 
 
+def test_example_qir():
+    qasm3_string = """
+    OPENQASM 3;
+
+    // static initialization 
+    array[int[32], 3, 2] arr_int = { {1, 2}, {3, 4}, {5, 6} };
+    array[float[32], 3, 2] arr_float32 = { {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0} };
+
+    // assignment of individual elements 
+    int a = 2;
+    arr_int[1][1] = a; // arr_int = { {1, 2}, {3, 2}, {5, 6} }
+
+    // array elements in expressions
+    float[32] b = arr_float32[1][1] * 3.1415; // b = 4.0*3.1415 = 12.566
+
+    qubit q;
+    rx(b) q; // rx(12.566) is applied on qubit q
+    """
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_rotation_op(generated_qir, 1, [0], [12.566], "rx")
+
+
 # 4. Scalar value assignment
 def test_scalar_value_assignment():
     """Test assigning variable values from other variables"""

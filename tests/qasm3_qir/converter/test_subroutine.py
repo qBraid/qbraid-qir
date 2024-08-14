@@ -136,6 +136,30 @@ def test_function_call_in_expression():
     check_single_qubit_gate_op(generated_qir, 1, [0], "h")
 
 
+def test_multiple_function_calls():
+    """Test that multiple function calls are correctly parsed."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(int[32] a, qubit q_arg) {
+        h q_arg;
+        rx (a) q_arg;
+        return;
+    }
+    qubit[3] q;
+    my_function(2, q[2]);
+    my_function(1, q[1]);
+    my_function(0, q[0]);
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 3, 0)
+    check_single_qubit_gate_op(generated_qir, 3, [2, 1, 0], "h")
+    check_single_qubit_rotation_op(generated_qir, 3, [2, 1, 0], [2, 1, 0], "rx")
+
+
 def test_function_call_with_return():
     """Test that a function call with a return value is correctly parsed."""
     qasm_str = """OPENQASM 3;
@@ -191,7 +215,9 @@ def test_function_call_with_custom_gate():
     qasm_str = """OPENQASM 3.0;
     include "stdgates.inc";
 
-    gate my_gate(a) q { rx(a) q; }
+    gate my_gate(a) q2 { 
+        rx(a) q2; 
+    }
 
     def my_function(qubit a, float[32] b) {
         float[64] c = 2*b;
@@ -214,27 +240,29 @@ def test_function_call_with_custom_gate():
     check_single_qubit_rotation_op(generated_qir, 2, [0, 0], [3.14, 6.28], "rx")
 
 
-@pytest.mark.skip(reason="Not implemented for loop statement updates in scope")
-def test_function_with_loop():
-    """Test that a function with a loop is correctly parsed."""
+@pytest.mark.skip(reason="Not implemented nested functions yet")
+def test_function_call_from_within_fn():
+    """Test that a function call from within another function is correctly converted."""
     qasm_str = """OPENQASM 3;
     include "stdgates.inc";
 
-    def my_function(qubit[3] q2) {
-        for int[32] i in [0:2] {
-            h q2[i];
-        }
+    def my_function(qubit q1) {
+        h q1;
         return;
     }
-    qubit[3] q1;
-    my_function(q1);
+
+    def my_function_2(qubit[2] q2) {
+        my_function(q2[1]);
+        return;
+    }
+    qubit[2] q;
+    my_function_2(q);
     """
 
     result = qasm3_to_qir(qasm_str)
     generated_qir = str(result).splitlines()
-
-    check_attributes(generated_qir, 3, 0)
-    check_single_qubit_gate_op(generated_qir, 3, [0, 1, 2], "h")
+    check_attributes(generated_qir, 2, 0)
+    check_single_qubit_gate_op(generated_qir, 1, [1], "h")
 
 
 @pytest.mark.parametrize("data_type", ["int[32] a = 1;", "float[32] a = 1.0;", "bit a = 0;"])

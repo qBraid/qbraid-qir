@@ -45,6 +45,26 @@ def test_barrier():
     check_barrier(generated_qir, expected_barriers=4)
 
 
+def test_barrier_in_function():
+    """Test that a barrier in a function is correctly parsed."""
+    qasm_str = """OPENQASM 3;
+    include "stdgates.inc";
+
+    def my_function(qubit[4] a) {
+        barrier a;
+        return;
+    }
+    qubit[4] q;
+    my_function(q);
+    """
+
+    result = qasm3_to_qir(qasm_str)
+    generated_qir = str(result).splitlines()
+
+    check_attributes(generated_qir, 4, 0)
+    check_barrier(generated_qir, 1)
+
+
 def test_incorrect_barrier():
     subset = """
     OPENQASM 3;
