@@ -14,81 +14,31 @@ Module defining Qasm3 Visitor.
 """
 import copy
 import logging
-import sys
 from abc import ABCMeta, abstractmethod
 
 # pylint: disable=too-many-instance-attributes,too-many-lines
 from collections import deque
-from typing import Optional, Union
+from typing import Union
 
 import pyqir
 import pyqir._native
 import pyqir.rt
-from openqasm3.ast import (
-    AliasStatement,
-    ArrayLiteral,
-    ArrayType,
-    BinaryExpression,
-    BooleanLiteral,
-    BoolType,
-    BranchingStatement,
-    ClassicalArgument,
-    ClassicalAssignment,
-    ClassicalDeclaration,
-    ConstantDeclaration,
-    DiscreteSet,
-    DurationLiteral,
-    ExpressionStatement,
-    FloatLiteral,
-)
-from openqasm3.ast import FloatType as Qasm3FloatType
-from openqasm3.ast import (
-    ForInLoop,
-    FunctionCall,
-    GateModifierName,
-    Identifier,
-    ImaginaryLiteral,
-    Include,
-    IndexedIdentifier,
-    IndexExpression,
-    IntegerLiteral,
-)
-from openqasm3.ast import IntType as Qasm3IntType
-from openqasm3.ast import (
-    IODeclaration,
-    QuantumBarrier,
-    QuantumGate,
-    QuantumGateDefinition,
-    QuantumGateModifier,
-    QuantumMeasurementStatement,
-    QuantumReset,
-    QubitDeclaration,
-    RangeDefinition,
-    ReturnStatement,
-    Span,
-    Statement,
-    SubroutineDefinition,
-    SwitchStatement,
-    UnaryExpression,
-    WhileLoop,
-)
 from pyqir import BasicBlock, Builder, Constant
 from pyqir import IntType as qirIntType
 from pyqir import PointerType
 
 from .elements import Context, InversionOp, Qasm3Module, Variable
 from .exceptions import Qasm3ConversionError
-from .oq3_maps import (
+from .utils.imports import *
+from .utils.maps import (
     CONSTANTS_MAP,
-    LIMITS_MAP,
     MAX_ARRAY_DIMENSIONS,
     SWITCH_BLACKLIST_STMTS,
-    VARIABLE_TYPE_MAP,
     map_qasm_inv_op_to_pyqir_callable,
     map_qasm_op_to_pyqir_callable,
     qasm3_expression_op_map,
-    qasm_variable_type_cast,
 )
+from .utils.visitor_utils import Qasm3VisitorUtils
 
 _log = logging.getLogger(name=__name__)
 
@@ -382,7 +332,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         label_map = self._qubit_labels if is_qubit else self._clbit_labels
 
         if self._check_in_scope(register_name, self._get_curr_scope()):
-            self._print_err_location(register.span)
+            Qasm3VisitorUtils.print_err_location(register.span)
             raise Qasm3ConversionError(
                 f"Invalid declaration of register with name '{register_name}'"
             )
@@ -408,77 +358,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         _log.debug("Added labels for register '%s'", str(register))
 
-    def _print_err_location(self, element: Span) -> str:
-        print(
-            f"Error at line {element.start_line}, column {element.start_column} in QASM file",
-            file=sys.stderr,
-        )
-
-    def _validate_register_index(
-        self, index: Optional[int], size: int, qubit: bool = False
-    ) -> None:
-        """Validate the index for a register.
-
-        Args:
-            index (optional, int): The index to validate.
-            size (int): The size of the register.
-            qubit (bool): Whether the register is a qubit register.
-
-        Raises:
-            Qasm3ConversionError: If the index is out of range.
-        """
-        # nothing to validate if index is None
-        if index is None:
-            return
-
-        if not 0 <= index < size:
-            raise Qasm3ConversionError(
-                f"Index {index} out of range for register of size {size} in "
-                f"{'qubit' if qubit else 'clbit'}"
-            )
-
-    def _validate_variable_type(self, var_name: str, reqd_type):
-        """Validate the type of a variable.
-
-        Args:
-            variable (Variable): The variable to validate.
-            reqd_type (any): The required Qasm3 type of the variable.
-        """
-        if not reqd_type:
-            return True
-        variable = self._get_from_visible_scope(var_name)
-        if not variable:
-            return False
-        return isinstance(variable.base_type, reqd_type)
-
-    def _validate_statement_type(
-        self, blacklisted_stmts: set, statement: Statement, construct: str
-    ):
-        """Validate the type of a statement.
-
-        Args:
-            blacklisted_stmts (set): The set of blacklisted statements.
-            statement (Statement): The statement to validate.
-            construct (str): The construct the statement is in.
-
-        Raises:
-            Qasm3ConversionError: If the statement is not supported.
-        """
-        stmt_type = statement.__class__
-        if stmt_type in blacklisted_stmts:
-            if stmt_type == ClassicalDeclaration:
-                if statement.type.__class__ == ArrayType:
-                    self._print_err_location(statement.span)
-                    raise Qasm3ConversionError(
-                        f"Unsupported statement {stmt_type} with {statement.type.__class__}"
-                        " in {construct} block"
-                    )
-            else:
-                self._print_err_location(statement.span)
-                raise Qasm3ConversionError(
-                    f"Unsupported statement {stmt_type} in {construct} block"
-                )
-
     def _get_qubits_from_range_definition(
         self, range_def: RangeDefinition, qreg_size: int, is_qubit_reg: bool
     ) -> list[int]:
@@ -493,8 +372,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         start_qid = 0 if range_def.start is None else self._evaluate_expression(range_def.start)
         end_qid = qreg_size if range_def.end is None else self._evaluate_expression(range_def.end)
         step = 1 if range_def.step is None else self._evaluate_expression(range_def.step)
-        self._validate_register_index(start_qid, qreg_size, qubit=is_qubit_reg)
-        self._validate_register_index(end_qid - 1, qreg_size, qubit=is_qubit_reg)
+        Qasm3VisitorUtils.validate_register_index(start_qid, qreg_size, qubit=is_qubit_reg)
+        Qasm3VisitorUtils.validate_register_index(end_qid - 1, qreg_size, qubit=is_qubit_reg)
         return list(range(start_qid, end_qid, step))
 
     def _check_if_name_in_scope(self, name: str, operation) -> None:
@@ -507,7 +386,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         for scope_level in range(0, self._curr_scope + 1):
             if name in self._label_scope_level[scope_level]:
                 return None
-        self._print_err_location(operation.span)
+        Qasm3VisitorUtils.print_err_location(operation.span)
         raise Qasm3ConversionError(f"Variable {name} not in scope for operation {operation}")
 
     def _get_op_qubits(self, operation, qreg_size_map, qir_form: bool = True) -> list[pyqir.qubit]:
@@ -531,7 +410,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 qreg_name = qubit.name
 
             if qreg_name not in qreg_size_map:
-                self._print_err_location(operation.span)
+                Qasm3VisitorUtils.print_err_location(operation.span)
                 raise Qasm3ConversionError(
                     f"Missing register declaration for {qreg_name} in operation {operation}"
                 )
@@ -545,7 +424,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     )
                 else:
                     qid = self._evaluate_expression(qubit.indices[0][0])
-                    self._validate_register_index(qid, qreg_size, qubit=True)
+                    Qasm3VisitorUtils.validate_register_index(qid, qreg_size, qubit=True)
                     qids = [qid]
                 openqasm_qubits.extend(
                     [IndexedIdentifier(Identifier(qreg_name), [[IntegerLiteral(i)]]) for i in qids]
@@ -560,7 +439,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in qids]
                 for qid in qreg_qids:
                     if qid in visited_qubits:
-                        self._print_err_location(operation.span)
+                        Qasm3VisitorUtils.print_err_location(operation.span)
                         raise Qasm3ConversionError(f"Duplicate qubit {qreg_name}[{qid}] argument")
                     visited_qubits.add(qid)
                 qir_qubits.extend([pyqir.qubit(self._module.context, n) for n in qreg_qids])
@@ -585,7 +464,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(source, IndexedIdentifier):
             source_name = source.name.name
             if isinstance(source.indices[0][0], RangeDefinition):
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(
                     f"Range based measurement {statement} not supported at the moment"
                 )
@@ -595,20 +474,20 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(target, IndexedIdentifier):
             target_name = target.name.name
             if isinstance(target.indices[0][0], RangeDefinition):
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(
                     f"Range based measurement {statement} not supported at the moment"
                 )
             target_id = target.indices[0][0].value
 
         if source_name not in self._global_qreg_size_map:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(
                 f"Missing register declaration for {source_name} in measurement "
                 f"operation {statement}"
             )
         if target_name not in self._global_creg_size_map:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(
                 f"Missing register declaration for {target_name} in measurement "
                 f"operation {statement}"
@@ -634,7 +513,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         if source_id is None and target_id is None:
             if self._global_qreg_size_map[source_name] != self._global_creg_size_map[target_name]:
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(
                     f"Register sizes of {source_name} and {target_name} do not match "
                     "for measurement operation"
@@ -642,10 +521,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             for i in range(self._global_qreg_size_map[source_name]):
                 _build_qir_measurement(source_name, i, target_name, i)
         else:
-            self._validate_register_index(
+            Qasm3VisitorUtils.validate_register_index(
                 source_id, self._global_qreg_size_map[source_name], qubit=True
             )
-            self._validate_register_index(
+            Qasm3VisitorUtils.validate_register_index(
                 target_id, self._global_creg_size_map[target_name], qubit=False
             )
             _build_qir_measurement(source_name, source_id, target_name, target_id)
@@ -691,13 +570,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if len(barrier_qubits) == total_qubit_count:
             pyqir._native.barrier(self._builder)
         else:
-            self._print_err_location(barrier.span)
+            Qasm3VisitorUtils.print_err_location(barrier.span)
             raise NotImplementedError(
                 "Barrier operation on a qubit subset is not supported in pyqir"
             )
-
-    def _is_parametric_gate(self, operation: QuantumGate) -> bool:
-        return len(operation.arguments) > 0
 
     def _get_op_parameters(self, operation: QuantumGate) -> list[float]:
         """Get the parameters for the operation.
@@ -726,7 +602,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
         gate_name = definition.name.name
         if gate_name in self._custom_gates:
-            self._print_err_location(definition.span)
+            Qasm3VisitorUtils.print_err_location(definition.span)
             raise Qasm3ConversionError(f"Duplicate gate definition for {gate_name}")
         self._custom_gates[gate_name] = definition
 
@@ -767,12 +643,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         op_parameters = None
 
         if len(op_qubits) % op_qubit_count != 0:
-            self._print_err_location(operation.span)
+            Qasm3VisitorUtils.print_err_location(operation.span)
             raise Qasm3ConversionError(
                 f"Invalid number of qubits {len(op_qubits)} for operation {operation.name.name}"
             )
 
-        if self._is_parametric_gate(operation):
+        if len(operation.arguments) > 0:  # parametric gate
             op_parameters = self._get_op_parameters(operation)
             if inverse_action == InversionOp.INVERT_ROTATION:
                 op_parameters = [-1 * param for param in op_parameters]
@@ -784,70 +660,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 qir_func(self._builder, *op_parameters, *qubit_subset)
             else:
                 qir_func(self._builder, *qubit_subset)
-
-    def _transform_gate_qubits(self, gate_op: QuantumGate, qubit_map: dict) -> None:
-        """Transform the qubits of a gate operation with a qubit map.
-
-        Args:
-            gate_op (QuantumGate): The gate operation to transform.
-            qubit_map (Dict[str, IndexedIdentifier]): The qubit map to use for transformation.
-
-        Returns:
-            None
-        """
-        for i, qubit in enumerate(gate_op.qubits):
-            if isinstance(qubit, IndexedIdentifier):
-                self._print_err_location(qubit.span)
-                raise Qasm3ConversionError(
-                    f"Indexing '{qubit.name.name}' not supported in gate definition"
-                )
-            gate_op.qubits[i] = qubit_map[qubit.name]
-
-    def _transform_gate_params(self, gate_op: QuantumGate, param_map: dict) -> None:
-        """Transform the parameters of a gate operation with a parameter map.
-
-        Args:
-            gate_op (QuantumGate): The gate operation to transform.
-            param_map (Dict[str, Union[FloatLiteral, IntegerLiteral]]): The parameter map to use
-                                                                        for transformation.
-
-        Returns:
-            None
-        """
-        for i, param in enumerate(gate_op.arguments):
-            if isinstance(param, Identifier):
-                gate_op.arguments[i] = param_map[param.name]
-            # TODO : update the arg value in expressions not just SINGLE identifiers
-
-    def _validate_gate_call(
-        self,
-        operation: QuantumGate,
-        gate_definition: QuantumGateDefinition,
-        qubits_in_op,
-    ) -> None:
-        """Validate the call of a gate operation.
-
-        Args:
-            operation (QuantumGate): The gate operation to validate.
-            gate_definition (QuantumGateDefinition): The gate definition to validate against.
-            qubits_in_op (int): The number of qubits in the operation.
-
-        Raises:
-            Qasm3ConversionError: If the number of parameters or qubits is invalid.
-        """
-        if len(operation.arguments) != len(gate_definition.arguments):
-            self._print_err_location(operation.span)
-            raise Qasm3ConversionError(
-                f"""Parameter count mismatch for gate {operation.name.name}. Expected \
-{len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"""
-            )
-
-        if qubits_in_op != len(gate_definition.qubits):
-            self._print_err_location(operation.span)
-            raise Qasm3ConversionError(
-                f"""Qubit count mismatch for gate {operation.name.name}. Expected \
-{len(gate_definition.qubits)} but got {qubits_in_op} in operation"""
-            )
 
     def _visit_custom_gate_operation(self, operation: QuantumGate, inverse: bool = False) -> None:
         """Visit a custom gate operation element recursively.
@@ -869,7 +681,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         gate_definition: QuantumGateDefinition = self._custom_gates[gate_name]
         op_qubits = self._get_op_qubits(operation, self._global_qreg_size_map, qir_form=False)
 
-        self._validate_gate_call(operation, gate_definition, len(op_qubits))
+        Qasm3VisitorUtils.validate_gate_call(operation, gate_definition, len(op_qubits))
         # we need this because the gates applied inside a gate definition use the
         # VARIABLE names and not the qubits
 
@@ -892,7 +704,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         for gate_op in gate_definition_ops:
             if gate_op.name.name == gate_name:
-                self._print_err_location(gate_op.span)
+                Qasm3VisitorUtils.print_err_location(gate_op.span)
                 raise Qasm3ConversionError(
                     f"Recursive definitions not allowed for gate {gate_name}"
                 )
@@ -901,16 +713,16 @@ class BasicQasmVisitor(ProgramElementVisitor):
             # in case the gate is reapplied
             gate_op_copy = copy.deepcopy(gate_op)
             if isinstance(gate_op, QuantumGate):
-                self._transform_gate_params(gate_op_copy, param_map)
-                self._transform_gate_qubits(gate_op_copy, qubit_map)
-                # need to trickle the inverse down to the child!
+                Qasm3VisitorUtils.transform_gate_params(gate_op_copy, param_map)
+                Qasm3VisitorUtils.transform_gate_qubits(gate_op_copy, qubit_map)
+                # need to trickle the inverse down to the child gates
                 if inverse:
                     # span doesn't matter as we don't analyse it
                     gate_op_copy.modifiers.append(QuantumGateModifier(GateModifierName.inv, None))
                 self._visit_generic_gate_operation(gate_op_copy)
             else:
                 # TODO: add control flow support
-                self._print_err_location(gate_op.span)
+                Qasm3VisitorUtils.print_err_location(gate_op.span)
                 raise Qasm3ConversionError(f"Unsupported gate definition statement {gate_op}")
 
         self._restore_context()
@@ -942,7 +754,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 GateModifierName.ctrl,
                 GateModifierName.negctrl,
             ]:
-                self._print_err_location(operation.span)
+                Qasm3VisitorUtils.print_err_location(operation.span)
                 raise NotImplementedError(
                     "Controlled modifier gates not yet supported in gate operation"
                 )
@@ -962,7 +774,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         # only needs to be done once for a gate operation
         if not self._in_gate_scope() and len(self._function_qreg_size_map) > 0:
-            # atleast in SOME function scope
+            # we are in SOME function scope
             # transform qubits to use the global qreg identifiers
             operation.qubits = self._transform_function_qubits(
                 operation, self._function_qreg_size_map[-1], self._function_qreg_transform_map[-1]
@@ -974,97 +786,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 self._visit_custom_gate_operation(operation, inverse_value)
             else:
                 self._visit_basic_gate_operation(operation, inverse_value)
-
-    def _validate_variable_assignment_value(self, variable: Variable, value) -> None:
-        """Validate the assignment of a value to a variable.
-
-        Args:
-            variable (Variable): The variable to assign to.
-            value (Any): The value to assign.
-
-        Raises:
-            Qasm3ConversionError: If the value is not of the correct type.
-        """
-        # check 1 - type match
-        qasm_type = variable.base_type.__class__
-        base_size = variable.base_size
-
-        try:
-            type_to_match = VARIABLE_TYPE_MAP[qasm_type]
-        except KeyError as err:
-            raise Qasm3ConversionError(
-                f"Invalid type {qasm_type} for variable {variable.name}"
-            ) from err
-
-        # For each type we will have a "castable" type set and its corresponding cast operation
-        type_casted_value = qasm_variable_type_cast(qasm_type, variable.name, base_size, value)
-        # check 2 - range match , if bits mentioned in base size
-        if type_to_match == int:
-            base_size = variable.base_size
-            left, right = 0, 0
-            if qasm_type == Qasm3IntType:
-                left, right = (
-                    -1 * (2 ** (base_size - 1)),
-                    2 ** (base_size - 1) - 1,
-                )
-            else:
-                # would be uint only so we correctly get this
-                left, right = 0, 2**base_size - 1
-            if type_casted_value < left or type_casted_value > right:
-                raise Qasm3ConversionError(
-                    f"Value {type_casted_value} out of limits for variable {variable.name} "
-                    f"with base size {base_size}"
-                )
-
-        elif type_to_match == float:
-            base_size = variable.base_size
-            left, right = 0, 0
-
-            if base_size == 32:
-                left, right = -(LIMITS_MAP["float_32"]), (LIMITS_MAP["float_32"])
-            else:
-                left, right = -(LIMITS_MAP["float_64"]), (LIMITS_MAP["float_64"])
-
-            if type_casted_value < left or type_casted_value > right:
-                raise Qasm3ConversionError(
-                    f"Value {value} out of limits for variable {variable.name} "
-                    f"with base size {base_size}"
-                )
-        elif type_to_match == bool:
-            pass
-        else:
-            raise TypeError(f"Invalid type {type_to_match} for variable {variable.name}")
-
-        return type_casted_value
-
-    def _validate_array_assignment_values(
-        self, variable: Variable, dimensions: list[int], values: list
-    ) -> None:
-        """Validate the assignment of values to an array variable.
-
-        Args:
-            variable (Variable): The variable to assign to.
-            values (list[Any]): The values to assign.
-
-        Raises:
-            Qasm3ConversionError: If the values are not of the correct type.
-        """
-        # recursively check the array
-        if len(values) != dimensions[0]:
-            raise Qasm3ConversionError(
-                f"Invalid dimensions for array assignment to variable {variable.name}. "
-                f"Expected {dimensions[0]} but got {len(values)}"
-            )
-        for i, value in enumerate(values):
-            if isinstance(value, list):
-                self._validate_array_assignment_values(variable, dimensions[1:], value)
-            else:
-                if len(dimensions) != 1:
-                    raise Qasm3ConversionError(
-                        f"Invalid dimensions for array assignment to variable {variable.name}. "
-                        f"Expected {len(dimensions)} but got 1"
-                    )
-                values[i] = self._validate_variable_assignment_value(variable, value)
 
     def _visit_constant_declaration(self, statement: ConstantDeclaration) -> None:
         """
@@ -1081,11 +802,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         var_name = statement.identifier.name
 
         if var_name in CONSTANTS_MAP:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Can not declare variable with keyword name {var_name}")
 
         if self._check_in_scope(var_name, self._get_curr_scope()):
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
 
         init_value = self._evaluate_expression(statement.init_expression, const_expr=True)
@@ -1098,13 +819,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
         else:
             base_size = self._evaluate_expression(base_type.size, const_expr=True)
             if not isinstance(base_size, int) or base_size <= 0:
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(f"Invalid base size {base_size} for variable {var_name}")
 
         variable = Variable(var_name, base_type, base_size, [], init_value, is_constant=True)
 
         # cast + validation
-        variable.value = self._validate_variable_assignment_value(variable, init_value)
+        variable.value = Qasm3VisitorUtils.validate_variable_assignment_value(variable, init_value)
 
         self._add_var_in_scope(variable)
 
@@ -1120,7 +841,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
         var_name = statement.identifier.name
         if var_name in CONSTANTS_MAP:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Can not declare variable with keyword name {var_name}")
         if self._check_in_scope(var_name, self._get_curr_scope()):
             if self._in_block_scope() and var_name not in self._get_curr_scope():
@@ -1132,7 +853,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 # }
                 pass
             else:
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(f"Re-declaration of variable {var_name}")
 
         init_value = None
@@ -1143,7 +864,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             dimensions = base_type.dimensions
 
             if len(dimensions) > MAX_ARRAY_DIMENSIONS:
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(
                     f"Invalid dimensions {len(dimensions)} for array declaration for {var_name}. "
                     f"Max allowed dimensions is {MAX_ARRAY_DIMENSIONS}"
@@ -1154,7 +875,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             for dim in dimensions:
                 dim_value = self._evaluate_expression(dim)
                 if not isinstance(dim_value, int) or dim_value <= 0:
-                    self._print_err_location(statement.span)
+                    Qasm3VisitorUtils.print_err_location(statement.span)
                     raise Qasm3ConversionError(
                         f"Invalid dimension size {dim_value} in array declaration for {var_name}"
                     )
@@ -1177,11 +898,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
             base_size = 32 if base_type.size is None else self._evaluate_expression(base_type.size)
 
         if not isinstance(base_size, int) or base_size <= 0:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Invalid base size {base_size} for variable {var_name}")
 
         if isinstance(base_type, Qasm3FloatType) and base_size not in [32, 64]:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(
                 f"Invalid base size {base_size} for float variable {var_name}"
             )
@@ -1190,92 +911,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         if statement.init_expression:
             if isinstance(init_value, list):
-                self._validate_array_assignment_values(variable, variable.dims, init_value)
+                Qasm3VisitorUtils.validate_array_assignment_values(
+                    variable, variable.dims, init_value
+                )
             else:
-                variable.value = self._validate_variable_assignment_value(variable, init_value)
+                variable.value = Qasm3VisitorUtils.validate_variable_assignment_value(
+                    variable, init_value
+                )
 
         self._add_var_in_scope(variable)
-
-    def _analyse_classical_indices(self, indices: list[IntegerLiteral], var_name: str) -> None:
-        """Validate the indices for a classical variable.
-
-        Args:
-            indices (list[list[Any]]): The indices to validate.
-            var_name (str): The name of the variable.
-
-        Raises:
-            Qasm3ConversionError: If the indices are invalid.
-
-        Returns:
-            list: The list of indices.
-        """
-        indices_list = []
-        var_dimensions = self._get_from_visible_scope(var_name).dims
-
-        if not var_dimensions:
-            self._print_err_location(indices[0].span)
-            raise Qasm3ConversionError(f"Indexing error. Variable {var_name} is not an array")
-
-        if len(indices) != len(var_dimensions):
-            self._print_err_location(indices[0].span)
-            raise Qasm3ConversionError(
-                f"Invalid number of indices for variable {var_name}. "
-                f"Expected {len(var_dimensions)} but got {len(indices)}"
-            )
-
-        for i, index in enumerate(indices):
-            if isinstance(index, RangeDefinition):
-                self._print_err_location(index.span)
-                raise Qasm3ConversionError(
-                    f"Range based indexing {index} not supported for classical variable {var_name}"
-                )
-            if not isinstance(index, IntegerLiteral):
-                self._print_err_location(index.span)
-                raise Qasm3ConversionError(
-                    f"Unsupported index type {type(index)} for classical variable {var_name}"
-                )
-            index_value = index.value
-            curr_dimension = var_dimensions[i]
-
-            if index_value < 0 or index_value >= curr_dimension:
-                self._print_err_location(index.span)
-                raise Qasm3ConversionError(
-                    f"Index {index_value} out of bounds for dimension {i+1} of variable {var_name}"
-                )
-            indices_list.append(index_value)
-
-        return indices_list
-
-    def _update_array_element(self, multi_dim_list, indices, value):
-        """Update the value of an array at the specified indices.
-
-        Args:
-            multi_dim_list (list): The multi-dimensional list to update.
-            indices (list[int]): The indices to update.
-            value (Any): The value to update.
-
-        Returns:
-            None
-        """
-        temp = multi_dim_list
-        for index in indices[:-1]:
-            temp = temp[index]
-        temp[indices[-1]] = value
-
-    def _find_array_element(self, multi_dim_list, indices):
-        """Find the value of an array at the specified indices.
-
-        Args:
-            multi_dim_list (list): The multi-dimensional list to search.
-            indices (list[int]): The indices to search.
-
-        Returns:
-            Any: The value at the specified indices.
-        """
-        temp = multi_dim_list
-        for index in indices:
-            temp = temp[index]
-        return temp
 
     def _visit_classical_assignment(self, statement: ClassicalAssignment) -> None:
         """Visit a classical assignment element.
@@ -1295,11 +939,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         var = self._get_from_visible_scope(var_name)
 
         if var is None:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Undefined variable {var_name} in assignment")
 
         if var.is_constant:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Assignment to constant variable {var_name} not allowed")
 
         var_value = self._evaluate_expression(statement.rvalue)
@@ -1308,7 +952,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         # range based assignment not supported yet
 
         # cast + validation
-        var_value = self._validate_variable_assignment_value(var, var_value)
+        var_value = Qasm3VisitorUtils.validate_variable_assignment_value(var, var_value)
 
         # handle assignment for arrays
         if isinstance(lvalue, IndexedIdentifier):
@@ -1318,8 +962,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             else:
                 indices = [idx[0] for idx in lvalue.indices]
 
-            validated_indices = self._analyse_classical_indices(indices, var_name)
-            self._update_array_element(var.value, validated_indices, var_value)
+            validated_indices = Qasm3VisitorUtils.analyse_classical_indices(
+                indices, self._get_from_visible_scope(var_name)
+            )
+            Qasm3VisitorUtils.update_array_element(var.value, validated_indices, var_value)
         else:
             var.value = var_value
 
@@ -1351,34 +997,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         return init_values
 
-    def _analyse_index_expression(self, index_expr: IndexExpression) -> tuple[str, list[list]]:
-        """Analyse an index expression to get the variable name and indices.
-
-        Args:
-            index_expr (IndexExpression): The index expression to analyse.
-
-        Returns:
-            tuple[str, list[list]]: The variable name and indices.
-
-        """
-        indices = []
-        var_name = None
-        comma_separated = False
-
-        if isinstance(index_expr.collection, IndexExpression):
-            while isinstance(index_expr, IndexExpression):
-                indices.append(index_expr.index[0])
-                index_expr = index_expr.collection
-        else:
-            comma_separated = True
-            indices = index_expr.index
-
-        var_name = index_expr.collection.name if comma_separated else index_expr.name
-        if not comma_separated:
-            indices = indices[::-1]
-
-        return var_name, indices
-
     # pylint: disable-next=too-many-return-statements, too-many-statements
     def _evaluate_expression(self, expression, const_expr: bool = False, reqd_type=None):
         """Evaluate an expression. Scalar types are assigned by value.
@@ -1398,32 +1016,34 @@ class BasicQasmVisitor(ProgramElementVisitor):
             return None
 
         if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
-            self._print_err_location(expression.span)
+            Qasm3VisitorUtils.print_err_location(expression.span)
             raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
 
         def _check_var_in_scope(var_name):
             if not self._check_in_scope(var_name, self._get_curr_scope()):
-                self._print_err_location(expression.span)
+                Qasm3VisitorUtils.print_err_location(expression.span)
                 raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
 
         def _check_var_constant(var_name):
             const_var = self._get_from_visible_scope(var_name).is_constant
             if const_expr and not const_var:
-                self._print_err_location(expression.span)
+                Qasm3VisitorUtils.print_err_location(expression.span)
                 raise Qasm3ConversionError(
                     f"Variable '{var_name}' is not a constant in given expression"
                 )
 
         def _check_var_type(var_name, reqd_type):
-            if not self._validate_variable_type(var_name, reqd_type):
-                self._print_err_location(expression.span)
+            if not Qasm3VisitorUtils.validate_variable_type(
+                self._get_from_visible_scope(var_name), reqd_type
+            ):
+                Qasm3VisitorUtils.print_err_location(expression.span)
                 raise Qasm3ConversionError(
                     f"Invalid type of variable {var_name} for required type {reqd_type}"
                 )
 
         def _check_var_initialized(var_name, var_value):
             if var_value is None:
-                self._print_err_location(expression.span)
+                Qasm3VisitorUtils.print_err_location(expression.span)
                 raise Qasm3ConversionError(f"Uninitialized variable {var_name} in expression")
 
         def _get_var_value(var_name, indices=None):
@@ -1431,8 +1051,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if isinstance(expression, Identifier):
                 var_value = self._get_from_visible_scope(var_name).value
             else:
-                validated_indices = self._analyse_classical_indices(indices, var_name)
-                var_value = self._find_array_element(
+                validated_indices = Qasm3VisitorUtils.analyse_classical_indices(
+                    indices, self._get_from_visible_scope(var_name)
+                )
+                var_value = Qasm3VisitorUtils.find_array_element(
                     self._get_from_visible_scope(var_name).value, validated_indices
                 )
             return var_value
@@ -1450,14 +1072,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if var_name in CONSTANTS_MAP:
                 if not reqd_type or reqd_type == Qasm3FloatType:
                     return CONSTANTS_MAP[var_name]
-                self._print_err_location(expression.span)
+                Qasm3VisitorUtils.print_err_location(expression.span)
                 raise Qasm3ConversionError(
                     f"Constant {var_name} not allowed in non-float expression"
                 )
             return process_variable(var_name)
 
         if isinstance(expression, IndexExpression):
-            var_name, indices = self._analyse_index_expression(expression)
+            var_name, indices = Qasm3VisitorUtils.analyse_index_expression(expression)
             return process_variable(var_name, indices)
 
         if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):
@@ -1468,7 +1090,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     return expression.value
                 if reqd_type == Qasm3FloatType and isinstance(expression, FloatLiteral):
                     return expression.value
-                self._print_err_location(expression.span)
+                Qasm3VisitorUtils.print_err_location(expression.span)
                 raise Qasm3ConversionError(
                     f"Invalid type {type(expression)} for required type {reqd_type}"
                 )
@@ -1477,7 +1099,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(expression, UnaryExpression):
             operand = self._evaluate_expression(expression.expression, const_expr, reqd_type)
             if expression.op.name == "~" and not isinstance(operand, int):
-                self._print_err_location(expression.span)
+                Qasm3VisitorUtils.print_err_location(expression.span)
                 raise Qasm3ConversionError(
                     f"Unsupported expression type {type(operand)} in ~ operation"
                 )
@@ -1495,67 +1117,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
             # para      : 5
             return self._visit_function_call(expression)
 
-        self._print_err_location(expression.span)
+        Qasm3VisitorUtils.print_err_location(expression.span)
         raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
-
-    def _analyse_branch_condition(self, condition) -> bool:
-        """
-        Analyse the branching condition to determine the branch to take
-
-        Args:
-            condition (Any): The condition to analyse
-
-        Returns:
-            bool: The branch to take
-        """
-
-        if isinstance(condition, UnaryExpression):
-            if condition.op.name != "!":
-                self._print_err_location(condition.span)
-                raise Qasm3ConversionError(
-                    f"Unsupported unary expression '{condition.op.name}' in if condition"
-                )
-            return False
-        if isinstance(condition, BinaryExpression):
-            if condition.op.name != "==":
-                self._print_err_location(condition.span)
-                raise Qasm3ConversionError(
-                    f"Unsupported binary expression '{condition.op.name}' in if condition"
-                )
-            if not isinstance(condition.lhs, IndexExpression):
-                self._print_err_location(condition.span)
-                raise Qasm3ConversionError(
-                    f"Unsupported expression type '{type(condition.lhs)}' in if condition"
-                )
-            return condition.rhs.value != 0
-        if not isinstance(condition, IndexExpression):
-            self._print_err_location(condition.span)
-            raise Qasm3ConversionError(
-                f"Unsupported expression type '{type(condition)}' in if condition. "
-                "Can only be a simple comparison"
-            )
-        return True
-
-    def _get_branch_params(self, condition) -> tuple[Union[int, None], Union[str, None]]:
-        """
-        Get the branch parameters from the branching condition
-
-        Args:
-            condition (Any): The condition to analyse
-
-        Returns:
-            tuple[Union[int, None], Union[str, None]]: The branch parameters
-        """
-        if isinstance(condition, UnaryExpression):
-            return (
-                condition.expression.index[0].value,
-                condition.expression.collection.name,
-            )
-        if isinstance(condition, BinaryExpression):
-            return condition.lhs.index[0].value, condition.lhs.collection.name
-        if isinstance(condition, IndexExpression):
-            return condition.index[0].value, condition.collection.name
-        return None, None
 
     def _visit_branching_statement(self, statement: BranchingStatement) -> None:
         """Visit a branching statement element.
@@ -1572,23 +1135,25 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._label_scope_level[self._curr_scope] = set()
 
         condition = statement.condition
-        positive_branching = self._analyse_branch_condition(condition)
+        positive_branching = Qasm3VisitorUtils.analyse_branch_condition(condition)
 
         if_block = statement.if_block
         if not statement.if_block:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError("Missing if block")
         else_block = statement.else_block
         if not positive_branching:
             if_block, else_block = else_block, if_block
 
-        reg_id, reg_name = self._get_branch_params(condition)
+        reg_id, reg_name = Qasm3VisitorUtils.get_branch_params(condition)
 
         if reg_name not in self._global_creg_size_map:
             raise Qasm3ConversionError(
                 f"Missing register declaration for {reg_name} in {condition}"
             )
-        self._validate_register_index(reg_id, self._global_creg_size_map[reg_name], qubit=False)
+        Qasm3VisitorUtils.validate_register_index(
+            reg_id, self._global_creg_size_map[reg_name], qubit=False
+        )
 
         def _visit_statement_block(block):
             for stmt in block:
@@ -1662,68 +1227,21 @@ class BasicQasmVisitor(ProgramElementVisitor):
         fn_name = statement.name.name
 
         if fn_name in CONSTANTS_MAP:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Subroutine name '{fn_name}' is a reserved keyword")
 
         if fn_name in self._subroutine_defns:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Redefinition of subroutine '{fn_name}'")
 
         if self._check_in_scope(fn_name, self._get_curr_scope()):
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(
                 f"Can not declare subroutine with name '{fn_name}' "
                 "as it is already declared as a variable"
             )
 
         self._subroutine_defns[fn_name] = statement
-
-    # pylint: disable=inconsistent-return-statements
-    def _validate_return_statement(
-        self,
-        subroutine_def: SubroutineDefinition,
-        return_statement: ReturnStatement,
-        return_value: any,
-    ):
-        """Validate the return type of a function.
-
-        Args:
-            subroutine_def (SubroutineDefinition): The subroutine definition.
-            return_statement (ReturnStatement): The return statement.
-            return_value (Any): The return value.
-
-        Raises:
-            Qasm3ConversionError: If the return type is invalid.
-        """
-
-        if subroutine_def.return_type is None:
-            if return_value is not None:
-                self._print_err_location(return_statement.span)
-                raise Qasm3ConversionError(
-                    f"Return type mismatch for subroutine '{subroutine_def.name.name}'."
-                    f" Expected void but got {type(return_value)}"
-                )
-        else:
-            if return_value is None:
-                self._print_err_location(return_statement.span)
-                raise Qasm3ConversionError(
-                    f"Return type mismatch for subroutine '{subroutine_def.name.name}'."
-                    f" Expected {subroutine_def.return_type} but got void"
-                )
-            base_size = 1
-            if hasattr(subroutine_def.return_type, "size"):
-                base_size = subroutine_def.return_type.size.value
-
-            return self._validate_variable_assignment_value(
-                Variable(
-                    subroutine_def.name.name + "_return",
-                    subroutine_def.return_type,
-                    base_size,
-                    None,
-                    None,
-                ),
-                return_value,
-            )
 
     def _transform_function_qubits(
         self, q_op, formal_qreg_sizes: dict[str:int], qubit_map: dict[tuple:tuple]
@@ -1776,13 +1294,15 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         elif isinstance(target, IndexExpression):
             if isinstance(target.index, DiscreteSet):  # "(q[{0,1}]);"
-                target_qids = self._extract_values_from_discrete_set(target.index)
+                target_qids = Qasm3VisitorUtils.extract_values_from_discrete_set(target.index)
                 for qid in target_qids:
-                    self._validate_register_index(qid, qreg_size_map[target_name], qubit=True)
+                    Qasm3VisitorUtils.validate_register_index(
+                        qid, qreg_size_map[target_name], qubit=True
+                    )
                 target_qubits_size = len(target_qids)
             elif isinstance(target.index[0], (IntegerLiteral, Identifier)):  # "(q[0]); OR (q[i]);"
                 target_qids = [self._evaluate_expression(target.index[0])]
-                self._validate_register_index(
+                Qasm3VisitorUtils.validate_register_index(
                     target_qids[0], qreg_size_map[target_name], qubit=True
                 )
                 target_qubits_size = 1
@@ -1807,13 +1327,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
         fn_name = statement.name.name
         if fn_name not in self._subroutine_defns:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Undefined subroutine '{fn_name}' was called")
 
         subroutine_def = self._subroutine_defns[fn_name]
 
         if len(statement.arguments) != len(subroutine_def.arguments):
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(
                 f"Parameter count mismatch for subroutine '{fn_name}'. Expected "
                 f"{len(subroutine_def.arguments)} but got {len(statement.arguments)} in call"
@@ -1841,7 +1361,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             else:
                 for idx in indices:
                     if idx in duplicate_qubit_detect_map[reg_name]:
-                        self._print_err_location(statement.span)
+                        Qasm3VisitorUtils.print_err_location(statement.span)
                         raise Qasm3ConversionError(
                             f"Duplicate qubit argument '{reg_name}[{idx}]' "
                             f"in function call for '{fn_name}'"
@@ -1861,32 +1381,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 Qasm3ConversionError: If the actual argument is a qubit register instead
                                     of a classical argument.
                 Qasm3ConversionError: If the actual argument is an undefined variable.
-
-            Notes:
-                - This method is responsible for validating and processing the classical argument
-                  for a function call.
-                - It checks if the actual argument is a qubit register instead of a classical
-                  argument, and raises an error if so.
-                - It also checks if the actual argument is an undefined variable, and raises
-                  an error if so.
-                - Silent casting is performed during assignment validation.
-                - The parent scope must have a well-defined actual argument for the function
-                  call to reach this stage.
-                - The method adds a copy of the actual argument from the parent scope to the
-                  current scope for the declaration of the formal argument.
-                - After the assignment, the method removes the copy of the actual argument
-                  from the current scope.
             """
             # 1. variable mapping is equivalent to declaring the variable
             #     with the formal argument name and doing classical assignment
             #     in the scope of the function
-
-            # NOTE: actual_argument can also be an EXPRESSION
-            # Better to just evaluate that expression and assign that value later to
-            # the formal argument
             if actual_arg_name:
                 if actual_arg_name in self._global_qreg_size_map:
-                    self._print_err_location(statement.span)
+                    Qasm3VisitorUtils.print_err_location(statement.span)
                     raise Qasm3ConversionError(
                         f"Expecting classical argument for '{formal_arg.name.name}'. "
                         f"Qubit register '{actual_arg_name}' found for function '{fn_name}'"
@@ -1895,11 +1396,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 # 2. as we have pushed the scope for fn, we need to check in parent
                 #    scope for argument validation
                 if not self._check_in_scope(actual_arg_name, self._get_curr_scope()):
-                    self._print_err_location(statement.span)
+                    Qasm3VisitorUtils.print_err_location(statement.span)
                     raise Qasm3ConversionError(
                         f"Undefined variable '{actual_arg_name}' used for function '{fn_name}'"
                     )
 
+            # NOTE: actual_argument can also be an EXPRESSION
+            # Better to just evaluate that expression and assign that value later to
+            # the formal argument
             actual_arg_value = self._evaluate_expression(actual_arg)
 
             # save this value to be updated later in scope
@@ -1941,7 +1445,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
             # we expect that actual arg is qubit type only
             if actual_arg_name not in self._global_qreg_size_map:
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(
                     f"Expecting qubit argument for '{formal_reg_name}'."
                     f" Qubit register '{actual_arg_name}' not found for function '{fn_name}'"
@@ -1953,7 +1457,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             )
 
             if formal_qubit_size != actual_qubits_size:
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(
                     f"Qubit register size mismatch for function '{fn_name}'. "
                     f"Expected {formal_qubit_size} in variable '{formal_reg_name}' "
@@ -2003,11 +1507,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self.visit_statement(copy.deepcopy(function_op))
 
         return_value = self._evaluate_expression(return_statement.expression)
-        return_value = self._validate_return_statement(
+        return_value = Qasm3VisitorUtils.validate_return_statement(
             subroutine_def, return_statement, return_value
         )
 
-        # remove qubit transformations
+        # remove qubit transformation map
         self._function_qreg_transform_map.pop()
         self._function_qreg_size_map.pop()
 
@@ -2020,25 +1524,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
     def _visit_while_loop(self, statement: WhileLoop) -> None:
         pass
-
-    def _extract_values_from_discrete_set(self, discrete_set: DiscreteSet) -> list[int]:
-        """Extract the values from a discrete set.
-
-        Args:
-            discrete_set (DiscreteSet): The discrete set to extract values from.
-
-        Returns:
-            list[int]: The extracted values.
-        """
-        values = []
-        for value in discrete_set.values:
-            if not isinstance(value, IntegerLiteral):
-                self._print_err_location(discrete_set.span)
-                raise Qasm3ConversionError(
-                    f"Unsupported discrete set value {value} in discrete set"
-                )
-            values.append(value.value)
-        return values
 
     def _visit_alias_statement(self, statement: AliasStatement) -> None:
         """Visit an alias statement element.
@@ -2060,7 +1545,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         # Alias should not be redeclared earlier as a variable or a constant
         if self._check_in_scope(alias_reg_name, self._get_curr_scope()):
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Re-declaration of variable '{alias_reg_name}'")
 
         self._label_scope_level[self._curr_scope].add(alias_reg_name)
@@ -2070,13 +1555,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
         elif isinstance(value, IndexExpression):
             aliased_reg_name = value.collection.name
         else:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(
                 f"Unsupported aliasing {statement} not supported at the moment"
             )
 
         if aliased_reg_name not in self._global_qreg_size_map:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Qubit register {aliased_reg_name} not found for aliasing")
 
         aliased_reg_size = self._global_qreg_size_map[aliased_reg_name]
@@ -2088,9 +1573,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
             alias_reg_size = aliased_reg_size
         elif isinstance(value, IndexExpression):
             if isinstance(value.index, DiscreteSet):  # "let alias = q[{0,1}];"
-                qids = self._extract_values_from_discrete_set(value.index)
+                qids = Qasm3VisitorUtils.extract_values_from_discrete_set(value.index)
                 for i, qid in enumerate(qids):
-                    self._validate_register_index(
+                    Qasm3VisitorUtils.validate_register_index(
                         qid, self._global_qreg_size_map[aliased_reg_name], qubit=True
                     )
                     self._qubit_labels[f"{alias_reg_name}_{i}"] = self._qubit_labels[
@@ -2098,7 +1583,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     ]
                 alias_reg_size = len(qids)
             elif len(value.index) != 1:  # like "let alias = q[0,1];"?
-                self._print_err_location(statement.span)
+                Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(
                     "An index set can be specified by a single integer (signed or unsigned), "
                     "a comma-separated list of integers contained in braces {a,b,c,…}, "
@@ -2106,7 +1591,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 )
             elif isinstance(value.index[0], IntegerLiteral):  # "let alias = q[0];"
                 qid = value.index[0].value
-                self._validate_register_index(
+                Qasm3VisitorUtils.validate_register_index(
                     qid, self._global_qreg_size_map[aliased_reg_name], qubit=True
                 )
                 self._qubit_labels[f"{alias_reg_name}_0"] = value.index[0].value
@@ -2134,7 +1619,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-
         # 1. analyse the target - it should ONLY be int, not casted
         switch_target = statement.target
 
@@ -2142,16 +1626,18 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(switch_target, Identifier):
             switch_target_name = switch_target.name
         else:
-            switch_target_name, _ = self._analyse_index_expression(switch_target)
+            switch_target_name, _ = Qasm3VisitorUtils.analyse_index_expression(switch_target)
 
-        if not self._validate_variable_type(switch_target_name, Qasm3IntType):
-            self._print_err_location(statement.span)
+        if not Qasm3VisitorUtils.validate_variable_type(
+            self._get_from_visible_scope(switch_target_name), Qasm3IntType
+        ):
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Switch target {switch_target_name} must be of type int")
 
         switch_target_val = self._evaluate_expression(switch_target)
 
         if len(statement.cases) == 0:
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError("Switch statement must have at least one case")
 
         # 2. handle the cases of the switch stmt
@@ -2165,7 +1651,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             self._push_scope({})
 
             for stmt in statements:
-                self._validate_statement_type(SWITCH_BLACKLIST_STMTS, stmt, "switch")
+                Qasm3VisitorUtils.validate_statement_type(SWITCH_BLACKLIST_STMTS, stmt, "switch")
                 self.visit_statement(stmt)
 
             self._pop_scope()
@@ -2184,7 +1670,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 )
 
                 if case_val in seen_values:
-                    self._print_err_location(case_expr.span)
+                    Qasm3VisitorUtils.print_err_location(case_expr.span)
                     raise Qasm3ConversionError(
                         f"Duplicate case value {case_val} in switch statement"
                     )
@@ -2248,7 +1734,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise NotImplementedError("OpenQASM 3 IO declarations not yet supported")
         else:
             # TODO : extend this
-            self._print_err_location(statement.span)
+            Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Unsupported statement of type {type(statement)}")
 
     def ir(self) -> str:

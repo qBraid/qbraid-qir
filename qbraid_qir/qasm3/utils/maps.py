@@ -32,9 +32,9 @@ from openqasm3.ast import (
     UintType,
 )
 
-from .elements import InversionOp
-from .exceptions import Qasm3ConversionError
-from .linalg import kak_decomposition_angles
+from ..elements import InversionOp
+from ..exceptions import Qasm3ConversionError
+from ..linalg import kak_decomposition_angles
 
 OPERATOR_MAP = {
     "+": lambda x, y: x + y,

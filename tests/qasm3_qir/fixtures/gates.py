@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from qbraid_qir.qasm3.oq3_maps import (
+from qbraid_qir.qasm3.utils.maps import (
     PYQIR_ONE_QUBIT_OP_MAP,
     PYQIR_ONE_QUBIT_ROTATION_MAP,
     PYQIR_THREE_QUBIT_OP_MAP,
