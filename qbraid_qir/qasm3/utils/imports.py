@@ -17,8 +17,6 @@ from openqasm3.ast import (
     AliasStatement,
     ArrayLiteral,
     ArrayType,
-    BinaryExpression,
-    BooleanLiteral,
     BoolType,
     BranchingStatement,
     ClassicalArgument,
@@ -26,9 +24,7 @@ from openqasm3.ast import (
     ClassicalDeclaration,
     ConstantDeclaration,
     DiscreteSet,
-    DurationLiteral,
     ExpressionStatement,
-    FloatLiteral,
 )
 from openqasm3.ast import FloatType as Qasm3FloatType
 from openqasm3.ast import (
@@ -36,7 +32,6 @@ from openqasm3.ast import (
     FunctionCall,
     GateModifierName,
     Identifier,
-    ImaginaryLiteral,
     Include,
     IndexedIdentifier,
     IndexExpression,
@@ -57,7 +52,6 @@ from openqasm3.ast import (
     Statement,
     SubroutineDefinition,
     SwitchStatement,
-    UnaryExpression,
     WhileLoop,
 )
 
@@ -65,8 +59,6 @@ __all__ = [
     "AliasStatement",
     "ArrayLiteral",
     "ArrayType",
-    "BinaryExpression",
-    "BooleanLiteral",
     "BoolType",
     "BranchingStatement",
     "ClassicalArgument",
@@ -74,15 +66,12 @@ __all__ = [
     "ClassicalDeclaration",
     "ConstantDeclaration",
     "DiscreteSet",
-    "DurationLiteral",
     "ExpressionStatement",
-    "FloatLiteral",
     "Qasm3FloatType",
     "ForInLoop",
     "FunctionCall",
     "GateModifierName",
     "Identifier",
-    "ImaginaryLiteral",
     "Include",
     "IndexedIdentifier",
     "IndexExpression",
@@ -101,6 +90,5 @@ __all__ = [
     "Statement",
     "SubroutineDefinition",
     "SwitchStatement",
-    "UnaryExpression",
     "WhileLoop",
 ]
