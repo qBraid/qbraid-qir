@@ -27,6 +27,17 @@ def i(builder, qubits):
     pyqir._native.x(builder, qubits)
 
 
+def measure_x(builder, qubit, result):
+    pyqir._native.h(builder, qubit)
+    pyqir._native.mz(builder, qubit, result)
+
+
+def measure_y(builder, qubit, result):
+    pyqir._native.s_adj(builder, qubit)
+    pyqir._native.h(builder, qubit)
+    pyqir._native.mz(builder, qubit, result)
+
+
 PYQIR_OP_MAP = {
     # Identity Gate
     "I": i,
@@ -51,7 +62,9 @@ PYQIR_OP_MAP = {
     # Three-Qubit Gates
     "TOFFOLI": pyqir._native.ccx,
     # Classical Gates/Operations
-    "MEASURE": pyqir._native.mz,
+    "measure_z": pyqir._native.mz,
+    "measure_x": measure_x,
+    "measure_y": measure_y,
     "reset": pyqir._native.reset,
 }
 
@@ -76,7 +89,22 @@ def map_cirq_op_to_pyqir_callable(
         gate = operation.gate
 
         if isinstance(gate, cirq.ops.MeasurementGate):
-            op_name = "MEASURE"
+            op_name = "measure_z"
+
+        elif isinstance(gate, cirq.ops.PauliMeasurementGate):
+            op_name = str(gate.observable())
+            op_name = op_name.removeprefix("+")  # Remove the '+' sign
+            op_name = op_name.removeprefix("-")  # Remove the '-' sign
+            # TODO: is XYZ same as X tensor Y tensor Z?
+            #      if yes, then we can extend this to multi-qubit measurements
+
+            if op_name not in ["X", "Y", "Z"]:
+                raise CirqConversionError(
+                    f"Multi-qubit gate {op_name} not supported for measurement."
+                )
+
+            op_name = f"measure_{op_name.lower()}"
+
         elif isinstance(gate, (cirq.ops.Rx, cirq.ops.Ry, cirq.ops.Rz)):
             op_name = gate.__class__.__name__
         elif isinstance(gate, cirq.ops.Pauli):

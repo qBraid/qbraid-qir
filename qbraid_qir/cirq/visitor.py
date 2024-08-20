@@ -146,7 +146,7 @@ class BasicCirqVisitor(CircuitElementVisitor):
         else:
             pyqir_func, op_str = map_cirq_op_to_pyqir_callable(operation)
 
-            if op_str == "MEASURE":
+            if op_str.startswith("measure"):
                 handle_measurement(pyqir_func)
             elif op_str in ["Rx", "Ry", "Rz"]:
                 pyqir_func(self._builder, operation.gate._rads, *qubits)

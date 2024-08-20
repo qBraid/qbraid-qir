@@ -15,6 +15,7 @@ Types of changes:
 ## [Unreleased]
 
 ### ➕  New Features 
+* Add support for pauli measurement operators in `cirq` converter ( [#144](https://github.com/qBraid/qbraid-qir/pull/144) )
 
 ### 🌟  Improvements 
 

@@ -30,6 +30,8 @@ from tests.cirq_qir.fixtures.basic_gates import (
 from tests.qir_utils import (
     assert_equal_qir,
     check_attributes,
+    check_measure_op,
+    check_single_qubit_gate_op,
     double_op_call_string,
     generic_op_call_string,
     get_entry_point_body,
@@ -159,6 +161,40 @@ def test_measurement(circuit_name, request):
     assert func[2] == result_record_output_string(0)
     assert func[3] == return_string()
     assert len(func) == 4
+
+
+def test_single_pauli_measurement():
+    # single Pauli gate
+    qubit = cirq.LineQubit.range(1)
+    circuit = cirq.Circuit()
+    ps = cirq.X(qubit[0])
+    meas_gates = cirq.measure_single_paulistring(ps)
+    circuit.append(meas_gates)
+
+    qir_module = cirq_to_qir(circuit, record_output=False)
+    generated_qir = str(qir_module).splitlines()
+
+    check_attributes(generated_qir, 1, 1)
+    check_single_qubit_gate_op(generated_qir, 1, [0], "h")
+    check_measure_op(generated_qir, 1, [0], [0])
+
+
+def test_pauli_term_measurements():
+    # single terms
+    qubits = cirq.LineQubit.range(3)
+    circuit = cirq.Circuit()
+    ps = cirq.X(qubits[0]) * cirq.Y(qubits[1]) * cirq.X(qubits[2])
+    meas_gates = cirq.measure_paulistring_terms(ps)
+    for gate in meas_gates:
+        circuit.append(gate)
+
+    qir_module = cirq_to_qir(circuit, record_output=False)
+    generated_qir = str(qir_module).splitlines()
+
+    check_attributes(generated_qir, 3, 3)
+    check_single_qubit_gate_op(generated_qir, 1, [1], "sdg")
+    check_single_qubit_gate_op(generated_qir, 3, [0, 1, 2], "h")
+    check_measure_op(generated_qir, 3, [0, 1, 2], [0, 1, 2])
 
 
 def test_verify_qir_bell_fixture(pyqir_bell):
