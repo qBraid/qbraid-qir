@@ -15,6 +15,7 @@ import cirq
 import numpy as np
 import pytest
 
+from qbraid_qir.cirq.exceptions import CirqConversionError
 from qbraid_qir.cirq.passes import preprocess_circuit
 
 # pylint: disable=redefined-outer-name
@@ -56,3 +57,13 @@ def test_empty_circuit_conversion():
     circuit = cirq.Circuit()
     converted_circuit = preprocess_circuit(circuit)
     assert len(converted_circuit.all_qubits()) == 0, "Converted empty circuit should have no qubits"
+
+
+def test_multi_qubit_measurement_error():
+    qubits = cirq.LineQubit.range(3)
+    circuit = cirq.Circuit()
+    ps = cirq.X(qubits[0]) * cirq.Y(qubits[1]) * cirq.X(qubits[2])
+    meas_gates = cirq.measure_single_paulistring(ps)
+    circuit.append(meas_gates)
+    with pytest.raises(CirqConversionError):
+        preprocess_circuit(circuit)
