@@ -37,8 +37,8 @@ from openqasm3.ast import (
     UnaryExpression,
 )
 
-from ..elements import Variable
-from ..exceptions import Qasm3ConversionError
+from .elements import Variable
+from .exceptions import Qasm3ConversionError
 from .maps import LIMITS_MAP, VARIABLE_TYPE_MAP, qasm_variable_type_cast
 
 
@@ -488,7 +488,6 @@ class Qasm3VisitorUtils:
     # ************* IF statement utilities *************
 
     # ************* Function evaluation utilities *************
-    # TODO: Do we make a separate class for function evaluation utilities?
 
     @staticmethod
     # pylint: disable=inconsistent-return-statements
@@ -536,5 +535,25 @@ class Qasm3VisitorUtils:
                 ),
                 return_value,
             )
+
+    @staticmethod
+    def validate_unique_qubits(qubit_map, reg_name, indices):
+        """
+        Validates that the qubits in the given register are unique.
+
+        Args:
+            reg_name (str): The name of the register.
+            indices (list): A list of indices representing the qubits.
+
+        Raises:
+            Qasm3ConversionError: If duplicate qubits are found in the function call.
+        """
+        if reg_name not in qubit_map:
+            qubit_map[reg_name] = set(indices)
+        else:
+            for idx in indices:
+                if idx in qubit_map[reg_name]:
+                    return False
+        return True
 
     # ************* Function evaluation utilities *************

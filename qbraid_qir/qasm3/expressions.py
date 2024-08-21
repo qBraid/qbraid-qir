@@ -13,22 +13,19 @@ Module containing the class for evaluating QASM3 expressions.
 
 """
 
+from openqasm3.ast import BinaryExpression, BooleanLiteral, BoolType, DurationLiteral, FloatLiteral
+from openqasm3.ast import FloatType as Qasm3FloatType
 from openqasm3.ast import (
-    BinaryExpression,
-    BooleanLiteral,
-    BoolType,
-    DurationLiteral,
-    FloatLiteral,
     FunctionCall,
     Identifier,
     ImaginaryLiteral,
     IndexExpression,
     IntegerLiteral,
-    UnaryExpression,
 )
+from openqasm3.ast import IntType as Qasm3IntType
+from openqasm3.ast import UnaryExpression
 
-from ..exceptions import Qasm3ConversionError
-from .imports import Qasm3FloatType, Qasm3IntType
+from .exceptions import Qasm3ConversionError
 from .maps import CONSTANTS_MAP, qasm3_expression_op_map
 from .visitor_utils import Qasm3VisitorUtils
 
@@ -38,8 +35,8 @@ class Qasm3ExprEvaluator:
 
     @staticmethod
     def _check_var_in_scope(visitor_obj, var_name, expression):
-        """
-        Checks if a variable is in scope.
+        """Checks if a variable is in scope.
+
         Args:
             visitor_obj: The visitor object.
             var_name: The name of the variable to check.
@@ -54,8 +51,7 @@ class Qasm3ExprEvaluator:
 
     @staticmethod
     def _check_var_constant(visitor_obj, var_name, const_expr, expression):
-        """
-        Checks if a variable is constant.
+        """Checks if a variable is constant.
 
         Args:
             visitor_obj: The visitor object.
@@ -65,7 +61,7 @@ class Qasm3ExprEvaluator:
 
         Raises:
             Qasm3ConversionError: If the variable is not a constant in the given
-                                  expression.
+                                expression.
         """
         const_var = visitor_obj._get_from_visible_scope(var_name).is_constant
         if const_expr and not const_var:
@@ -76,8 +72,7 @@ class Qasm3ExprEvaluator:
 
     @staticmethod
     def _check_var_type(visitor_obj, var_name, reqd_type, expression):
-        """
-        Check the type of a variable and raise an error if it does not match the
+        """Check the type of a variable and raise an error if it does not match the
         required type.
 
         Args:
@@ -100,8 +95,8 @@ class Qasm3ExprEvaluator:
 
     @staticmethod
     def _check_var_initialized(var_name, var_value, expression):
-        """
-        Checks if a variable is initialized and raises an error if it is not.
+        """Checks if a variable is initialized and raises an error if it is not.
+
         Args:
             var_name (str): The name of the variable.
             var_value: The value of the variable.
@@ -116,8 +111,8 @@ class Qasm3ExprEvaluator:
 
     @staticmethod
     def _get_var_value(visitor_obj, var_name, indices, expression):
-        """
-        Retrieves the value of a variable.
+        """Retrieves the value of a variable.
+
         Args:
             visitor_obj (Visitor): The visitor object.
             var_name (str): The name of the variable.
@@ -139,21 +134,21 @@ class Qasm3ExprEvaluator:
             )
         return var_value
 
-    # pylint: disable-next=too-many-return-statements, too-many-statements
     @staticmethod
+    # pylint: disable-next=too-many-return-statements, too-many-branches
     def evaluate_expression(visitor_obj, expression, const_expr: bool = False, reqd_type=None):
         """Evaluate an expression. Scalar types are assigned by value.
-        +
-                Args:
-                    expression (Any): The expression to evaluate.
-                    const_expr (bool): Whether the expression is a constant. Defaults to False.
-                    reqd_type (Any): The required type of the expression. Defaults to None.
 
-                Returns:
-                    Any : The result of the evaluation.
+        Args:
+            expression (Any): The expression to evaluate.
+            const_expr (bool): Whether the expression is a constant. Defaults to False.
+            reqd_type (Any): The required type of the expression. Defaults to None.
 
-                Raises:
-                    Qasm3ConversionError: If the expression is not supported.
+        Returns:
+            Any : The result of the evaluation.
+
+        Raises:
+            Qasm3ConversionError: If the expression is not supported.
         """
         if expression is None:
             return None

@@ -25,7 +25,7 @@ from pyqir import (
     required_num_results,
 )
 
-from qbraid_qir.qasm3.utils.maps import CONSTANTS_MAP
+from qbraid_qir.qasm3.maps import CONSTANTS_MAP
 
 
 def double_to_hex(f):
