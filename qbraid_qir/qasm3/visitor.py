@@ -37,7 +37,7 @@ from .maps import (
 )
 from .visitor_utils import Qasm3VisitorUtils
 
-_log = logging.getLogger(name=__name__)
+logger = logging.getLogger(__name__)
 
 
 class ProgramElementVisitor(metaclass=ABCMeta):
@@ -90,7 +90,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        _log.debug("Visiting Qasm3 module '%s' (%d)", module.name, module.num_qubits)
+        logger.debug("Visiting Qasm3 module '%s' (%d)", module.name, module.num_qubits)
         self._module = module.module
         context = self._module.context
         entry = pyqir.entry_point(self._module, module.name, module.num_qubits, module.num_clbits)
@@ -299,7 +299,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        _log.debug("Visiting register '%s'", str(register))
+        logger.debug("Visiting register '%s'", str(register))
         is_qubit = isinstance(register, qasm3_ast.QubitDeclaration)
 
         current_size = len(self._qubit_labels) if is_qubit else len(self._clbit_labels)
@@ -337,7 +337,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         self._label_scope_level[self._curr_scope].add(register_name)
 
-        _log.debug("Added labels for register '%s'", str(register))
+        logger.debug("Added labels for register '%s'", str(register))
 
     def _get_qubits_from_range_definition(
         self, range_def: qasm3_ast.RangeDefinition, qreg_size: int, is_qubit_reg: bool
@@ -458,7 +458,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        _log.debug("Visiting measurement statement '%s'", str(statement))
+        logger.debug("Visiting measurement statement '%s'", str(statement))
         source = statement.measure.qubit
         target = statement.target
         source_id, target_id = None, None
@@ -541,7 +541,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        _log.debug("Visiting reset statement '%s'", str(statement))
+        logger.debug("Visiting reset statement '%s'", str(statement))
         if len(self._function_qreg_size_map) > 0:  # atleast in SOME function scope
             # transform qubits to use the global qreg identifiers
             statement.qubits = self._transform_function_qubits(
@@ -635,7 +635,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         """
 
-        _log.debug("Visiting basic gate operation '%s'", str(operation))
+        logger.debug("Visiting basic gate operation '%s'", str(operation))
         op_name: str = operation.name.name
         op_qubits = self._get_op_qubits(operation, self._global_qreg_size_map)
         inverse_action = None
@@ -683,7 +683,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        _log.debug("Visiting custom gate operation '%s'", str(operation))
+        logger.debug("Visiting custom gate operation '%s'", str(operation))
         gate_name: str = operation.name.name
         gate_definition: qasm3_ast.QuantumGateDefinition = self._custom_gates[gate_name]
         op_qubits = self._get_op_qubits(operation, self._global_qreg_size_map, qir_form=False)
@@ -724,7 +724,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 Qasm3VisitorUtils.transform_gate_qubits(gate_op_copy, qubit_map)
                 # need to trickle the inverse down to the child gates
                 if inverse:
-                    # span doesn't matter as we don't analyse it
+                    # span doesn't matter as we don't analyze it
                     gate_op_copy.modifiers.append(
                         qasm3_ast.QuantumGateModifier(qasm3_ast.GateModifierName.inv, None)
                     )
@@ -979,7 +979,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             else:
                 indices = [idx[0] for idx in lvalue.indices]
 
-            validated_indices = Qasm3VisitorUtils.analyse_classical_indices(
+            validated_indices = Qasm3VisitorUtils.analyze_classical_indices(
                 indices, self._get_from_visible_scope(var_name)
             )
             Qasm3VisitorUtils.update_array_element(var.value, validated_indices, var_value)
@@ -1029,7 +1029,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._label_scope_level[self._curr_scope] = set()
 
         condition = statement.condition
-        positive_branching = Qasm3VisitorUtils.analyse_branch_condition(condition)
+        positive_branching = Qasm3VisitorUtils.analyze_branch_condition(condition)
 
         if_block = statement.if_block
         if not statement.if_block:
@@ -1505,7 +1505,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         self._global_qreg_size_map[alias_reg_name] = alias_reg_size
 
-        _log.debug("Added labels for aliasing '%s'", target)
+        logger.debug("Added labels for aliasing '%s'", target)
 
     def _visit_switch_statement(self, statement: qasm3_ast.SwitchStatement) -> None:
         """Visit a switch statement element.
@@ -1516,14 +1516,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        # 1. analyse the target - it should ONLY be int, not casted
+        # 1. analyze the target - it should ONLY be int, not casted
         switch_target = statement.target
 
         # either identifier or indexed expression
         if isinstance(switch_target, qasm3_ast.Identifier):
             switch_target_name = switch_target.name
         else:
-            switch_target_name, _ = Qasm3VisitorUtils.analyse_index_expression(switch_target)
+            switch_target_name, _ = Qasm3VisitorUtils.analyze_index_expression(switch_target)
 
         if not Qasm3VisitorUtils.validate_variable_type(
             self._get_from_visible_scope(switch_target_name), qasm3_ast.IntType
@@ -1596,7 +1596,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         Returns:
             None
         """
-        _log.debug("Visiting statement '%s'", str(statement))
+        logger.debug("Visiting statement '%s'", str(statement))
         if isinstance(statement, qasm3_ast.Include):
             pass
         elif isinstance(statement, qasm3_ast.QuantumMeasurementStatement):

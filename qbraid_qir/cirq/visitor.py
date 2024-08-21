@@ -25,7 +25,7 @@ from pyqir import BasicBlock, Builder, Constant, IntType, PointerType
 from .elements import CirqModule
 from .opsets import map_cirq_op_to_pyqir_callable
 
-_log = logging.getLogger(name=__name__)
+logger = logging.getLogger(__name__)
 
 
 class CircuitElementVisitor(metaclass=ABCMeta):
@@ -58,7 +58,7 @@ class BasicCirqVisitor(CircuitElementVisitor):
         self._record_output = record_output
 
     def visit_cirq_module(self, module: CirqModule) -> None:
-        _log.debug("Visiting Cirq module '%s' (%d)", module.name, module.num_qubits)
+        logger.debug("Visiting Cirq module '%s' (%d)", module.name, module.num_qubits)
         self._module = module.module
         context = self._module.context
         entry = pyqir.entry_point(self._module, module.name, module.num_qubits, module.num_clbits)
@@ -90,7 +90,7 @@ class BasicCirqVisitor(CircuitElementVisitor):
             pyqir.rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
 
     def visit_register(self, qids: List[cirq.Qid]) -> None:
-        _log.debug("Visiting qids '%s'", str(qids))
+        logger.debug("Visiting qids '%s'", str(qids))
 
         if not isinstance(qids, list):
             raise TypeError("Parameter is not a list.")
@@ -99,7 +99,7 @@ class BasicCirqVisitor(CircuitElementVisitor):
             raise TypeError("All elements in the list must be of type cirq.Qid.")
 
         self._qubit_labels.update({bit: n + len(self._qubit_labels) for n, bit in enumerate(qids)})
-        _log.debug("Added labels for qubits %s", str(qids))
+        logger.debug("Added labels for qubits %s", str(qids))
 
     def visit_operation(self, operation: cirq.Operation) -> None:
         qlabels = [self._qubit_labels.get(bit) for bit in operation.qubits]
@@ -107,7 +107,7 @@ class BasicCirqVisitor(CircuitElementVisitor):
         results = [pyqir.result(self._module.context, n) for n in qlabels]
 
         def handle_measurement(pyqir_func):
-            _log.debug("Visiting measurement operation '%s'", str(operation))
+            logger.debug("Visiting measurement operation '%s'", str(operation))
             for qubit, result in zip(qubits, results):
                 self._measured_qubits[pyqir.qubit_id(qubit)] = True
                 pyqir_func(self._builder, qubit, result)

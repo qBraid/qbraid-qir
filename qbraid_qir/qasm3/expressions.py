@@ -126,7 +126,7 @@ class Qasm3ExprEvaluator:
         if isinstance(expression, Identifier):
             var_value = visitor_obj._get_from_visible_scope(var_name).value
         else:
-            validated_indices = Qasm3VisitorUtils.analyse_classical_indices(
+            validated_indices = Qasm3VisitorUtils.analyze_classical_indices(
                 indices, visitor_obj._get_from_visible_scope(var_name)
             )
             var_value = Qasm3VisitorUtils.find_array_element(
@@ -179,7 +179,7 @@ class Qasm3ExprEvaluator:
             return _process_variable(var_name)
 
         if isinstance(expression, IndexExpression):
-            var_name, indices = Qasm3VisitorUtils.analyse_index_expression(expression)
+            var_name, indices = Qasm3VisitorUtils.analyze_index_expression(expression)
             return _process_variable(var_name, indices)
 
         if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):

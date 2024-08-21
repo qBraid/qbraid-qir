@@ -9,11 +9,11 @@
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
 """
-Module with utility functions for QASM3 visitor 
+Module with utility functions for QASM3 visitor
 
 """
-import sys
-from typing import Optional, Union
+import logging
+from typing import Any, Optional, Union
 
 from openqasm3.ast import (
     ArrayType,
@@ -54,9 +54,8 @@ class Qasm3VisitorUtils:
         Args:
             element (Span): The element in the source code.
         """
-        print(
-            f"Error at line {element.start_line}, column {element.start_column} in QASM file",
-            file=sys.stderr,
+        logging.error(
+            "Error at line %s, column %s in QASM file", element.start_line, element.start_column
         )
 
     @staticmethod
@@ -91,18 +90,18 @@ class Qasm3VisitorUtils:
         Raises:
             Qasm3ConversionError: If the index is out of range.
         """
-        # nothing to validate if index is None
-        if index is None:
-            return
+        if index is None or 0 <= index < size:
+            return None
 
-        if not 0 <= index < size:
-            raise Qasm3ConversionError(
-                f"Index {index} out of range for register of size {size} in "
-                f"{'qubit' if qubit else 'clbit'}"
-            )
+        raise Qasm3ConversionError(
+            f"Index {index} out of range for register of size {size} in "
+            f"{'qubit' if qubit else 'clbit'}"
+        )
 
     @staticmethod
-    def validate_statement_type(blacklisted_stmts: set, statement: Statement, construct: str):
+    def validate_statement_type(
+        blacklisted_stmts: set, statement: Statement, construct: str
+    ) -> None:
         """Validate the type of a statement.
 
         Args:
@@ -115,29 +114,29 @@ class Qasm3VisitorUtils:
         """
         stmt_type = statement.__class__
         if stmt_type in blacklisted_stmts:
-            if stmt_type == ClassicalDeclaration:
-                if statement.type.__class__ == ArrayType:
-                    Qasm3VisitorUtils.print_err_location(statement.span)
-                    raise Qasm3ConversionError(
-                        f"Unsupported statement {stmt_type} with {statement.type.__class__}"
-                        " in {construct} block"
-                    )
-            else:
+            if stmt_type != ClassicalDeclaration:
                 Qasm3VisitorUtils.print_err_location(statement.span)
                 raise Qasm3ConversionError(
                     f"Unsupported statement {stmt_type} in {construct} block"
+                )
+
+            if statement.type.__class__ == ArrayType:
+                Qasm3VisitorUtils.print_err_location(statement.span)
+                raise Qasm3ConversionError(
+                    f"Unsupported statement {stmt_type} with {statement.type.__class__}"
+                    f" in {construct} block"
                 )
 
     # ************* Generic utilities *************
 
     # ************* Classical Variable utilities *************
     @staticmethod
-    def validate_variable_type(variable: Variable, reqd_type):
+    def validate_variable_type(variable: Variable, reqd_type: Any) -> bool:
         """Validate the type of a variable.
 
         Args:
             variable (Variable): The variable to validate.
-            reqd_type (any): The required Qasm3 type of the variable.
+            reqd_type (Any): The required Qasm3 type of the variable.
         """
         if not reqd_type:
             return True
@@ -239,7 +238,7 @@ class Qasm3VisitorUtils:
                 values[i] = Qasm3VisitorUtils.validate_variable_assignment_value(variable, value)
 
     @staticmethod
-    def analyse_classical_indices(indices: list[IntegerLiteral], var: Variable) -> None:
+    def analyze_classical_indices(indices: list[IntegerLiteral], var: Variable) -> None:
         """Validate the indices for a classical variable.
 
         Args:
@@ -291,44 +290,44 @@ class Qasm3VisitorUtils:
         return indices_list
 
     @staticmethod
-    def update_array_element(multi_dim_list, indices, value):
+    def update_array_element(multi_dim_arr: list[Any], indices: list[int], value: Any) -> None:
         """Update the value of an array at the specified indices.
 
         Args:
-            multi_dim_list (list): The multi-dimensional list to update.
+            multi_dim_arr (list): The multi-dimensional array to update.
             indices (list[int]): The indices to update.
             value (Any): The value to update.
 
         Returns:
             None
         """
-        temp = multi_dim_list
+        temp = multi_dim_arr
         for index in indices[:-1]:
             temp = temp[index]
         temp[indices[-1]] = value
 
     @staticmethod
-    def find_array_element(multi_dim_list, indices):
+    def find_array_element(multi_dim_arr: list[Any], indices: list[int]) -> Any:
         """Find the value of an array at the specified indices.
 
         Args:
-            multi_dim_list (list): The multi-dimensional list to search.
+            multi_dim_arr (list): The multi-dimensional list to search.
             indices (list[int]): The indices to search.
 
         Returns:
             Any: The value at the specified indices.
         """
-        temp = multi_dim_list
+        temp = multi_dim_arr
         for index in indices:
             temp = temp[index]
         return temp
 
     @staticmethod
-    def analyse_index_expression(index_expr: IndexExpression) -> tuple[str, list[list]]:
-        """Analyse an index expression to get the variable name and indices.
+    def analyze_index_expression(index_expr: IndexExpression) -> tuple[str, list[list]]:
+        """analyze an index expression to get the variable name and indices.
 
         Args:
-            index_expr (IndexExpression): The index expression to analyse.
+            index_expr (IndexExpression): The index expression to analyze.
 
         Returns:
             tuple[str, list[list]]: The variable name and indices.
@@ -407,30 +406,37 @@ class Qasm3VisitorUtils:
         Raises:
             Qasm3ConversionError: If the number of parameters or qubits is invalid.
         """
-        if len(operation.arguments) != len(gate_definition.arguments):
+        op_num_args = len(operation.arguments)
+        gate_def_num_args = len(gate_definition.arguments)
+        if op_num_args != gate_def_num_args:
+            s = "" if gate_def_num_args == 1 else "s"
             Qasm3VisitorUtils.print_err_location(operation.span)
             raise Qasm3ConversionError(
-                f"""Parameter count mismatch for gate {operation.name.name}. Expected \
-{len(gate_definition.arguments)} but got {len(operation.arguments)} in operation"""
+                f"Parameter count mismatch for gate {operation.name.name}: "
+                f"expected {gate_def_num_args} argument{s}, "
+                f"but got {op_num_args} instead."
             )
 
-        if qubits_in_op != len(gate_definition.qubits):
+        gate_def_num_qubits = len(gate_definition.qubits)
+        if qubits_in_op != gate_def_num_qubits:
+            s = "" if gate_def_num_qubits == 1 else "s"
             Qasm3VisitorUtils.print_err_location(operation.span)
             raise Qasm3ConversionError(
-                f"""Qubit count mismatch for gate {operation.name.name}. Expected \
-{len(gate_definition.qubits)} but got {qubits_in_op} in operation"""
+                f"Qubit count mismatch for gate {operation.name.name}: "
+                f"expected {gate_def_num_qubits} qubit{s}, "
+                f"but got {qubits_in_op} instead."
             )
 
     # ************* Quantum Gate utilities *************
 
     # ************* IF statement utilities *************
     @staticmethod
-    def analyse_branch_condition(condition) -> bool:
+    def analyze_branch_condition(condition) -> bool:
         """
-        Analyse the branching condition to determine the branch to take
+        analyze the branching condition to determine the branch to take
 
         Args:
-            condition (Any): The condition to analyse
+            condition (Any): The condition to analyze
 
         Returns:
             bool: The branch to take
@@ -469,7 +475,7 @@ class Qasm3VisitorUtils:
         Get the branch parameters from the branching condition
 
         Args:
-            condition (Any): The condition to analyse
+            condition (Any): The condition to analyze
 
         Returns:
             tuple[Union[int, None], Union[str, None]]: The branch parameters
@@ -494,7 +500,7 @@ class Qasm3VisitorUtils:
     def validate_return_statement(
         subroutine_def: SubroutineDefinition,
         return_statement: ReturnStatement,
-        return_value: any,
+        return_value: Any,
     ):
         """Validate the return type of a function.
 
@@ -537,11 +543,12 @@ class Qasm3VisitorUtils:
             )
 
     @staticmethod
-    def validate_unique_qubits(qubit_map, reg_name, indices):
+    def validate_unique_qubits(qubit_map: dict, reg_name: str, indices: list) -> bool:
         """
         Validates that the qubits in the given register are unique.
 
         Args:
+            qubit_map (dict): Dictionary of qubits.
             reg_name (str): The name of the register.
             indices (list): A list of indices representing the qubits.
 
