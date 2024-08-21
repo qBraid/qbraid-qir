@@ -1586,7 +1586,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
             default_stmts = statement.default.statements
             _evaluate_case(default_stmts)
 
-    # pylint: disable-next=too-many-branches
     def visit_statement(self, statement: qasm3_ast.Statement) -> None:
         """Visit a statement element.
 
@@ -1597,40 +1596,33 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
         logger.debug("Visiting statement '%s'", str(statement))
-        if isinstance(statement, qasm3_ast.Include):
-            pass
-        elif isinstance(statement, qasm3_ast.QuantumMeasurementStatement):
-            self._visit_measurement(statement)
-        elif isinstance(statement, qasm3_ast.QuantumReset):
-            self._visit_reset(statement)
-        elif isinstance(statement, qasm3_ast.QuantumBarrier):
-            self._visit_barrier(statement)
-        elif isinstance(statement, qasm3_ast.QuantumGateDefinition):
-            self._visit_gate_definition(statement)
-        elif isinstance(statement, qasm3_ast.QuantumGate):
-            self._visit_generic_gate_operation(statement)
-        elif isinstance(statement, qasm3_ast.ClassicalDeclaration):
-            self._visit_classical_declaration(statement)
-        elif isinstance(statement, qasm3_ast.ClassicalAssignment):
-            self._visit_classical_assignment(statement)
-        elif isinstance(statement, qasm3_ast.ConstantDeclaration):
-            self._visit_constant_declaration(statement)
-        elif isinstance(statement, qasm3_ast.BranchingStatement):
-            self._visit_branching_statement(statement)
-        elif isinstance(statement, qasm3_ast.ForInLoop):
-            self._visit_forin_loop(statement)
-        elif isinstance(statement, qasm3_ast.AliasStatement):
-            self._visit_alias_statement(statement)
-        elif isinstance(statement, qasm3_ast.SwitchStatement):
-            self._visit_switch_statement(statement)
-        elif isinstance(statement, qasm3_ast.SubroutineDefinition):
-            self._visit_subroutine_definition(statement)
-        elif isinstance(statement, qasm3_ast.ExpressionStatement):
-            self._visit_function_call(statement.expression)
-        elif isinstance(statement, qasm3_ast.IODeclaration):
-            raise NotImplementedError("OpenQASM 3 IO declarations not yet supported")
+
+        visit_map = {
+            qasm3_ast.Include: lambda x: None,  # No operation
+            qasm3_ast.QuantumMeasurementStatement: self._visit_measurement,
+            qasm3_ast.QuantumReset: self._visit_reset,
+            qasm3_ast.QuantumBarrier: self._visit_barrier,
+            qasm3_ast.QuantumGateDefinition: self._visit_gate_definition,
+            qasm3_ast.QuantumGate: self._visit_generic_gate_operation,
+            qasm3_ast.ClassicalDeclaration: self._visit_classical_declaration,
+            qasm3_ast.ClassicalAssignment: self._visit_classical_assignment,
+            qasm3_ast.ConstantDeclaration: self._visit_constant_declaration,
+            qasm3_ast.BranchingStatement: self._visit_branching_statement,
+            qasm3_ast.ForInLoop: self._visit_forin_loop,
+            qasm3_ast.AliasStatement: self._visit_alias_statement,
+            qasm3_ast.SwitchStatement: self._visit_switch_statement,
+            qasm3_ast.SubroutineDefinition: self._visit_subroutine_definition,
+            qasm3_ast.ExpressionStatement: lambda x: self._visit_function_call(x.expression),
+            qasm3_ast.IODeclaration: lambda x: (_ for _ in ()).throw(
+                NotImplementedError("OpenQASM 3 IO declarations not yet supported")
+            ),
+        }
+
+        visitor_function = visit_map.get(type(statement))
+
+        if visitor_function:
+            visitor_function(statement)
         else:
-            # TODO : extend this
             Qasm3VisitorUtils.print_err_location(statement.span)
             raise Qasm3ConversionError(f"Unsupported statement of type {type(statement)}")
 
