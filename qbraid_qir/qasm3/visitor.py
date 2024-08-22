@@ -25,7 +25,7 @@ import pyqir
 import pyqir._native
 import pyqir.rt
 
-from .analyser import Qasm3Analyser
+from .analyzer import Qasm3Analyzer
 from .elements import Context, InversionOp, Qasm3Module, Variable
 from .exceptions import Qasm3ConversionError, raise_qasm3_error
 from .expressions import Qasm3ExprEvaluator
@@ -967,7 +967,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             else:
                 indices = [idx[0] for idx in lvalue.indices]
 
-            validated_indices = Qasm3Analyser.analyze_classical_indices(
+            validated_indices = Qasm3Analyzer.analyze_classical_indices(
                 indices, self._get_from_visible_scope(var_name)
             )
             Qasm3Transformer.update_array_element(var.value, validated_indices, var_value)
@@ -1017,7 +1017,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._label_scope_level[self._curr_scope] = set()
 
         condition = statement.condition
-        positive_branching = Qasm3Analyser.analyse_branch_condition(condition)
+        positive_branching = Qasm3Analyzer.analyse_branch_condition(condition)
 
         if_block = statement.if_block
         if not statement.if_block:
@@ -1474,7 +1474,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if isinstance(switch_target, qasm3_ast.Identifier):
             switch_target_name = switch_target.name
         else:
-            switch_target_name, _ = Qasm3Analyser.analyze_index_expression(switch_target)
+            switch_target_name, _ = Qasm3Analyzer.analyze_index_expression(switch_target)
 
         if not Qasm3Validator.validate_variable_type(
             self._get_from_visible_scope(switch_target_name), qasm3_ast.IntType

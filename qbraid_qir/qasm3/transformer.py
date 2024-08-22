@@ -43,7 +43,6 @@ class Qasm3Transformer:
     def set_visitor_obj(cls, visitor_obj):
         cls.visitor_obj = visitor_obj
 
-    # ************* Classical Variable utilities *************
     @staticmethod
     def update_array_element(multi_dim_arr: list[Any], indices: list[int], value: Any) -> None:
         """Update the value of an array at the specified indices.
@@ -110,9 +109,6 @@ class Qasm3Transformer:
         Qasm3Validator.validate_register_index(end_qid - 1, qreg_size, qubit=is_qubit_reg)
         return list(range(start_qid, end_qid, step))
 
-    # ************* Classical Variable utilities *************
-
-    # ************* Quantum Gate utilities *************
     @staticmethod
     def transform_gate_qubits(
         gate_op: QuantumGate, qubit_map: dict[str, IndexedIdentifier]
@@ -121,7 +117,7 @@ class Qasm3Transformer:
 
         Args:
             gate_op (QuantumGate): The gate operation to transform.
-            qubit_map (Dict[str, IndexedIdentifier]): The qubit map to use for transformation.
+            qubit_map (dict[str, IndexedIdentifier]): The qubit map to use for transformation.
 
         Returns:
             None
@@ -154,9 +150,6 @@ class Qasm3Transformer:
                 gate_op.arguments[i] = param_map[param.name]
             # TODO : update the arg value in expressions not just SINGLE identifiers
 
-    # ************* Quantum Gate utilities *************
-
-    # ************* If statement utilities *************
     @staticmethod
     def get_branch_params(
         condition: Union[UnaryExpression, BinaryExpression, IndexExpression]
@@ -182,9 +175,6 @@ class Qasm3Transformer:
             return condition.index[0].value, condition.collection.name
         return None, None
 
-    # ************* If statement utilities *************
-
-    # ************* Function utilities *************
     @classmethod
     def transform_function_qubits(
         cls,
@@ -195,8 +185,8 @@ class Qasm3Transformer:
         """Transform the qubits of a function call to the actual qubits.
 
         Args:
-            visitor_obj : The visitor object.
-            gate_op : The quantum operation to transform.
+            visitor_obj: The visitor object.
+            gate_op: The quantum operation to transform.
             formal_qreg_sizes (dict[str: int]): The formal qubit register sizes.
             qubit_map (dict[tuple: tuple]): The mapping of formal qubits to actual qubits.
 
@@ -220,5 +210,3 @@ class Qasm3Transformer:
             )
 
         return transformed_qubits
-
-    # ************* Function utilities *************

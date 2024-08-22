@@ -25,7 +25,7 @@ from openqasm3.ast import (
 from openqasm3.ast import IntType as Qasm3IntType
 from openqasm3.ast import UnaryExpression
 
-from .analyser import Qasm3Analyser
+from .analyzer import Qasm3Analyzer
 from .exceptions import Qasm3ConversionError, raise_qasm3_error
 from .maps import CONSTANTS_MAP, qasm3_expression_op_map
 from .validator import Qasm3Validator
@@ -137,10 +137,10 @@ class Qasm3ExprEvaluator:
         if isinstance(expression, Identifier):
             var_value = cls.visitor_obj._get_from_visible_scope(var_name).value
         else:
-            validated_indices = Qasm3Analyser.analyze_classical_indices(
+            validated_indices = Qasm3Analyzer.analyze_classical_indices(
                 indices, cls.visitor_obj._get_from_visible_scope(var_name)
             )
-            var_value = Qasm3Analyser.find_array_element(
+            var_value = Qasm3Analyzer.find_array_element(
                 cls.visitor_obj._get_from_visible_scope(var_name).value, validated_indices
             )
         return var_value
@@ -192,7 +192,7 @@ class Qasm3ExprEvaluator:
             return _process_variable(var_name)
 
         if isinstance(expression, IndexExpression):
-            var_name, indices = Qasm3Analyser.analyze_index_expression(expression)
+            var_name, indices = Qasm3Analyzer.analyze_index_expression(expression)
             return _process_variable(var_name, indices)
 
         if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):

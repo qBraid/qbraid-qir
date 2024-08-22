@@ -32,7 +32,6 @@ from .maps import LIMITS_MAP, VARIABLE_TYPE_MAP, qasm_variable_type_cast
 class Qasm3Validator:
     """Class with validation functions for QASM3 visitor"""
 
-    # ************* Generic validations *************
     @staticmethod
     def validate_register_index(index: Optional[int], size: int, qubit: bool = False) -> None:
         """Validate the index for a register.
@@ -82,10 +81,6 @@ class Qasm3Validator:
                     span=statement.span,
                 )
 
-    # ************* Generic validations *************
-
-    # ************* Classical Variable utilities *************
-
     @staticmethod
     def validate_variable_type(variable: Optional[Variable], reqd_type: Any) -> bool:
         """Validate the type of a variable.
@@ -130,6 +125,7 @@ class Qasm3Validator:
 
         # For each type we will have a "castable" type set and its corresponding cast operation
         type_casted_value = qasm_variable_type_cast(qasm_type, variable.name, base_size, value)
+
         # check 2 - range match , if bits mentioned in base size
         if type_to_match == int:
             base_size = variable.base_size
@@ -202,10 +198,6 @@ class Qasm3Validator:
                     )
                 values[i] = Qasm3Validator.validate_variable_assignment_value(variable, value)
 
-    # ************* Classical Variable utilities *************
-
-    # ************* Quantum Gate utilities *************
-
     @staticmethod
     def validate_gate_call(
         operation: QuantumGate,
@@ -241,13 +233,8 @@ class Qasm3Validator:
                 span=operation.span,
             )
 
-    # ************* Quantum Gate utilities *************
-
-    # ************* Function evaluation utilities *************
-
     @staticmethod
-    # pylint: disable=inconsistent-return-statements
-    def validate_return_statement(
+    def validate_return_statement(  # pylint: disable=inconsistent-return-statements
         subroutine_def: SubroutineDefinition,
         return_statement: ReturnStatement,
         return_value: Any,
@@ -315,5 +302,3 @@ class Qasm3Validator:
                 if idx in qubit_map[reg_name]:
                     return False
         return True
-
-    # ************* Function evaluation utilities *************

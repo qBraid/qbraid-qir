@@ -26,10 +26,9 @@ from .elements import Variable
 from .exceptions import Qasm3ConversionError, raise_qasm3_error
 
 
-class Qasm3Analyser:
+class Qasm3Analyzer:
     """Class with utility functions for analyzing QASM3 elements"""
 
-    # ************* Classical Variable utilities *************
     @staticmethod
     def analyze_classical_indices(indices: list[IntegerLiteral], var: Variable) -> None:
         """Validate the indices for a classical variable.
@@ -50,42 +49,43 @@ class Qasm3Analyser:
 
         if not var_dimensions:
             raise_qasm3_error(
-                f"Indexing error. Variable {var_name} is not an array",
-                Qasm3ConversionError,
-                indices[0].span,
+                message=f"Indexing error. Variable {var_name} is not an array",
+                err_type=Qasm3ConversionError,
+                span=indices[0].span,
             )
         if len(indices) != len(var_dimensions):
             raise_qasm3_error(
-                f"Invalid number of indices for variable {var_name}. "
+                message=f"Invalid number of indices for variable {var_name}. "
                 f"Expected {len(var_dimensions)} but got {len(indices)}",
-                Qasm3ConversionError,
-                indices[0].span,
+                err_type=Qasm3ConversionError,
+                span=indices[0].span,
             )
 
         for i, index in enumerate(indices):
             if isinstance(index, RangeDefinition):
                 raise_qasm3_error(
-                    f"Range based indexing {index} not supported for "
+                    message=f"Range based indexing {index} not supported for "
                     f"classical variable {var_name}",
-                    Qasm3ConversionError,
-                    index.span,
+                    err_type=Qasm3ConversionError,
+                    span=index.span,
                 )
 
             if not isinstance(index, IntegerLiteral):
                 raise_qasm3_error(
-                    f"Unsupported index type {type(index)} for " f"classical variable {var_name}",
-                    Qasm3ConversionError,
-                    index.span,
+                    message=f"Unsupported index type {type(index)} for "
+                    f"classical variable {var_name}",
+                    err_type=Qasm3ConversionError,
+                    span=index.span,
                 )
             index_value = index.value
             curr_dimension = var_dimensions[i]
 
             if index_value < 0 or index_value >= curr_dimension:
                 raise_qasm3_error(
-                    f"Index {index_value} out of bounds for dimension {i+1} "
+                    message=f"Index {index_value} out of bounds for dimension {i+1} "
                     f"of variable {var_name}",
-                    Qasm3ConversionError,
-                    index.span,
+                    err_type=Qasm3ConversionError,
+                    span=index.span,
                 )
             indices_list.append(index_value)
 
@@ -136,9 +136,6 @@ class Qasm3Analyser:
             temp = temp[index]
         return temp
 
-    # ************* Classical Variable utilities *************
-
-    # ************* If statement utilities *************
     @staticmethod
     def analyse_branch_condition(
         condition: Union[UnaryExpression, BinaryExpression, IndexExpression]
@@ -156,32 +153,32 @@ class Qasm3Analyser:
         if isinstance(condition, UnaryExpression):
             if condition.op.name != "!":
                 raise_qasm3_error(
-                    f"Unsupported unary expression '{condition.op.name}' in if condition",
-                    Qasm3ConversionError,
-                    condition.span,
+                    message=f"Unsupported unary expression '{condition.op.name}' in if condition",
+                    err_type=Qasm3ConversionError,
+                    span=condition.span,
                 )
             return False
         if isinstance(condition, BinaryExpression):
             if condition.op.name != "==":
                 raise_qasm3_error(
-                    f"Unsupported binary expression '{condition.op.name}' in if condition",
-                    Qasm3ConversionError,
-                    condition.span,
+                    message=f"Unsupported binary expression '{condition.op.name}' in if condition",
+                    err_type=Qasm3ConversionError,
+                    span=condition.span,
                 )
             if not isinstance(condition.lhs, IndexExpression):
                 raise_qasm3_error(
-                    f"Unsupported expression type '{type(condition.rhs)}' in if condition",
-                    Qasm3ConversionError,
-                    condition.span,
+                    message=f"Unsupported expression type '{type(condition.rhs)}' in if condition",
+                    err_type=Qasm3ConversionError,
+                    span=condition.span,
                 )
             return condition.rhs.value != 0
         if not isinstance(condition, IndexExpression):
             raise_qasm3_error(
-                f"Unsupported expression type '{type(condition)}' in if condition. "
-                "Can only be a simple comparison",
-                Qasm3ConversionError,
-                condition.span,
+                message=(
+                    f"Unsupported expression type '{type(condition)}' in if condition. "
+                    "Can only be a simple comparison"
+                ),
+                err_type=Qasm3ConversionError,
+                span=condition.span,
             )
         return True
-
-    # ************* If statement utilities *************
