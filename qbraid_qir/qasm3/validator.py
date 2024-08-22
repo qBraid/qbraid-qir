@@ -99,7 +99,7 @@ class Qasm3Validator:
         return isinstance(variable.base_type, reqd_type)
 
     @staticmethod
-    def validate_variable_assignment_value(variable: Variable, value) -> None:
+    def validate_variable_assignment_value(variable: Variable, value) -> Any:
         """Validate the assignment of a value to a variable.
 
         Args:
