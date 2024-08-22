@@ -82,6 +82,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._curr_scope = 0
         self._label_scope_level = {self._curr_scope: set()}
 
+        self._init_utilities()
+
     def visit_qasm3_module(self, module: Qasm3Module) -> None:
         """
         Visit a Qasm3 module.
@@ -105,6 +107,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
             i8p = pyqir.PointerType(pyqir.IntType(context, 8))
             nullptr = pyqir.Constant.null(i8p)
             pyqir.rt.initialize(self._builder, nullptr)
+
+    def _init_utilities(self):
+        """Initialize the utilities for the visitor."""
+        for class_obj in [Qasm3Transformer, Qasm3ExprEvaluator]:
+            class_obj.set_visitor_obj(self)
 
     @property
     def entry_point(self) -> str:
@@ -153,7 +160,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise IndexError("No scopes available to get")
         return self._scope[0]
 
-    def _check_in_scope(self, var_name: str, curr_scope) -> bool:
+    def _check_in_scope(self, var_name: str) -> bool:
         """
         Checks if a variable is in scope.
 
@@ -174,12 +181,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
           OR the GLOBAL context
         - Why then do we need a new scope for a block?
         - Well, if the block redeclares a variable in its scope, then the
-          variable in the parent scope is shadowed
-        - We need to remember the original value of the shadowed variable when we exit
-          the block scope
+          variable in the parent scope is shadowed. We need to remember the
+          original value of the shadowed variable when we exit the block scope
 
         """
         global_scope = self._get_global_scope()
+        curr_scope = self._get_curr_scope()
         if self._in_global_scope():
             return var_name in global_scope
         if self._in_function_scope() or self._in_gate_scope():
@@ -314,7 +321,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         size_map = self._global_qreg_size_map if is_qubit else self._global_creg_size_map
         label_map = self._qubit_labels if is_qubit else self._clbit_labels
 
-        if self._check_in_scope(register_name, self._get_curr_scope()):
+        if self._check_in_scope(register_name):
             raise_qasm3_error(
                 f"Invalid declaration of register with name '{register_name}'", span=register.span
             )
@@ -340,40 +347,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         logger.debug("Added labels for register '%s'", str(register))
 
-    def _get_qubits_from_range_definition(
-        self, range_def: qasm3_ast.RangeDefinition, qreg_size: int, is_qubit_reg: bool
-    ) -> list[int]:
-        """Get the qubits from a range definition.
-        Args:
-            range_def (qasm3_ast.RangeDefinition): The range definition to get qubits from.
-            qreg_size (int): The size of the register.
-            is_qubit_reg (bool): Whether the register is a qubit register.
-        Returns:
-            list[int]: The list of qubit identifiers.
-        """
-        start_qid = (
-            0
-            if range_def.start is None
-            else Qasm3ExprEvaluator.evaluate_expression(self, range_def.start)
-        )
-        end_qid = (
-            qreg_size
-            if range_def.end is None
-            else Qasm3ExprEvaluator.evaluate_expression(self, range_def.end)
-        )
-        step = (
-            1
-            if range_def.step is None
-            else Qasm3ExprEvaluator.evaluate_expression(self, range_def.step)
-        )
-        Qasm3Validator.validate_register_index(start_qid, qreg_size, qubit=is_qubit_reg)
-        Qasm3Validator.validate_register_index(end_qid - 1, qreg_size, qubit=is_qubit_reg)
-        return list(range(start_qid, end_qid, step))
-
-    def _check_if_name_in_scope(self, name: str, operation) -> None:
+    def _check_if_name_in_scope(self, name: str, operation: any) -> None:
         """Check if a name is in scope to avoid duplicate declarations.
         Args:
             name (str): The name to check.
+            operation (Any): The operation to check the name in scope for.
+
         Returns:
             bool: Whether the name is in scope.
         """
@@ -384,14 +363,18 @@ class BasicQasmVisitor(ProgramElementVisitor):
             f"Variable {name} not in scope for operation {operation}", span=operation.span
         )
 
-    def _get_op_qubits(self, operation, qreg_size_map, qir_form: bool = True) -> list[pyqir.qubit]:
+    def _get_op_qubits(
+        self, operation: any, qreg_size_map: dict, qir_form: bool = True
+    ) -> list[Union[pyqir.qubit, qasm3_ast.IndexedIdentifier]]:
         """Get the qubits for the operation.
 
         Args:
             operation (Any): The operation to get qubits for.
+            qreg_size_map (dict): The size map of the registers in scope.
+            qir_form (bool): Whether to return qubits in QIR form or not. Defaults to True.
 
         Returns:
-            list[pyqir.qubit]: The qubits for the operation.
+            list[Union[pyqir.qubit, qasm3_ast.IndexedIdentifier]]: The qubits for the operation.
         """
         qir_qubits = []
         openqasm_qubits = []
@@ -414,11 +397,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
             if isinstance(qubit, qasm3_ast.IndexedIdentifier):
                 if isinstance(qubit.indices[0][0], qasm3_ast.RangeDefinition):
-                    qids = self._get_qubits_from_range_definition(
+                    qids = Qasm3Transformer.get_qubits_from_range_definition(
                         qubit.indices[0][0], qreg_size, is_qubit_reg=True
                     )
                 else:
-                    qid = Qasm3ExprEvaluator.evaluate_expression(self, qubit.indices[0][0])
+                    qid = Qasm3ExprEvaluator.evaluate_expression(qubit.indices[0][0])
                     Qasm3Validator.validate_register_index(qid, qreg_size, qubit=True)
                     qids = [qid]
                 openqasm_qubits.extend(
@@ -547,8 +530,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
         logger.debug("Visiting reset statement '%s'", str(statement))
         if len(self._function_qreg_size_map) > 0:  # atleast in SOME function scope
             # transform qubits to use the global qreg identifiers
-            statement.qubits = self._transform_function_qubits(
-                statement, self._function_qreg_size_map[-1], self._function_qreg_transform_map[-1]
+            statement.qubits = Qasm3Transformer.transform_function_qubits(
+                statement,
+                self._function_qreg_size_map[-1],
+                self._function_qreg_transform_map[-1],
             )
         qubit_ids = self._get_op_qubits(statement, self._global_qreg_size_map, True)
 
@@ -567,8 +552,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
         # if barrier is applied to ALL qubits at once, we are fine
         if len(self._function_qreg_size_map) > 0:  # atleast in SOME function scope
             # transform qubits to use the global qreg identifiers
-            barrier.qubits = self._transform_function_qubits(
-                barrier, self._function_qreg_size_map[-1], self._function_qreg_transform_map[-1]
+            barrier.qubits = Qasm3Transformer.transform_function_qubits(
+                barrier,
+                self._function_qreg_size_map[-1],
+                self._function_qreg_transform_map[-1],
             )
 
         barrier_qubits = self._get_op_qubits(barrier, self._global_qreg_size_map)
@@ -593,7 +580,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
         param_list = []
         for param in operation.arguments:
-            param_value = Qasm3ExprEvaluator.evaluate_expression(self, param)
+            param_value = Qasm3ExprEvaluator.evaluate_expression(param)
             param_list.append(param_value)
 
         return param_list
@@ -756,7 +743,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         for modifier in operation.modifiers:
             modifier_name = modifier.modifier
             if modifier_name == qasm3_ast.GateModifierName.pow and modifier.argument is not None:
-                current_power = Qasm3ExprEvaluator.evaluate_expression(self, modifier.argument)
+                current_power = Qasm3ExprEvaluator.evaluate_expression(modifier.argument)
                 if current_power < 0:
                     inverse_value = not inverse_value
                 power_value = power_value * abs(current_power)
@@ -789,8 +776,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if not self._in_gate_scope() and len(self._function_qreg_size_map) > 0:
             # we are in SOME function scope
             # transform qubits to use the global qreg identifiers
-            operation.qubits = self._transform_function_qubits(
-                operation, self._function_qreg_size_map[-1], self._function_qreg_transform_map[-1]
+            operation.qubits = Qasm3Transformer.transform_function_qubits(
+                operation,
+                self._function_qreg_size_map[-1],
+                self._function_qreg_transform_map[-1],
             )
         # Applying the inverse first and then the power is same as
         # apply the power first and then inverting the result
@@ -818,10 +807,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise_qasm3_error(
                 f"Can not declare variable with keyword name {var_name}", span=statement.span
             )
-        if self._check_in_scope(var_name, self._get_curr_scope()):
+        if self._check_in_scope(var_name):
             raise_qasm3_error(f"Re-declaration of variable {var_name}", span=statement.span)
         init_value = Qasm3ExprEvaluator.evaluate_expression(
-            self, statement.init_expression, const_expr=True
+            statement.init_expression, const_expr=True
         )
 
         base_type = statement.type
@@ -830,9 +819,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         elif base_type.size is None:
             base_size = 32  # default for now
         else:
-            base_size = Qasm3ExprEvaluator.evaluate_expression(
-                self, base_type.size, const_expr=True
-            )
+            base_size = Qasm3ExprEvaluator.evaluate_expression(base_type.size, const_expr=True)
             if not isinstance(base_size, int) or base_size <= 0:
                 raise_qasm3_error(
                     f"Invalid base size {base_size} for variable {var_name}", span=statement.span
@@ -860,7 +847,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise_qasm3_error(
                 f"Can not declare variable with keyword name {var_name}", span=statement.span
             )
-        if self._check_in_scope(var_name, self._get_curr_scope()):
+        if self._check_in_scope(var_name):
             if self._in_block_scope() and var_name not in self._get_curr_scope():
                 # we can re-declare variables once in block scope even if they are
                 # present in the parent scope
@@ -889,7 +876,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             base_type = base_type.base_type
             num_elements = 1
             for dim in dimensions:
-                dim_value = Qasm3ExprEvaluator.evaluate_expression(self, dim)
+                dim_value = Qasm3ExprEvaluator.evaluate_expression(dim)
                 if not isinstance(dim_value, int) or dim_value <= 0:
                     raise_qasm3_error(
                         f"Invalid dimension size {dim_value} in array declaration for {var_name}",
@@ -908,13 +895,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     statement.init_expression, final_dimensions, base_type
                 )
             else:
-                init_value = Qasm3ExprEvaluator.evaluate_expression(self, statement.init_expression)
+                init_value = Qasm3ExprEvaluator.evaluate_expression(statement.init_expression)
         base_size = 1
         if not isinstance(base_type, qasm3_ast.BoolType):
             base_size = (
                 32
                 if base_type.size is None
-                else Qasm3ExprEvaluator.evaluate_expression(self, base_type.size)
+                else Qasm3ExprEvaluator.evaluate_expression(base_type.size)
             )
 
         if not isinstance(base_size, int) or base_size <= 0:
@@ -964,7 +951,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 f"Assignment to constant variable {var_name} not allowed", span=statement.span
             )
 
-        var_value = Qasm3ExprEvaluator.evaluate_expression(self, statement.rvalue)
+        var_value = Qasm3ExprEvaluator.evaluate_expression(statement.rvalue)
 
         # currently we support single array assignment only
         # range based assignment not supported yet
@@ -990,7 +977,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._update_var_in_scope(var)
 
     def _evaluate_array_initialization(
-        self, array_literal: qasm3_ast.ArrayLiteral, dimensions: list[int], base_type
+        self, array_literal: qasm3_ast.ArrayLiteral, dimensions: list[int], base_type: any
     ) -> list:
         """Evaluate an array initialization.
 
@@ -1010,7 +997,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     self._evaluate_array_initialization(value, dimensions[1:], base_type)
                 )
             else:
-                eval_value = Qasm3ExprEvaluator.evaluate_expression(self, value)
+                eval_value = Qasm3ExprEvaluator.evaluate_expression(value)
                 init_values.append(eval_value)
 
         return init_values
@@ -1071,19 +1058,19 @@ class BasicQasmVisitor(ProgramElementVisitor):
         # Compute loop variable values
         if isinstance(statement.set_declaration, qasm3_ast.RangeDefinition):
             init_exp = statement.set_declaration.start
-            startval = Qasm3ExprEvaluator.evaluate_expression(self, init_exp)
+            startval = Qasm3ExprEvaluator.evaluate_expression(init_exp)
             range_def = statement.set_declaration
             stepval = (
                 1
                 if range_def.step is None
-                else Qasm3ExprEvaluator.evaluate_expression(self, range_def.step)
+                else Qasm3ExprEvaluator.evaluate_expression(range_def.step)
             )
-            endval = Qasm3ExprEvaluator.evaluate_expression(self, range_def.end)
+            endval = Qasm3ExprEvaluator.evaluate_expression(range_def.end)
             irange = list(range(startval, endval + stepval, stepval))
         elif isinstance(statement.set_declaration, qasm3_ast.DiscreteSet):
             init_exp = statement.set_declaration.values[0]
             irange = [
-                Qasm3ExprEvaluator.evaluate_expression(self, exp)
+                Qasm3ExprEvaluator.evaluate_expression(exp)
                 for exp in statement.set_declaration.values
             ]
         else:
@@ -1136,7 +1123,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if fn_name in self._subroutine_defns:
             raise_qasm3_error(f"Redefinition of subroutine '{fn_name}'", span=statement.span)
 
-        if self._check_in_scope(fn_name, self._get_curr_scope()):
+        if self._check_in_scope(fn_name):
             raise_qasm3_error(
                 f"Can not declare subroutine with name '{fn_name}' as "
                 "it is already declared as a variable",
@@ -1144,37 +1131,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
             )
 
         self._subroutine_defns[fn_name] = statement
-
-    def _transform_function_qubits(
-        self, q_op, formal_qreg_sizes: dict[str:int], qubit_map: dict[tuple:tuple]
-    ) -> list:
-        """Transform the qubits of a function call to the actual qubits.
-
-        Args:
-            gate_op : The quantum operation to transform.
-            formal_qreg_sizes (dict[str: int]): The formal qubit register sizes.
-            qubit_map (dict[tuple: tuple]): The mapping of formal qubits to actual qubits.
-
-        Returns:
-            None
-        """
-        expanded_op_qubits = self._get_op_qubits(q_op, formal_qreg_sizes, qir_form=False)
-
-        transformed_qubits = []
-        for qubit in expanded_op_qubits:
-            formal_qreg_name = qubit.name.name
-            formal_qreg_idx = qubit.indices[0][0].value
-
-            # replace the formal qubit with the actual qubit
-            actual_qreg_name, actual_qreg_idx = qubit_map[(formal_qreg_name, formal_qreg_idx)]
-            transformed_qubits.append(
-                qasm3_ast.IndexedIdentifier(
-                    qasm3_ast.Identifier(actual_qreg_name),
-                    [[qasm3_ast.IntegerLiteral(actual_qreg_idx)]],
-                )
-            )
-
-        return transformed_qubits
 
     def _get_target_qubits(self, target, qreg_size_map, target_name):
         """Get the target qubits of a statement.
@@ -1205,13 +1161,13 @@ class BasicQasmVisitor(ProgramElementVisitor):
             elif isinstance(
                 target.index[0], (qasm3_ast.IntegerLiteral, qasm3_ast.Identifier)
             ):  # "(q[0]); OR (q[i]);"
-                target_qids = [Qasm3ExprEvaluator.evaluate_expression(self, target.index[0])]
+                target_qids = [Qasm3ExprEvaluator.evaluate_expression(target.index[0])]
                 Qasm3Validator.validate_register_index(
                     target_qids[0], qreg_size_map[target_name], qubit=True
                 )
                 target_qubits_size = 1
             elif isinstance(target.index[0], qasm3_ast.RangeDefinition):  # "(q[0:1:2]);"
-                target_qids = self._get_qubits_from_range_definition(
+                target_qids = Qasm3Transformer.get_qubits_from_range_definition(
                     target.index[0],
                     qreg_size_map[target_name],
                     is_qubit_reg=True,
@@ -1275,7 +1231,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
                 # 2. as we have pushed the scope for fn, we need to check in parent
                 #    scope for argument validation
-                if not self._check_in_scope(actual_arg_name, self._get_curr_scope()):
+                if not self._check_in_scope(actual_arg_name):
                     raise_qasm3_error(
                         f"Undefined variable '{actual_arg_name}' used for function '{fn_name}'",
                         span=statement.span,
@@ -1284,14 +1240,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
             # NOTE: actual_argument can also be an EXPRESSION
             # Better to just evaluate that expression and assign that value later to
             # the formal argument
-            actual_arg_value = Qasm3ExprEvaluator.evaluate_expression(self, actual_arg)
+            actual_arg_value = Qasm3ExprEvaluator.evaluate_expression(actual_arg)
 
             # save this value to be updated later in scope
             classical_vars.append(
                 Variable(
                     formal_arg.name.name,
                     formal_arg.type,
-                    Qasm3ExprEvaluator.evaluate_expression(self, formal_arg.type.size),
+                    Qasm3ExprEvaluator.evaluate_expression(formal_arg.type.size),
                     None,
                     actual_arg_value,
                     False,
@@ -1317,7 +1273,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
             """
             formal_qubit_size = Qasm3ExprEvaluator.evaluate_expression(
-                self, formal_arg.size, reqd_type=qasm3_ast.IntType, const_expr=True
+                formal_arg.size, reqd_type=qasm3_ast.IntType, const_expr=True
             )
             if formal_qubit_size is None:
                 formal_qubit_size = 1
@@ -1403,7 +1359,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 break
             self.visit_statement(copy.deepcopy(function_op))
 
-        return_value = Qasm3ExprEvaluator.evaluate_expression(self, return_statement.expression)
+        return_value = Qasm3ExprEvaluator.evaluate_expression(return_statement.expression)
         return_value = Qasm3Validator.validate_return_statement(
             subroutine_def, return_statement, return_value
         )
@@ -1441,7 +1397,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         aliased_reg_size = None
 
         # Alias should not be redeclared earlier as a variable or a constant
-        if self._check_in_scope(alias_reg_name, self._get_curr_scope()):
+        if self._check_in_scope(alias_reg_name):
             raise_qasm3_error(f"Re-declaration of variable '{alias_reg_name}'", span=statement.span)
         self._label_scope_level[self._curr_scope].add(alias_reg_name)
 
@@ -1489,7 +1445,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 self._qubit_labels[f"{alias_reg_name}_0"] = value.index[0].value
                 alias_reg_size = 1
             elif isinstance(value.index[0], qasm3_ast.RangeDefinition):  # "let alias = q[0:1:2];"
-                qids = self._get_qubits_from_range_definition(
+                qids = Qasm3Transformer.get_qubits_from_range_definition(
                     value.index[0],
                     aliased_reg_size,
                     is_qubit_reg=True,
@@ -1527,7 +1483,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 f"Switch target {switch_target_name} must be of type int", span=statement.span
             )
 
-        switch_target_val = Qasm3ExprEvaluator.evaluate_expression(self, switch_target)
+        switch_target_val = Qasm3ExprEvaluator.evaluate_expression(switch_target)
 
         if len(statement.cases) == 0:
             raise_qasm3_error("Switch statement must have at least one case", span=statement.span)
@@ -1558,7 +1514,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 # using vars only within the scope AND each component is either a
                 # literal OR type int
                 case_val = Qasm3ExprEvaluator.evaluate_expression(
-                    self, case_expr, const_expr=True, reqd_type=qasm3_ast.IntType
+                    case_expr, const_expr=True, reqd_type=qasm3_ast.IntType
                 )
 
                 if case_val in seen_values:

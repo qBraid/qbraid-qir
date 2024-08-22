@@ -72,16 +72,14 @@ class Qasm3Validator:
             if stmt_type != ClassicalDeclaration:
                 raise_qasm3_error(
                     f"Unsupported statement {stmt_type} in {construct} block",
-                    Qasm3ConversionError,
-                    statement.span,
+                    span=statement.span,
                 )
 
             if statement.type.__class__ == ArrayType:
                 raise_qasm3_error(
                     f"Unsupported statement {stmt_type} with {statement.type.__class__}"
                     f" in {construct} block",
-                    Qasm3ConversionError,
-                    statement.span,
+                    span=statement.span,
                 )
 
     # ************* Generic validations *************
@@ -95,6 +93,9 @@ class Qasm3Validator:
         Args:
             variable (Variable): The variable to validate.
             reqd_type (Any): The required Qasm3 type of the variable.
+
+        Returns:
+            bool: True if the variable is of the required type, False otherwise.
         """
         if not reqd_type:
             return True
@@ -112,6 +113,9 @@ class Qasm3Validator:
 
         Raises:
             Qasm3ConversionError: If the value is not of the correct type.
+
+        Returns:
+            Any: The value casted to the correct type.
         """
         # check 1 - type match
         qasm_type = variable.base_type.__class__
@@ -142,7 +146,6 @@ class Qasm3Validator:
                 raise_qasm3_error(
                     f"Value {value} out of limits for variable {variable.name} with "
                     f"base size {base_size}",
-                    Qasm3ConversionError,
                 )
 
         elif type_to_match == float:
@@ -158,7 +161,6 @@ class Qasm3Validator:
                 raise_qasm3_error(
                     f"Value {value} out of limits for variable {variable.name} with "
                     f"base size {base_size}",
-                    Qasm3ConversionError,
                 )
         elif type_to_match == bool:
             pass
@@ -177,6 +179,7 @@ class Qasm3Validator:
 
         Args:
             variable (Variable): The variable to assign to.
+            dimensions (list[int]): The dimensions of the array.
             values (list[Any]): The values to assign.
 
         Raises:
@@ -187,7 +190,6 @@ class Qasm3Validator:
             raise_qasm3_error(
                 f"Invalid dimensions for array assignment to variable {variable.name}. "
                 f"Expected {dimensions[0]} but got {len(values)}",
-                Qasm3ConversionError,
             )
         for i, value in enumerate(values):
             if isinstance(value, list):
@@ -197,7 +199,6 @@ class Qasm3Validator:
                     raise_qasm3_error(
                         f"Invalid dimensions for array assignment to variable {variable.name}. "
                         f"Expected {len(dimensions)} but got 1",
-                        Qasm3ConversionError,
                     )
                 values[i] = Qasm3Validator.validate_variable_assignment_value(variable, value)
 
@@ -228,8 +229,7 @@ class Qasm3Validator:
             raise_qasm3_error(
                 f"Parameter count mismatch for gate {operation.name.name}: "
                 f"expected {gate_def_num_args} argument{s}, but got {op_num_args} instead.",
-                Qasm3ConversionError,
-                operation.span,
+                span=operation.span,
             )
 
         gate_def_num_qubits = len(gate_definition.qubits)
@@ -238,8 +238,7 @@ class Qasm3Validator:
             raise_qasm3_error(
                 f"Qubit count mismatch for gate {operation.name.name}: "
                 f"expected {gate_def_num_qubits} qubit{s}, but got {qubits_in_op} instead.",
-                Qasm3ConversionError,
-                operation.span,
+                span=operation.span,
             )
 
     # ************* Quantum Gate utilities *************
@@ -262,6 +261,9 @@ class Qasm3Validator:
 
         Raises:
             Qasm3ConversionError: If the return type is invalid.
+
+        Returns:
+            Any: The return value casted to the correct type
         """
 
         if subroutine_def.return_type is None:
@@ -269,16 +271,14 @@ class Qasm3Validator:
                 raise_qasm3_error(
                     f"Return type mismatch for subroutine '{subroutine_def.name.name}'."
                     f" Expected void but got {type(return_value)}",
-                    Qasm3ConversionError,
-                    return_statement.span,
+                    span=return_statement.span,
                 )
         else:
             if return_value is None:
                 raise_qasm3_error(
                     f"Return type mismatch for subroutine '{subroutine_def.name.name}'."
                     f" Expected {subroutine_def.return_type} but got void",
-                    Qasm3ConversionError,
-                    return_statement.span,
+                    span=return_statement.span,
                 )
             base_size = 1
             if hasattr(subroutine_def.return_type, "size"):
@@ -305,8 +305,8 @@ class Qasm3Validator:
             reg_name (str): The name of the register.
             indices (list): A list of indices representing the qubits.
 
-        Raises:
-            Qasm3ConversionError: If duplicate qubits are found in the function call.
+        Returns:
+            bool: True if the qubits are unique, False otherwise.
         """
         if reg_name not in qubit_map:
             qubit_map[reg_name] = set(indices)

@@ -33,6 +33,9 @@ def raise_qasm3_error(
         message: The error message.
         err_type: The error type.
         span: The span of the error.
+
+    Raises:
+        err_type: The error type with the specified message
     """
     if span:
         logging.error(
