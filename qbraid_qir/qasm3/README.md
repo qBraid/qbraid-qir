@@ -22,8 +22,8 @@
 | BranchingStatement             | 🔜          | In progress            |
 | SubroutineDefinition           | 🔜          | In progress            |
 | Looping statements(eg. for)    | 🔜          | In progress            |
+| RangeDefinition                | 🔜          | In progress            |
 | IODeclaration                  | 📋          | Planned                |
-| RangeDefinition                | 📋          | Planned                |
 | Pragma                         | ❓          | Unsure                 |
 | Annotations                    | ❓          | Unsure                 |
 | Pulse-level ops (e.g. delay)   | ❌          | Not supported by QIR   |

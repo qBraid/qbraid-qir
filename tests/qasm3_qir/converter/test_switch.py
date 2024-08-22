@@ -206,15 +206,16 @@ def test_nested_switch():
     case 1,3,5,7 {
         int j = 4; // definition inside scope
         switch(j) {
-        case 1,3,5,7 {
-            x q; 
-        }
-        case 2,4,6,8 {
-            y q; // this will be executed
-        }
-        default {
-            z q;
-        }
+            case 1,3,5,7 {
+                x q; 
+            }
+            case 2,4,6,8 {
+                j = 5; // assignment inside scope
+                y q; // this will be executed
+            }
+            default {
+                z q;
+            }
         }
     }
     case 2,4,6,8 {

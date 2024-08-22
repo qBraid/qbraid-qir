@@ -18,6 +18,7 @@ Types of changes:
 * Add support for pauli measurement operators in `cirq` converter ( [#144](https://github.com/qBraid/qbraid-qir/pull/144) )
 
 ### 🌟  Improvements 
+* Re-factor the `BasicQasmVisitor` and improve modularity ( [#142](https://github.com/qBraid/qbraid-qir/pull/142) )
 
 ### 📜  Documentation 
 * Housekeeping updates for release ( [#135](https://github.com/qBraid/qbraid-qir/pull/135) )

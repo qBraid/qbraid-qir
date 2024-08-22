@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from qbraid_qir.qasm3.oq3_maps import (
+from qbraid_qir.qasm3.maps import (
     PYQIR_ONE_QUBIT_OP_MAP,
     PYQIR_ONE_QUBIT_ROTATION_MAP,
     PYQIR_THREE_QUBIT_OP_MAP,
@@ -292,7 +292,7 @@ CUSTOM_GATE_INCORRECT_TESTS = {
         qubit[2] q1;
         custom_gate(0.5) q1;  // parameter count mismatch
         """,
-        "Parameter count mismatch for gate custom_gate. Expected 2 but got 1 .*",
+        "Parameter count mismatch for gate custom_gate: expected 2 arguments, but got 1 instead.",
     ),
     "qubit_mismatch": (
         """
@@ -307,7 +307,7 @@ CUSTOM_GATE_INCORRECT_TESTS = {
         qubit[3] q1;
         custom_gate(0.5, 0.5) q1;  // qubit count mismatch
         """,
-        "Qubit count mismatch for gate custom_gate. Expected 2 but got 3 .*",
+        "Qubit count mismatch for gate custom_gate: expected 2 qubits, but got 3 instead.",
     ),
     "indexing_not_supported": (
         """
