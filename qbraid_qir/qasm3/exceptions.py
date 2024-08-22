@@ -12,8 +12,31 @@
 Module defining exceptions for errors raised during QASM3 conversions.
 
 """
+import logging
+from typing import Optional
+
+from openqasm3.ast import Span
+
 from qbraid_qir.exceptions import QirConversionError
 
 
 class Qasm3ConversionError(QirConversionError):
     """Class for errors raised when converting an OpenQASM 3 program to QIR."""
+
+
+def raise_qasm3_error(
+    message: str, err_type: Exception = Qasm3ConversionError, span: Optional[Span] = None
+):
+    """Raises a QASM3 conversion error.
+
+    Args:
+        message: The error message.
+        err_type: The error type.
+        span: The span of the error.
+    """
+    if span:
+        logging.error(
+            "Error at line %s, column %s in QASM file", span.start_line, span.start_column
+        )
+
+    raise err_type(message)

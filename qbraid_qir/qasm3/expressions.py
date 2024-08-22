@@ -25,9 +25,10 @@ from openqasm3.ast import (
 from openqasm3.ast import IntType as Qasm3IntType
 from openqasm3.ast import UnaryExpression
 
-from .exceptions import Qasm3ConversionError
+from .analyser import Qasm3Analyser
+from .exceptions import Qasm3ConversionError, raise_qasm3_error
 from .maps import CONSTANTS_MAP, qasm3_expression_op_map
-from .visitor_utils import Qasm3VisitorUtils
+from .validator import Qasm3Validator
 
 
 class Qasm3ExprEvaluator:
@@ -46,8 +47,11 @@ class Qasm3ExprEvaluator:
         """
 
         if not visitor_obj._check_in_scope(var_name, visitor_obj._get_curr_scope()):
-            Qasm3VisitorUtils.print_err_location(expression.span)
-            raise Qasm3ConversionError(f"Undefined identifier {var_name} in expression")
+            raise_qasm3_error(
+                f"Undefined identifier {var_name} in expression",
+                Qasm3ConversionError,
+                expression.span,
+            )
 
     @staticmethod
     def _check_var_constant(visitor_obj, var_name, const_expr, expression):
@@ -65,9 +69,10 @@ class Qasm3ExprEvaluator:
         """
         const_var = visitor_obj._get_from_visible_scope(var_name).is_constant
         if const_expr and not const_var:
-            Qasm3VisitorUtils.print_err_location(expression.span)
-            raise Qasm3ConversionError(
-                f"Variable '{var_name}' is not a constant in given expression"
+            raise_qasm3_error(
+                f"Variable '{var_name}' is not a constant in given expression",
+                Qasm3ConversionError,
+                expression.span,
             )
 
     @staticmethod
@@ -85,12 +90,13 @@ class Qasm3ExprEvaluator:
             Qasm3ConversionError: If the variable has an invalid type for the required type.
         """
 
-        if not Qasm3VisitorUtils.validate_variable_type(
+        if not Qasm3Validator.validate_variable_type(
             visitor_obj._get_from_visible_scope(var_name), reqd_type
         ):
-            Qasm3VisitorUtils.print_err_location(expression.span)
-            raise Qasm3ConversionError(
-                f"Invalid type of variable {var_name} for required type {reqd_type}"
+            raise_qasm3_error(
+                f"Invalid type of variable {var_name} for required type {reqd_type}",
+                Qasm3ConversionError,
+                expression.span,
             )
 
     @staticmethod
@@ -106,8 +112,11 @@ class Qasm3ExprEvaluator:
         """
 
         if var_value is None:
-            Qasm3VisitorUtils.print_err_location(expression.span)
-            raise Qasm3ConversionError(f"Uninitialized variable {var_name} in expression")
+            raise_qasm3_error(
+                f"Uninitialized variable {var_name} in expression",
+                Qasm3ConversionError,
+                expression.span,
+            )
 
     @staticmethod
     def _get_var_value(visitor_obj, var_name, indices, expression):
@@ -126,10 +135,10 @@ class Qasm3ExprEvaluator:
         if isinstance(expression, Identifier):
             var_value = visitor_obj._get_from_visible_scope(var_name).value
         else:
-            validated_indices = Qasm3VisitorUtils.analyze_classical_indices(
+            validated_indices = Qasm3Analyser.analyze_classical_indices(
                 indices, visitor_obj._get_from_visible_scope(var_name)
             )
-            var_value = Qasm3VisitorUtils.find_array_element(
+            var_value = Qasm3Analyser.find_array_element(
                 visitor_obj._get_from_visible_scope(var_name).value, validated_indices
             )
         return var_value
@@ -154,8 +163,11 @@ class Qasm3ExprEvaluator:
             return None
 
         if isinstance(expression, (ImaginaryLiteral, DurationLiteral)):
-            Qasm3VisitorUtils.print_err_location(expression.span)
-            raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
+            raise_qasm3_error(
+                f"Unsupported expression type {type(expression)}",
+                Qasm3ConversionError,
+                expression.span,
+            )
 
         def _process_variable(var_name, indices=None):
             Qasm3ExprEvaluator._check_var_in_scope(visitor_obj, var_name, expression)
@@ -172,14 +184,15 @@ class Qasm3ExprEvaluator:
             if var_name in CONSTANTS_MAP:
                 if not reqd_type or reqd_type == Qasm3FloatType:
                     return CONSTANTS_MAP[var_name]
-                Qasm3VisitorUtils.print_err_location(expression.span)
-                raise Qasm3ConversionError(
-                    f"Constant {var_name} not allowed in non-float expression"
+                raise_qasm3_error(
+                    f"Constant {var_name} not allowed in non-float expression",
+                    Qasm3ConversionError,
+                    expression.span,
                 )
             return _process_variable(var_name)
 
         if isinstance(expression, IndexExpression):
-            var_name, indices = Qasm3VisitorUtils.analyze_index_expression(expression)
+            var_name, indices = Qasm3Analyser.analyze_index_expression(expression)
             return _process_variable(var_name, indices)
 
         if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):
@@ -190,9 +203,10 @@ class Qasm3ExprEvaluator:
                     return expression.value
                 if reqd_type == Qasm3FloatType and isinstance(expression, FloatLiteral):
                     return expression.value
-                Qasm3VisitorUtils.print_err_location(expression.span)
-                raise Qasm3ConversionError(
-                    f"Invalid type {type(expression)} for required type {reqd_type}"
+                raise_qasm3_error(
+                    f"Invalid type {type(expression)} for required type {reqd_type}",
+                    Qasm3ConversionError,
+                    expression.span,
                 )
             return expression.value
 
@@ -201,9 +215,10 @@ class Qasm3ExprEvaluator:
                 visitor_obj, expression.expression, const_expr, reqd_type
             )
             if expression.op.name == "~" and not isinstance(operand, int):
-                Qasm3VisitorUtils.print_err_location(expression.span)
-                raise Qasm3ConversionError(
-                    f"Unsupported expression type {type(operand)} in ~ operation"
+                raise_qasm3_error(
+                    f"Unsupported expression type {type(operand)} in ~ operation",
+                    Qasm3ConversionError,
+                    expression.span,
                 )
             return qasm3_expression_op_map(
                 "UMINUS" if expression.op.name == "-" else expression.op.name, operand
@@ -223,5 +238,6 @@ class Qasm3ExprEvaluator:
             # para      : 5
             return visitor_obj._visit_function_call(expression)
 
-        Qasm3VisitorUtils.print_err_location(expression.span)
-        raise Qasm3ConversionError(f"Unsupported expression type {type(expression)}")
+        raise_qasm3_error(
+            f"Unsupported expression type {type(expression)}", Qasm3ConversionError, expression.span
+        )
