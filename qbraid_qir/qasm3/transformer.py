@@ -151,9 +151,7 @@ class Qasm3Transformer:
             # TODO : update the arg value in expressions not just SINGLE identifiers
 
     @staticmethod
-    def get_branch_params(
-        condition: Union[UnaryExpression, BinaryExpression, IndexExpression]
-    ) -> tuple[Optional[int], Optional[str]]:
+    def get_branch_params(condition: Any) -> tuple[Optional[int], Optional[str]]:
         """
         Get the branch parameters from the branching condition
 

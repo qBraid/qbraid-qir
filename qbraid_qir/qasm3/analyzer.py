@@ -12,7 +12,7 @@
 Module with analysis functions for QASM3 visitor
 
 """
-from typing import Any, Union
+from typing import Any
 
 from openqasm3.ast import (
     BinaryExpression,
@@ -137,9 +137,7 @@ class Qasm3Analyzer:
         return temp
 
     @staticmethod
-    def analyse_branch_condition(
-        condition: Union[UnaryExpression, BinaryExpression, IndexExpression]
-    ) -> bool:
+    def analyse_branch_condition(condition: Any) -> bool:
         """
         analyze the branching condition to determine the branch to take
 
