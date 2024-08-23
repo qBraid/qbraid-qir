@@ -23,7 +23,7 @@ from openqasm3.ast import (
     IntegerLiteral,
 )
 from openqasm3.ast import IntType as Qasm3IntType
-from openqasm3.ast import UnaryExpression
+from openqasm3.ast import SizeOf, UnaryExpression
 
 from .analyzer import Qasm3Analyzer
 from .exceptions import Qasm3ConversionError, raise_qasm3_error
@@ -194,6 +194,44 @@ class Qasm3ExprEvaluator:
         if isinstance(expression, IndexExpression):
             var_name, indices = Qasm3Analyzer.analyze_index_expression(expression)
             return _process_variable(var_name, indices)
+
+        if isinstance(expression, SizeOf):
+            # has 2 elements - target and index
+            target = expression.target
+            index = expression.index
+
+            if not isinstance(target, Identifier):
+                raise_qasm3_error(
+                    message=f"Unsupported target type {type(target)} for sizeof expression",
+                    err_type=Qasm3ConversionError,
+                    span=expression.span,
+                )
+            var_name = target.name
+            cls._check_var_in_scope(var_name, expression)
+            dimensions = cls.visitor_obj._get_from_visible_scope(var_name).dims
+
+            if dimensions is None or len(dimensions) == 0:
+                raise_qasm3_error(
+                    message=f"Invalid sizeof usage, variable {var_name} is not an array.",
+                    err_type=Qasm3ConversionError,
+                    span=expression.span,
+                )
+
+            if index is None:
+                # get the first dimension of the array
+                return dimensions[0]
+
+            index = cls.evaluate_expression(index, const_expr, reqd_type=Qasm3IntType)
+
+            if index < 0 or index >= len(dimensions):
+                raise_qasm3_error(
+                    f"Index {index} out of bounds for array {var_name} with "
+                    f"{len(dimensions)} dimensions",
+                    Qasm3ConversionError,
+                    expression.span,
+                )
+
+            return dimensions[index]
 
         if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):
             if reqd_type:
