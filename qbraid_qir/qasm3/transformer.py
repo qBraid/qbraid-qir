@@ -200,7 +200,7 @@ class Qasm3Transformer:
         q_op: Union[QuantumGate, QuantumBarrier, QuantumReset],
         formal_qreg_sizes: dict[str, int],
         qubit_map: dict[tuple, tuple],
-    ) -> list:
+    ) -> list[IndexedIdentifier]:
         """Transform the qubits of a function call to the actual qubits.
 
         Args:
