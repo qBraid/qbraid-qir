@@ -55,6 +55,9 @@ class Qasm3Analyzer:
                 err_type=Qasm3ConversionError,
                 span=indices[0].span,
             )
+        if isinstance(indices, DiscreteSet):
+            indices = indices.values
+
         if len(indices) != len(var_dimensions):  # type: ignore[arg-type]
             raise_qasm3_error(
                 message=f"Invalid number of indices for variable {var_name}. "
@@ -115,19 +118,14 @@ class Qasm3Analyzer:
                 if isinstance(index_expr.index, list):
                     indices.append(index_expr.index[0])
                     index_expr = index_expr.collection
-                elif isinstance(index_expr.index, DiscreteSet):
-                    raise_qasm3_error(
-                        message="DiscreteSet not supported in index expression",
-                        err_type=Qasm3ConversionError,
-                        span=index_expr.span,
-                    )
-
         else:
             comma_separated = True
             indices = index_expr.index  # type: ignore[assignment]
         var_name = (
-            index_expr.collection.name if comma_separated else index_expr.name
-        )  # type: ignore[attr-defined]
+            index_expr.collection.name  # type: ignore[attr-defined]
+            if comma_separated
+            else index_expr.name  # type: ignore[attr-defined]
+        )
         if not comma_separated:
             indices = indices[::-1]
 
