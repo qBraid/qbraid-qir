@@ -18,7 +18,7 @@ from abc import ABCMeta, abstractmethod
 
 # pylint: disable=too-many-instance-attributes,too-many-lines
 from collections import deque
-from typing import Union
+from typing import Any, Optional, Union
 
 import openqasm3.ast as qasm3_ast
 import pyqir
@@ -63,24 +63,23 @@ class BasicQasmVisitor(ProgramElementVisitor):
     """
 
     def __init__(self, initialize_runtime: bool = True, record_output: bool = True):
-        self._module = None
-        self._builder = None
-        self._entry_point = None
-        self._scope = deque([{}])
-        self._context = deque([Context.GLOBAL])
-        self._qubit_labels = {}
-        self._clbit_labels = {}
-        self._global_qreg_size_map = {}
-        self._function_qreg_size_map = deque([])  # for nested functions
-        self._function_qreg_transform_map = deque([])  # for nested functions
-        self._global_creg_size_map = {}
-        self._custom_gates = {}
-        self._subroutine_defns = {}
-        self._measured_qubits = {}
-        self._initialize_runtime = initialize_runtime
-        self._record_output = record_output
-        self._curr_scope = 0
-        self._label_scope_level = {self._curr_scope: set()}
+        self._module: pyqir.Module
+        self._builder: pyqir.Builder
+        self._entry_point: str = ""
+        self._scope: deque = deque([{}])
+        self._context: deque = deque([Context.GLOBAL])
+        self._qubit_labels: dict[str, int] = {}
+        self._clbit_labels: dict[str, int] = {}
+        self._global_qreg_size_map: dict[str, int] = {}
+        self._function_qreg_size_map: deque = deque([])  # for nested functions
+        self._function_qreg_transform_map: deque = deque([])  # for nested functions
+        self._global_creg_size_map: dict[str, int] = {}
+        self._custom_gates: dict[str, qasm3_ast.QuantumGateDefinition] = {}
+        self._subroutine_defns: dict[str, qasm3_ast.SubroutineDefinition] = {}
+        self._initialize_runtime: bool = initialize_runtime
+        self._record_output: bool = record_output
+        self._curr_scope: int = 0
+        self._label_scope_level: dict[int, set] = {self._curr_scope: set()}
 
         self._init_utilities()
 
@@ -347,7 +346,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         logger.debug("Added labels for register '%s'", str(register))
 
-    def _check_if_name_in_scope(self, name: str, operation: any) -> None:
+    def _check_if_name_in_scope(self, name: str, operation: Any) -> None:
         """Check if a name is in scope to avoid duplicate declarations.
         Args:
             name (str): The name to check.
@@ -364,7 +363,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         )
 
     def _get_op_qubits(
-        self, operation: any, qreg_size_map: dict, qir_form: bool = True
+        self, operation: Any, qreg_size_map: dict, qir_form: bool = True
     ) -> list[Union[pyqir.qubit, qasm3_ast.IndexedIdentifier]]:
         """Get the qubits for the operation.
 
@@ -973,11 +972,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             Qasm3Transformer.update_array_element(var.value, validated_indices, var_value)
         else:
             var.value = var_value
-
         self._update_var_in_scope(var)
 
     def _evaluate_array_initialization(
-        self, array_literal: qasm3_ast.ArrayLiteral, dimensions: list[int], base_type: any
+        self, array_literal: qasm3_ast.ArrayLiteral, dimensions: list[int], base_type: Any
     ) -> list:
         """Evaluate an array initialization.
 
@@ -1078,7 +1076,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 f"Unexpected type {type(statement.set_declaration)} of set_declaration in loop."
             )
 
-        i = None  # will store iteration Variable to update to loop scope
+        i: Optional[Variable]  # will store iteration Variable to update to loop scope
 
         for ival in irange:
             self._push_context(Context.BLOCK)
@@ -1093,8 +1091,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
             i = self._get_from_visible_scope(statement.identifier.name)
 
             # Update scope with current value of loop Variable
-            i.value = ival
-            self._update_var_in_scope(i)
+            if i is not None:
+                i.value = ival
+                self._update_var_in_scope(i)
 
             for stmt in statement.block:
                 self.visit_statement(stmt)
@@ -1198,9 +1197,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 span=statement.span,
             )
 
-        duplicate_qubit_detect_map = {}
-        qubit_transform_map = {}  # {(formal arg, idx) : (actual arg, idx)}
-        formal_qreg_size_map = {}
+        duplicate_qubit_detect_map: dict = {}
+        qubit_transform_map: dict = {}  # {(formal arg, idx) : (actual arg, idx)}
+        formal_qreg_size_map: dict = {}
 
         quantum_vars, classical_vars = [], []
 
@@ -1391,10 +1390,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
         target = statement.target
         value = statement.value
 
-        alias_reg_name = target.name
-        alias_reg_size = None
-        aliased_reg_name = None
-        aliased_reg_size = None
+        alias_reg_name: str = target.name
+        alias_reg_size: int = 0
+        aliased_reg_name: str = ""
+        aliased_reg_size: int = 0
 
         # Alias should not be redeclared earlier as a variable or a constant
         if self._check_in_scope(alias_reg_name):
@@ -1469,11 +1468,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         """
         # 1. analyze the target - it should ONLY be int, not casted
         switch_target = statement.target
-
+        switch_target_name = ""
         # either identifier or indexed expression
         if isinstance(switch_target, qasm3_ast.Identifier):
             switch_target_name = switch_target.name
-        else:
+        elif isinstance(switch_target, qasm3_ast.IndexExpression):
             switch_target_name, _ = Qasm3Analyzer.analyze_index_expression(switch_target)
 
         if not Qasm3Validator.validate_variable_type(
@@ -1581,4 +1580,4 @@ class BasicQasmVisitor(ProgramElementVisitor):
         return str(self._module)
 
     def bitcode(self) -> bytes:
-        return self._module.bitcode()
+        return self._module.bitcode

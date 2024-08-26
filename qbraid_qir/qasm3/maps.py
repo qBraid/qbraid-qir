@@ -14,7 +14,7 @@ Module mapping supported QASM gates/operations to pyqir functions.
 """
 
 
-from typing import Union
+from typing import Callable, Union
 
 import numpy as np
 import pyqir
@@ -36,7 +36,13 @@ from .elements import InversionOp
 from .exceptions import Qasm3ConversionError
 from .linalg import kak_decomposition_angles
 
-OPERATOR_MAP = {
+# Define the type for the operator functions
+OperatorFunction = Union[
+    Callable[[Union[int, float, bool]], Union[int, float, bool]],
+    Callable[[Union[int, float, bool], Union[int, float, bool]], Union[int, float, bool]],
+]
+
+OPERATOR_MAP: dict[str, OperatorFunction] = {
     "+": lambda x, y: x + y,
     "-": lambda x, y: x - y,
     "*": lambda x, y: x * y,
@@ -61,7 +67,7 @@ OPERATOR_MAP = {
 }
 
 
-def qasm3_expression_op_map(op_name: str, *args):
+def qasm3_expression_op_map(op_name: str, *args) -> Union[float, int, bool]:
     """
     Return the result of applying the given operator to the given operands.
 
@@ -75,7 +81,8 @@ def qasm3_expression_op_map(op_name: str, *args):
         (Union[float, int, bool]): The result of applying the operator to the operands.
     """
     try:
-        return OPERATOR_MAP[op_name](*args)
+        operator = OPERATOR_MAP[op_name]
+        return operator(*args)
     except KeyError as exc:
         raise Qasm3ConversionError(f"Unsupported / undeclared QASM operator: {op_name}") from exc
 

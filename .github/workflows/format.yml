@@ -19,6 +19,6 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install tox>=4.2.0
-      - name: Check isort, black, headers
+      - name: Check isort, black, mypy, headers
         run: |
           tox -e format-check

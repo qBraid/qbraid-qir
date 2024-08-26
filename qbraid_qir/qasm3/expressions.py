@@ -37,7 +37,7 @@ class Qasm3ExprEvaluator:
     visitor_obj = None
 
     @classmethod
-    def set_visitor_obj(cls, visitor_obj):
+    def set_visitor_obj(cls, visitor_obj) -> None:
         cls.visitor_obj = visitor_obj
 
     @classmethod
@@ -171,7 +171,7 @@ class Qasm3ExprEvaluator:
                 expression.span,
             )
 
-        def _process_variable(var_name, indices=None):
+        def _process_variable(var_name: str, indices=None):
             cls._check_var_in_scope(var_name, expression)
             cls._check_var_constant(var_name, const_expr, expression)
             cls._check_var_type(var_name, reqd_type, expression)
@@ -268,7 +268,7 @@ class Qasm3ExprEvaluator:
             # function will not return a reqd / const type
             # Reference : https://openqasm.com/language/types.html#compile-time-constants
             # para      : 5
-            return cls.visitor_obj._visit_function_call(expression)
+            return cls.visitor_obj._visit_function_call(expression)  # type: ignore[union-attr]
 
         raise_qasm3_error(
             f"Unsupported expression type {type(expression)}", Qasm3ConversionError, expression.span

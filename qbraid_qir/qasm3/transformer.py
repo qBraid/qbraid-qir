@@ -12,7 +12,7 @@
 Module with transformation functions for QASM3 visitor
 
 """
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from openqasm3.ast import (
     BinaryExpression,
@@ -33,6 +33,8 @@ from .exceptions import raise_qasm3_error
 from .expressions import Qasm3ExprEvaluator
 from .validator import Qasm3Validator
 
+# mypy: disable-error-code="attr-defined, union-attr"
+
 
 class Qasm3Transformer:
     """Class with utility functions for transforming QASM3 elements"""
@@ -40,7 +42,7 @@ class Qasm3Transformer:
     visitor_obj = None
 
     @classmethod
-    def set_visitor_obj(cls, visitor_obj):
+    def set_visitor_obj(cls, visitor_obj) -> None:
         cls.visitor_obj = visitor_obj
 
     @staticmethod
@@ -128,8 +130,10 @@ class Qasm3Transformer:
                     f"Indexing '{qubit.name.name}' not supported in gate definition",
                     span=qubit.span,
                 )
-
-            gate_op.qubits[i] = qubit_map[qubit.name]
+            gate_qubit_name = qubit.name
+            if isinstance(gate_qubit_name, Identifier):
+                gate_qubit_name = gate_qubit_name.name
+            gate_op.qubits[i] = qubit_map[gate_qubit_name]
 
     @staticmethod
     def transform_gate_params(
@@ -151,13 +155,12 @@ class Qasm3Transformer:
             # TODO : update the arg value in expressions not just SINGLE identifiers
 
     @staticmethod
-    def get_branch_params(condition: Any) -> tuple[Optional[int], Optional[str]]:
+    def get_branch_params(condition: Any) -> tuple[int, str]:
         """
         Get the branch parameters from the branching condition
 
         Args:
-            condition (Union[UnaryExpression, BinaryExpression, IndexExpression]): The condition
-                                                                                   to analyze
+            condition (Any): The condition to analyze
 
         Returns:
             tuple[int, str]: The branch parameters
@@ -168,17 +171,35 @@ class Qasm3Transformer:
                 condition.expression.collection.name,
             )
         if isinstance(condition, BinaryExpression):
-            return condition.lhs.index[0].value, condition.lhs.collection.name
+            return (
+                condition.lhs.index[0].value,
+                condition.lhs.collection.name,
+            )
         if isinstance(condition, IndexExpression):
-            return condition.index[0].value, condition.collection.name
-        return None, None
+            if isinstance(condition.index, DiscreteSet):
+                raise_qasm3_error(
+                    message="DiscreteSet not supported in branching condition",
+                    span=condition.span,
+                )
+            if isinstance(condition.index, list):
+                if isinstance(condition.index[0], RangeDefinition):
+                    raise_qasm3_error(
+                        message="RangeDefinition not supported in branching condition",
+                        span=condition.span,
+                    )
+                return (
+                    condition.index[0].value,
+                    condition.collection.name,
+                )
+        # default case
+        return -1, ""
 
     @classmethod
     def transform_function_qubits(
         cls,
         q_op: Union[QuantumGate, QuantumBarrier, QuantumReset],
-        formal_qreg_sizes: dict[str:int],
-        qubit_map: dict[tuple:tuple],
+        formal_qreg_sizes: dict[str, int],
+        qubit_map: dict[tuple, tuple],
     ) -> list:
         """Transform the qubits of a function call to the actual qubits.
 
