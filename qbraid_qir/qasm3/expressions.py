@@ -200,15 +200,18 @@ class Qasm3ExprEvaluator:
             target = expression.target
             index = expression.index
 
-            if not isinstance(target, Identifier):
+            if isinstance(target, Identifier):
+                var_name = target.name
+                cls._check_var_in_scope(var_name, expression)
+                dimensions = cls.visitor_obj._get_from_visible_scope(  # type: ignore[union-attr]
+                    var_name
+                ).dims
+            else:
                 raise_qasm3_error(
                     message=f"Unsupported target type {type(target)} for sizeof expression",
                     err_type=Qasm3ConversionError,
                     span=expression.span,
                 )
-            var_name = target.name
-            cls._check_var_in_scope(var_name, expression)
-            dimensions = cls.visitor_obj._get_from_visible_scope(var_name).dims
 
             if dimensions is None or len(dimensions) == 0:
                 raise_qasm3_error(
@@ -222,7 +225,7 @@ class Qasm3ExprEvaluator:
                 return dimensions[0]
 
             index = cls.evaluate_expression(index, const_expr, reqd_type=Qasm3IntType)
-
+            assert index is not None and isinstance(index, int)
             if index < 0 or index >= len(dimensions):
                 raise_qasm3_error(
                     f"Index {index} out of bounds for array {var_name} with "

@@ -16,9 +16,9 @@ import copy
 import logging
 from abc import ABCMeta, abstractmethod
 
-# pylint: disable=too-many-instance-attributes,too-many-lines
+# pylint: disable=too-many-instance-attributes,too-many-lines,too-many-branches
 from collections import deque
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import openqasm3.ast as qasm3_ast
 import pyqir
@@ -313,15 +313,19 @@ class BasicQasmVisitor(ProgramElementVisitor):
         current_size = len(self._qubit_labels) if is_qubit else len(self._clbit_labels)
         if is_qubit:
             register_size = (
-                1 if register.size is None else register.size.value
-            )  # type: ignore[union-attr]
+                1 if register.size is None else register.size.value  # type: ignore[union-attr]
+            )
         else:
             register_size = (
-                1 if register.type.size is None else register.type.size.value
-            )  # type: ignore[union-attr]
+                1
+                if register.type.size is None  # type: ignore[union-attr]
+                else register.type.size.value  # type: ignore[union-attr]
+            )
         register_name = (
-            register.qubit.name if is_qubit else register.identifier.name
-        )  # type: ignore[union-attr]
+            register.qubit.name  # type: ignore[union-attr]
+            if is_qubit
+            else register.identifier.name  # type: ignore[union-attr]
+        )
 
         size_map = self._global_qreg_size_map if is_qubit else self._global_creg_size_map
         label_map = self._qubit_labels if is_qubit else self._clbit_labels
@@ -368,79 +372,102 @@ class BasicQasmVisitor(ProgramElementVisitor):
             f"Variable {name} not in scope for operation {operation}", span=operation.span
         )
 
-    def _get_op_qubits(
-        self, operation: Any, qreg_size_map: dict, qir_form: bool = True
-    ) -> list[Union[Callable[[pyqir.Context, int], pyqir.Constant], qasm3_ast.IndexedIdentifier]]:
-        """Get the qubits for the operation.
+    def _get_op_bits(
+        self, operation: Any, reg_size_map: dict, qubits: bool = True, qir_form: bool = True
+    ) -> Union[list[pyqir.Constant], list[qasm3_ast.IndexedIdentifier]]:
+        """Get the quantum / classical bits for the operation.
 
         Args:
             operation (Any): The operation to get qubits for.
-            qreg_size_map (dict): The size map of the registers in scope.
-            qir_form (bool): Whether to return qubits in QIR form or not. Defaults to True.
+            reg_size_map (dict): The size map of the registers in scope.
+            qubits (bool): Whether the bits are quantum bits or classical bits. Defaults to True.
+            qir_form (bool): Whether to return bits in QIR form or not. Defaults to True.
 
         Returns:
-            list[Union[pyqir.qubit, qasm3_ast.IndexedIdentifier]]: The qubits for the operation.
+            Union[list[pyqir.Constant], list[qasm3_ast.IndexedIdentifier]] : The bits for the
+                                                                             operation.
         """
-        qir_qubits = []
-        openqasm_qubits = []
-        visited_qubits = set()
-        qubit_list = operation.qubits if isinstance(operation.qubits, list) else [operation.qubits]
+        qir_bits = []
+        openqasm_bits = []
+        visited_bits = set()
+        bit_list = []
+        if isinstance(operation, qasm3_ast.QuantumMeasurementStatement):
+            assert operation.target is not None
+            bit_list = [operation.measure.qubit] if qubits else [operation.target]
+        else:
+            bit_list = (
+                operation.qubits if isinstance(operation.qubits, list) else [operation.qubits]
+            )
 
-        for qubit in qubit_list:
-            if isinstance(qubit, qasm3_ast.IndexedIdentifier):
-                qreg_name = qubit.name.name
+        for bit in bit_list:
+            if isinstance(bit, qasm3_ast.IndexedIdentifier):
+                reg_name = bit.name.name
             else:
-                qreg_name = qubit.name
+                reg_name = bit.name
 
-            if qreg_name not in qreg_size_map:
+            if reg_name not in reg_size_map:
                 raise_qasm3_error(
-                    f"Missing register declaration for {qreg_name} in operation {operation}",
+                    f"Missing register declaration for {reg_name} in operation {operation}",
                     span=operation.span,
                 )
-            self._check_if_name_in_scope(qreg_name, operation)
-            qreg_size = qreg_size_map[qreg_name]
+            self._check_if_name_in_scope(reg_name, operation)
 
-            if isinstance(qubit, qasm3_ast.IndexedIdentifier):
-                assert not isinstance(qubit.indices[0], qasm3_ast.DiscreteSet)
-                if isinstance(qubit.indices[0][0], qasm3_ast.RangeDefinition):
-                    qids = Qasm3Transformer.get_qubits_from_range_definition(
-                        qubit.indices[0][0], qreg_size, is_qubit_reg=True
+            if isinstance(bit, qasm3_ast.IndexedIdentifier):
+                if isinstance(bit.indices[0], qasm3_ast.DiscreteSet):
+                    bit_ids = Qasm3Transformer.extract_values_from_discrete_set(bit.indices[0])
+                elif isinstance(bit.indices[0][0], qasm3_ast.RangeDefinition):
+                    bit_ids = Qasm3Transformer.get_qubits_from_range_definition(
+                        bit.indices[0][0], reg_size_map[reg_name], is_qubit_reg=qubits
                     )
                 else:
-                    qid = Qasm3ExprEvaluator.evaluate_expression(qubit.indices[0][0])
-                    Qasm3Validator.validate_register_index(qid, qreg_size, qubit=True)
-                    qids = [qid]
-                openqasm_qubits.extend(
+                    bit_id = Qasm3ExprEvaluator.evaluate_expression(bit.indices[0][0])
+                    Qasm3Validator.validate_register_index(
+                        bit_id, reg_size_map[reg_name], qubit=qubits
+                    )
+                    bit_ids = [bit_id]
+                openqasm_bits.extend(
                     [
                         qasm3_ast.IndexedIdentifier(
-                            qasm3_ast.Identifier(qreg_name), [[qasm3_ast.IntegerLiteral(i)]]
+                            qasm3_ast.Identifier(reg_name), [[qasm3_ast.IntegerLiteral(bit_id)]]
                         )
-                        for i in qids
+                        for bit_id in bit_ids
                     ]
                 )
 
             else:
-                qids = list(range(qreg_size))
-                openqasm_qubits.extend(
+                bit_ids = list(range(reg_size_map[reg_name]))
+                openqasm_bits.extend(
                     [
                         qasm3_ast.IndexedIdentifier(
-                            qasm3_ast.Identifier(qreg_name), [[qasm3_ast.IntegerLiteral(i)]]
+                            qasm3_ast.Identifier(reg_name), [[qasm3_ast.IntegerLiteral(bit_id)]]
                         )
-                        for i in qids
+                        for bit_id in bit_ids
                     ]
                 )
 
             if qir_form:
-                qreg_qids = [self._qubit_labels[f"{qreg_name}_{i}"] for i in qids]
-                for qid in qreg_qids:
-                    if qid in visited_qubits:
+                label_map = self._qubit_labels if qubits else self._clbit_labels
+                reg_ids = [label_map[f"{reg_name}_{bit_id}"] for bit_id in bit_ids]
+                for bit_id in reg_ids:
+                    if bit_id in visited_bits:
                         raise_qasm3_error(
-                            f"Duplicate qubit {qreg_name}[{qid}] argument", span=operation.span
+                            f"Duplicate {'qubit' if qubits else 'clbit'} "
+                            f"{reg_name}[{bit_id}] argument",
+                            span=operation.span,
                         )
-                    visited_qubits.add(qid)
-                qir_qubits.extend([pyqir.qubit(self._module.context, n) for n in qreg_qids])
+                    visited_bits.add(bit_id)
+                qir_bits.extend(
+                    [
+                        (
+                            pyqir.qubit(self._module.context, bit_id)
+                            if qubits
+                            else pyqir.result(self._module.context, bit_id)
+                        )
+                        for bit_id in reg_ids
+                    ]
+                )
 
-        return qir_qubits if qir_form else openqasm_qubits
+        return qir_bits if qir_form else openqasm_bits
 
     def _visit_measurement(self, statement: qasm3_ast.QuantumMeasurementStatement) -> None:
         """Visit a measurement statement element.
@@ -452,38 +479,25 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
         logger.debug("Visiting measurement statement '%s'", str(statement))
+
         source = statement.measure.qubit
         target = statement.target
-        source_id, target_id = None, None
-        # TODO: handle in-function measurements
-        source_name = source.name
-        if isinstance(source_name, qasm3_ast.Identifier):
-            source_name = source_name.name
-            assert source
-            if isinstance(source.indices[0][0], qasm3_ast.RangeDefinition):
-                raise_qasm3_error(
-                    f"Range based measurement {statement} not supported at the moment",
-                    span=statement.span,
-                )
-            source_id = source.indices[0][0].value
+        assert source and target
 
-        target_name = target.name
-        if isinstance(target_name, qasm3_ast.Identifier):
-            target_name = target_name.name
-            assert target
-            if isinstance(target.indices[0][0], qasm3_ast.RangeDefinition):
-                raise_qasm3_error(
-                    f"Range based measurement {statement} not supported at the moment",
-                    span=statement.span,
-                )
-            target_id = target.indices[0][0].value
-
+        # # TODO: handle in-function measurements
+        source_name: str = (
+            source.name if isinstance(source, qasm3_ast.Identifier) else source.name.name
+        )
         if source_name not in self._global_qreg_size_map:
             raise_qasm3_error(
                 f"Missing register declaration for {source_name} in measurement "
                 f"operation {statement}",
                 span=statement.span,
             )
+
+        target_name: str = (
+            target.name if isinstance(target, qasm3_ast.Identifier) else target.name.name
+        )
         if target_name not in self._global_creg_size_map:
             raise_qasm3_error(
                 f"Missing register declaration for {target_name} in measurement "
@@ -491,41 +505,22 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 span=statement.span,
             )
 
-        def _build_qir_measurement(
-            src_name: str,
-            src_id: Union[int, None],
-            target_name: str,
-            target_id: Union[int, None],
-        ):
-            src_id = 0 if src_id is None else src_id
-            target_id = 0 if target_id is None else target_id
+        source_ids = self._get_op_bits(
+            statement, reg_size_map=self._global_qreg_size_map, qubits=True
+        )
+        target_ids = self._get_op_bits(
+            statement, reg_size_map=self._global_creg_size_map, qubits=False
+        )
 
-            source_qubit = pyqir.qubit(
-                self._module.context, self._qubit_labels[f"{src_name}_{src_id}"]
+        if len(source_ids) != len(target_ids):
+            raise_qasm3_error(
+                f"Register sizes of {source_name} and {target_name} do not match "
+                "for measurement operation",
+                span=statement.span,
             )
-            result = pyqir.result(
-                self._module.context,
-                self._clbit_labels[f"{target_name}_{target_id}"],
-            )
-            pyqir._native.mz(self._builder, source_qubit, result)
 
-        if source_id is None and target_id is None:
-            if self._global_qreg_size_map[source_name] != self._global_creg_size_map[target_name]:
-                raise_qasm3_error(
-                    f"Register sizes of {source_name} and {target_name} do not match "
-                    "for measurement operation",
-                    span=statement.span,
-                )
-            for i in range(self._global_qreg_size_map[source_name]):
-                _build_qir_measurement(source_name, i, target_name, i)
-        else:
-            Qasm3Validator.validate_register_index(
-                source_id, self._global_qreg_size_map[source_name], qubit=True
-            )
-            Qasm3Validator.validate_register_index(
-                target_id, self._global_creg_size_map[target_name], qubit=False
-            )
-            _build_qir_measurement(source_name, source_id, target_name, target_id)
+        for src_id, tgt_id in zip(source_ids, target_ids):
+            pyqir._native.mz(self._builder, src_id, tgt_id)  # type: ignore[arg-type]
 
     def _visit_reset(self, statement: qasm3_ast.QuantumReset) -> None:
         """Visit a reset statement element.
@@ -539,15 +534,18 @@ class BasicQasmVisitor(ProgramElementVisitor):
         logger.debug("Visiting reset statement '%s'", str(statement))
         if len(self._function_qreg_size_map) > 0:  # atleast in SOME function scope
             # transform qubits to use the global qreg identifiers
-            statement.qubits = Qasm3Transformer.transform_function_qubits(
-                statement,
-                self._function_qreg_size_map[-1],
-                self._function_qreg_transform_map[-1],
+            statement.qubits = (
+                Qasm3Transformer.transform_function_qubits(  # type: ignore[assignment]
+                    statement,
+                    self._function_qreg_size_map[-1],
+                    self._function_qreg_transform_map[-1],
+                )
             )
-        qubit_ids = self._get_op_qubits(statement, self._global_qreg_size_map, True)
+        qubit_ids = self._get_op_bits(statement, self._global_qreg_size_map, True)
 
         for qid in qubit_ids:
-            pyqir._native.reset(self._builder, qid)
+            # qid is of type Constant which is inherited from Value, so we ignore the type error
+            pyqir._native.reset(self._builder, qid)  # type: ignore[arg-type]
 
     def _visit_barrier(self, barrier: qasm3_ast.QuantumBarrier) -> None:
         """Visit a barrier statement element.
@@ -561,13 +559,17 @@ class BasicQasmVisitor(ProgramElementVisitor):
         # if barrier is applied to ALL qubits at once, we are fine
         if len(self._function_qreg_size_map) > 0:  # atleast in SOME function scope
             # transform qubits to use the global qreg identifiers
-            barrier.qubits = Qasm3Transformer.transform_function_qubits(
-                barrier,
-                self._function_qreg_size_map[-1],
-                self._function_qreg_transform_map[-1],
-            )
 
-        barrier_qubits = self._get_op_qubits(barrier, self._global_qreg_size_map)
+            # since we are changing the qubits to IndexedIdentifiers, we need to supress the
+            # error for the type checker
+            barrier.qubits = (
+                Qasm3Transformer.transform_function_qubits(  # type: ignore [assignment]
+                    barrier,
+                    self._function_qreg_size_map[-1],
+                    self._function_qreg_transform_map[-1],
+                )
+            )
+        barrier_qubits = self._get_op_bits(barrier, self._global_qreg_size_map)
         total_qubit_count = sum(self._global_qreg_size_map.values())
         if len(barrier_qubits) == total_qubit_count:
             pyqir._native.barrier(self._builder)
@@ -636,7 +638,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         logger.debug("Visiting basic gate operation '%s'", str(operation))
         op_name: str = operation.name.name
-        op_qubits = self._get_op_qubits(operation, self._global_qreg_size_map)
+        op_qubits = self._get_op_bits(operation, self._global_qreg_size_map)
         inverse_action = None
         if not inverse:
             qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
@@ -685,7 +687,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
         logger.debug("Visiting custom gate operation '%s'", str(operation))
         gate_name: str = operation.name.name
         gate_definition: qasm3_ast.QuantumGateDefinition = self._custom_gates[gate_name]
-        op_qubits = self._get_op_qubits(operation, self._global_qreg_size_map, qir_form=False)
+        op_qubits: list[qasm3_ast.IndexedIdentifier] = (
+            self._get_op_bits(  # type: ignore [assignment]
+                operation, self._global_qreg_size_map, qir_form=False
+            )
+        )
 
         Qasm3Validator.validate_gate_call(operation, gate_definition, len(op_qubits))
         # we need this because the gates applied inside a gate definition use the
@@ -784,10 +790,12 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if not self._in_gate_scope() and len(self._function_qreg_size_map) > 0:
             # we are in SOME function scope
             # transform qubits to use the global qreg identifiers
-            operation.qubits = Qasm3Transformer.transform_function_qubits(
-                operation,
-                self._function_qreg_size_map[-1],
-                self._function_qreg_transform_map[-1],
+            operation.qubits = (
+                Qasm3Transformer.transform_function_qubits(  # type: ignore [assignment]
+                    operation,
+                    self._function_qreg_size_map[-1],
+                    self._function_qreg_transform_map[-1],
+                )
             )
         # Applying the inverse first and then the power is same as
         # apply the power first and then inverting the result
@@ -897,6 +905,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
             init_value = None
             for dim in reversed(final_dimensions):
+                assert isinstance(dim, int)
                 init_value = [init_value for _ in range(dim)]
 
         if statement.init_expression:
@@ -977,11 +986,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if len(lvalue.indices[0]) > 1:  # type: ignore[arg-type]
                 indices = lvalue.indices[0]
             else:
-                indices = [idx[0] for idx in lvalue.indices]
+                indices = [idx[0] for idx in lvalue.indices]  # type: ignore[assignment, index]
 
             validated_indices = Qasm3Analyzer.analyze_classical_indices(
                 indices, self._get_from_visible_scope(var_name)  # type: ignore[arg-type]
-            )  # type: ignore[arg-type]
+            )
             Qasm3Transformer.update_array_element(
                 var.value, validated_indices, var_value  # type: ignore[union-attr, arg-type]
             )

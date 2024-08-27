@@ -34,42 +34,24 @@ def test_measure():
     c1 = measure q1;
     measure q1 -> c1;
     c2[0] = measure q3[0];
+    measure q1[:1] -> c1[1];
+    measure q2[{0, 1}] -> c1[{1, 0}];
+
     """
 
     result = qasm3_to_qir(qasm3_string)
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 8, 3)
-    qubit_list = [0, 1, 0, 1, 7]
-    bit_list = [0, 1, 0, 1, 2]
+    qubit_list = [0, 1, 0, 1, 7, 0, 2, 3]
+    bit_list = [0, 1, 0, 1, 2, 1, 1, 0]
 
-    check_measure_op(generated_qir, 5, qubit_list, bit_list)
+    check_measure_op(generated_qir, 8, qubit_list, bit_list)
 
 
 def test_incorrect_measure():
     def run_test(qasm3_code, error_message):
         with pytest.raises(Qasm3ConversionError, match=error_message):
             _ = qasm3_to_qir(qasm3_code)
-
-    # Test for range based measurement not supported
-    run_test(
-        """
-        OPENQASM 3;
-        qubit[2] q1;
-        bit[2] c1;
-        measure q1[0:2] -> c1[:2];  // not supported 
-    """,
-        r"Range based measurement .* not supported at the moment",
-    )
-
-    run_test(
-        """
-        OPENQASM 3;
-        qubit[2] q1;
-        bit[2] c1;
-        measure q1 -> c1[:2];  // not supported 
-    """,
-        r"Range based measurement .* not supported at the moment",
-    )
 
     # Test for undeclared register q2
     run_test(
@@ -103,6 +85,18 @@ def test_incorrect_measure():
         c2 = measure q1;  // size mismatch
     """,
         r"Register sizes of q1 and c2 do not match .*",
+    )
+
+    # Test for size mismatch between q1 and c2 in ranges
+    run_test(
+        """
+        OPENQASM 3;
+        qubit[5] q1;
+        bit[4] c1;
+        bit[1] c2;
+        c1[:3] = measure q1;  // size mismatch
+    """,
+        r"Register sizes of q1 and c1 do not match .*",
     )
 
     # Test for out of bounds index for q1

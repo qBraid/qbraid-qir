@@ -17,7 +17,7 @@ from typing import Any, Union
 from openqasm3.ast import (
     BinaryExpression,
     DiscreteSet,
-    FloatLiteral,
+    Expression,
     Identifier,
     IndexedIdentifier,
     IndexExpression,
@@ -136,15 +136,12 @@ class Qasm3Transformer:
             gate_op.qubits[i] = qubit_map[gate_qubit_name]
 
     @staticmethod
-    def transform_gate_params(
-        gate_op: QuantumGate, param_map: dict[str, Union[FloatLiteral, IntegerLiteral]]
-    ) -> None:
+    def transform_gate_params(gate_op: QuantumGate, param_map: dict[str, Expression]) -> None:
         """Transform the parameters of a gate operation with a parameter map.
 
         Args:
             gate_op (QuantumGate): The gate operation to transform.
-            param_map (Dict[str, Union[FloatLiteral, IntegerLiteral]]): The parameter map to use
-                                                                        for transformation.
+            param_map (Dict[str, Expression]): The parameter map to use for transformation.
 
         Returns:
             None
@@ -212,7 +209,7 @@ class Qasm3Transformer:
         Returns:
             None
         """
-        expanded_op_qubits = cls.visitor_obj._get_op_qubits(q_op, formal_qreg_sizes, qir_form=False)
+        expanded_op_qubits = cls.visitor_obj._get_op_bits(q_op, formal_qreg_sizes, qir_form=False)
 
         transformed_qubits = []
         for qubit in expanded_op_qubits:
