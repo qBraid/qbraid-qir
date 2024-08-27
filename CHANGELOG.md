@@ -20,6 +20,8 @@ Types of changes:
 
 ### 🌟  Improvements 
 * Re-factor the `BasicQasmVisitor` and improve modularity ( [#142](https://github.com/qBraid/qbraid-qir/pull/142) )
+* Add static type checking with `mypy` ( [#150](https://github.com/qBraid/qbraid-qir/pull/150) )
+* Improve measurement statement parsing logic and add support for range definition and discrete set ( [#150](https://github.com/qBraid/qbraid-qir/pull/150) )
 
 ### 📜  Documentation 
 * Housekeeping updates for release ( [#135](https://github.com/qBraid/qbraid-qir/pull/135) )
