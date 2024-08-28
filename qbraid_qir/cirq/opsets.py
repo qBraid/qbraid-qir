@@ -12,7 +12,7 @@
 Module mapping supported Cirq gates/operations to pyqir functions.
 
 """
-from typing import Callable, Tuple
+from typing import Callable
 
 import cirq
 import pyqir._native
@@ -38,7 +38,7 @@ def measure_y(builder, qubit, result):
     pyqir._native.mz(builder, qubit, result)
 
 
-PYQIR_OP_MAP = {
+PYQIR_OP_MAP: dict[str, Callable] = {
     # Identity Gate
     "I": i,
     # Single-Qubit Clifford Gates
@@ -71,7 +71,7 @@ PYQIR_OP_MAP = {
 
 def map_cirq_op_to_pyqir_callable(
     operation: cirq.Operation,
-) -> Tuple[Callable, str]:
+) -> tuple[Callable, str]:
     """
     Maps a Cirq operation to its corresponding PyQIR callable function.
 
@@ -79,7 +79,7 @@ def map_cirq_op_to_pyqir_callable(
         operation (cirq.Operation): The Cirq operation to map.
 
     Returns:
-        Tuple[Callable, str]: Tuple containing the corresponding PyQIR callable function,
+        tuple[Callable, str]: tuple containing the corresponding PyQIR callable function,
                                and a string representing the gate/operation type.
 
     Raises:

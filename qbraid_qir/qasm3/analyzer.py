@@ -12,10 +12,12 @@
 Module with analysis functions for QASM3 visitor
 
 """
-from typing import Any
+from typing import Any, Optional, Union
 
 from openqasm3.ast import (
     BinaryExpression,
+    DiscreteSet,
+    Expression,
     IndexExpression,
     IntegerLiteral,
     RangeDefinition,
@@ -30,7 +32,7 @@ class Qasm3Analyzer:
     """Class with utility functions for analyzing QASM3 elements"""
 
     @staticmethod
-    def analyze_classical_indices(indices: list[IntegerLiteral], var: Variable) -> None:
+    def analyze_classical_indices(indices: list[Any], var: Variable) -> list:
         """Validate the indices for a classical variable.
 
         Args:
@@ -45,18 +47,21 @@ class Qasm3Analyzer:
         """
         indices_list = []
         var_name = var.name
-        var_dimensions = var.dims
+        var_dimensions: Optional[list[int]] = var.dims
 
-        if not var_dimensions:
+        if var_dimensions is None or len(var_dimensions) == 0:
             raise_qasm3_error(
                 message=f"Indexing error. Variable {var_name} is not an array",
                 err_type=Qasm3ConversionError,
                 span=indices[0].span,
             )
-        if len(indices) != len(var_dimensions):
+        if isinstance(indices, DiscreteSet):
+            indices = indices.values
+
+        if len(indices) != len(var_dimensions):  # type: ignore[arg-type]
             raise_qasm3_error(
                 message=f"Invalid number of indices for variable {var_name}. "
-                f"Expected {len(var_dimensions)} but got {len(indices)}",
+                f"Expected {len(var_dimensions)} but got {len(indices)}",  # type: ignore[arg-type]
                 err_type=Qasm3ConversionError,
                 span=indices[0].span,
             )
@@ -78,7 +83,7 @@ class Qasm3Analyzer:
                     span=index.span,
                 )
             index_value = index.value
-            curr_dimension = var_dimensions[i]
+            curr_dimension = var_dimensions[i]  # type: ignore[index]
 
             if index_value < 0 or index_value >= curr_dimension:
                 raise_qasm3_error(
@@ -92,29 +97,35 @@ class Qasm3Analyzer:
         return indices_list
 
     @staticmethod
-    def analyze_index_expression(index_expr: IndexExpression) -> tuple[str, list[list]]:
+    def analyze_index_expression(
+        index_expr: IndexExpression,
+    ) -> tuple[str, list[Union[Any, Expression, RangeDefinition]]]:
         """analyze an index expression to get the variable name and indices.
 
         Args:
             index_expr (IndexExpression): The index expression to analyze.
 
         Returns:
-            tuple[str, list[list]]: The variable name and indices.
+            tuple[str, list[Any]]: The variable name and indices.
 
         """
-        indices = []
-        var_name = None
+        indices: list[Any] = []
+        var_name = ""
         comma_separated = False
 
         if isinstance(index_expr.collection, IndexExpression):
             while isinstance(index_expr, IndexExpression):
-                indices.append(index_expr.index[0])
-                index_expr = index_expr.collection
+                if isinstance(index_expr.index, list):
+                    indices.append(index_expr.index[0])
+                    index_expr = index_expr.collection
         else:
             comma_separated = True
-            indices = index_expr.index
-
-        var_name = index_expr.collection.name if comma_separated else index_expr.name
+            indices = index_expr.index  # type: ignore[assignment]
+        var_name = (
+            index_expr.collection.name  # type: ignore[attr-defined]
+            if comma_separated
+            else index_expr.name  # type: ignore[attr-defined]
+        )
         if not comma_separated:
             indices = indices[::-1]
 
@@ -169,7 +180,7 @@ class Qasm3Analyzer:
                     err_type=Qasm3ConversionError,
                     span=condition.span,
                 )
-            return condition.rhs.value != 0
+            return condition.rhs.value != 0  # type: ignore[attr-defined]
         if not isinstance(condition, IndexExpression):
             raise_qasm3_error(
                 message=(

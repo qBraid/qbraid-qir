@@ -12,17 +12,11 @@
 Module with utility functions for QASM3 visitor
 
 """
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from openqasm3.ast import ArrayType, ClassicalDeclaration
 from openqasm3.ast import IntType as Qasm3IntType
-from openqasm3.ast import (
-    QuantumGate,
-    QuantumGateDefinition,
-    ReturnStatement,
-    Statement,
-    SubroutineDefinition,
-)
+from openqasm3.ast import QuantumGate, QuantumGateDefinition, ReturnStatement, SubroutineDefinition
 
 from .elements import Variable
 from .exceptions import Qasm3ConversionError, raise_qasm3_error
@@ -53,14 +47,12 @@ class Qasm3Validator:
         )
 
     @staticmethod
-    def validate_statement_type(
-        blacklisted_stmts: set, statement: Statement, construct: str
-    ) -> None:
+    def validate_statement_type(blacklisted_stmts: set, statement: Any, construct: str) -> None:
         """Validate the type of a statement.
 
         Args:
             blacklisted_stmts (set): The set of blacklisted statements.
-            statement (Statement): The statement to validate.
+            statement (Any): The statement to validate.
             construct (str): The construct the statement is in.
 
         Raises:
@@ -126,10 +118,11 @@ class Qasm3Validator:
         # For each type we will have a "castable" type set and its corresponding cast operation
         type_casted_value = qasm_variable_type_cast(qasm_type, variable.name, base_size, value)
 
+        left: Union[int, float] = 0
+        right: Union[int, float] = 0
         # check 2 - range match , if bits mentioned in base size
         if type_to_match == int:
             base_size = variable.base_size
-            left, right = 0, 0
             if qasm_type == Qasm3IntType:
                 left, right = (
                     -1 * (2 ** (base_size - 1)),
@@ -146,12 +139,11 @@ class Qasm3Validator:
 
         elif type_to_match == float:
             base_size = variable.base_size
-            left, right = 0, 0
 
             if base_size == 32:
-                left, right = -(LIMITS_MAP["float_32"]), (LIMITS_MAP["float_32"])
+                left, right = -1.0 * (LIMITS_MAP["float_32"]), (LIMITS_MAP["float_32"])
             else:
-                left, right = -(LIMITS_MAP["float_64"]), (LIMITS_MAP["float_64"])
+                left, right = -1.0 * (LIMITS_MAP["float_64"]), (LIMITS_MAP["float_64"])
 
             if type_casted_value < left or type_casted_value > right:
                 raise_qasm3_error(

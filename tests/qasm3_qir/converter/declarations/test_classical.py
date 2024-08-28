@@ -293,8 +293,8 @@ def test_array_expressions():
     arr_float64[0][1] = d*d;
 
     qubit q;
-    rx(arr_int[0][1] + arr_uint[0][1]) q;
-    rx(arr_float32[0][1] + arr_float64[0][1]) q;
+    rx(arr_int[{0,1}] + arr_uint[0][1]) q;
+    rx(arr_float32[{0,1}] + arr_float64[0][1]) q;
     """
 
     a = 2

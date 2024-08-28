@@ -57,7 +57,7 @@ class Variable:
         name (str): Name of the variable.
         base_type (Any): Base type of the variable.
         base_size (int): Base size of the variable.
-        dims (List[int]): Dimensions of the variable.
+        dims (list[int]): Dimensions of the variable.
         value (Optional[Union[int, float, list]]): Value of the variable.
         is_constant (bool): Flag indicating if the variable is constant.
 
@@ -122,7 +122,7 @@ class Qasm3Module:
         module (Module): QIR Module instance.
         num_qubits (int): Number of qubits in the circuit.
         num_clbits (int): Number of classical bits in the circuit.
-        elements (List[Statement]): List of openqasm3 Statements.
+        elements (list[Statement]): list of openqasm3 Statements.
     """
 
     # pylint: disable-next=too-many-arguments
@@ -166,20 +166,24 @@ class Qasm3Module:
         Class method. Construct a Qasm3Module from a given openqasm3.ast.Program object
         and an optional QIR Module.
         """
-        elements = []
+        elements: list[Union[_Register, _Statement]] = []
 
         num_qubits = 0
         num_clbits = 0
         for statement in program.statements:
             if isinstance(statement, QubitDeclaration):
-                size = 1 if statement.size is None else statement.size.value
+                size = 1
+                if statement.size:
+                    size = statement.size.value  # type: ignore[attr-defined]
                 num_qubits += size
                 elements.append(_Register(statement))
 
             elif isinstance(statement, ClassicalDeclaration) and isinstance(
                 statement.type, BitType
             ):
-                size = 1 if statement.type.size is None else statement.type.size.value
+                size = 1
+                if statement.type.size:
+                    size = statement.type.size.value  # type: ignore[attr-defined]
                 num_clbits += size
                 elements.append(_Register(statement))
                 # as bit arrays are just 0 / 1 values, we can treat them as
@@ -191,7 +195,7 @@ class Qasm3Module:
 
         if module is None:
             # pylint: disable-next=too-many-function-args
-            module = Module(qirContext(), generate_module_id(program))
+            module = Module(qirContext(), generate_module_id())
 
         return cls(
             name="main",

@@ -37,7 +37,7 @@ class Qasm3ExprEvaluator:
     visitor_obj = None
 
     @classmethod
-    def set_visitor_obj(cls, visitor_obj):
+    def set_visitor_obj(cls, visitor_obj) -> None:
         cls.visitor_obj = visitor_obj
 
     @classmethod
@@ -171,7 +171,7 @@ class Qasm3ExprEvaluator:
                 expression.span,
             )
 
-        def _process_variable(var_name, indices=None):
+        def _process_variable(var_name: str, indices=None):
             cls._check_var_in_scope(var_name, expression)
             cls._check_var_constant(var_name, const_expr, expression)
             cls._check_var_type(var_name, reqd_type, expression)
@@ -200,15 +200,18 @@ class Qasm3ExprEvaluator:
             target = expression.target
             index = expression.index
 
-            if not isinstance(target, Identifier):
+            if isinstance(target, Identifier):
+                var_name = target.name
+                cls._check_var_in_scope(var_name, expression)
+                dimensions = cls.visitor_obj._get_from_visible_scope(  # type: ignore[union-attr]
+                    var_name
+                ).dims
+            else:
                 raise_qasm3_error(
                     message=f"Unsupported target type {type(target)} for sizeof expression",
                     err_type=Qasm3ConversionError,
                     span=expression.span,
                 )
-            var_name = target.name
-            cls._check_var_in_scope(var_name, expression)
-            dimensions = cls.visitor_obj._get_from_visible_scope(var_name).dims
 
             if dimensions is None or len(dimensions) == 0:
                 raise_qasm3_error(
@@ -222,7 +225,7 @@ class Qasm3ExprEvaluator:
                 return dimensions[0]
 
             index = cls.evaluate_expression(index, const_expr, reqd_type=Qasm3IntType)
-
+            assert index is not None and isinstance(index, int)
             if index < 0 or index >= len(dimensions):
                 raise_qasm3_error(
                     f"Index {index} out of bounds for array {var_name} with "
@@ -268,7 +271,7 @@ class Qasm3ExprEvaluator:
             # function will not return a reqd / const type
             # Reference : https://openqasm.com/language/types.html#compile-time-constants
             # para      : 5
-            return cls.visitor_obj._visit_function_call(expression)
+            return cls.visitor_obj._visit_function_call(expression)  # type: ignore[union-attr]
 
         raise_qasm3_error(
             f"Unsupported expression type {type(expression)}", Qasm3ConversionError, expression.span

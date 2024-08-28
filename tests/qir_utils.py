@@ -14,7 +14,7 @@ Module for containing QIR code utils functions used for unit tests.
 """
 
 import struct
-from typing import List, Union
+from typing import Union
 
 from pyqir import (
     Context,
@@ -103,7 +103,7 @@ def reset_call_string(qb: int) -> str:
     return f"call void @__quantum__qis__reset__body({_qubit_string(qb)})"
 
 
-def generic_op_call_string(name: str, qbs: List[int]) -> str:
+def generic_op_call_string(name: str, qbs: list[int]) -> str:
     args = ", ".join(_qubit_string(qb) for qb in qbs)
     return f"call void @__quantum__qis__{name}__body({args})"
 
@@ -118,7 +118,7 @@ def get_entry_point(mod: Module) -> Function:
     return func
 
 
-def get_entry_point_body(qir: List[str]) -> List[str]:
+def get_entry_point_body(qir: list[str]) -> list[str]:
     joined = "\n".join(qir)
     mod = Module.from_ir(Context(), joined)
     func = next(filter(is_entry_point, mod.functions))
@@ -144,7 +144,7 @@ def check_attributes_on_entrypoint(
     ), f"Incorrect result count: {expected_results} expected, {actual_results} actual"
 
 
-def check_attributes(qir: List[str], expected_qubits: int = 0, expected_results: int = 0) -> None:
+def check_attributes(qir: list[str], expected_qubits: int = 0, expected_results: int = 0) -> None:
     x = "\n".join(qir)
     mod = Module.from_ir(Context(), x)
     func = next(filter(is_entry_point, mod.functions))
@@ -152,7 +152,7 @@ def check_attributes(qir: List[str], expected_qubits: int = 0, expected_results:
     check_attributes_on_entrypoint(func, expected_qubits, expected_results)
 
 
-def check_resets(qir: List[str], expected_resets: int, qubit_list: List[int]):
+def check_resets(qir: list[str], expected_resets: int, qubit_list: list[int]):
     entry_body = get_entry_point_body(qir)
     reset_count = 0
     for line in entry_body:
@@ -169,7 +169,7 @@ def check_resets(qir: List[str], expected_resets: int, qubit_list: List[int]):
         assert False, f"Incorrect reset count: {expected_resets} expected, {reset_count} actual"
 
 
-def check_barrier(qir: List[str], expected_barriers: int):
+def check_barrier(qir: list[str], expected_barriers: int):
     entry_body = get_entry_point_body(qir)
     barrier_count = 0
     for line in entry_body:
@@ -185,7 +185,7 @@ def check_barrier(qir: List[str], expected_barriers: int):
         ), f"Incorrect barrier count: {expected_barriers} expected, {barrier_count} actual"
 
 
-def check_measure_op(qir: List[str], expected_ops: int, qubit_list: List[int], bit_list: List[int]):
+def check_measure_op(qir: list[str], expected_ops: int, qubit_list: list[int], bit_list: list[int]):
     entry_body = get_entry_point_body(qir)
     measure_count = 0
     q_id, b_id = 0, 0
@@ -209,7 +209,7 @@ def check_measure_op(qir: List[str], expected_ops: int, qubit_list: List[int], b
 
 
 def check_single_qubit_gate_op(
-    qir: List[str], expected_ops: int, qubit_list: List[int], gate_name: str
+    qir: list[str], expected_ops: int, qubit_list: list[int], gate_name: str
 ):
     entry_body = get_entry_point_body(qir)
     op_count = 0
@@ -237,7 +237,7 @@ def check_single_qubit_gate_op(
 
 
 def check_two_qubit_gate_op(
-    qir: List[str], expected_ops: int, qubit_lists: List[int], gate_name: str
+    qir: list[str], expected_ops: int, qubit_lists: list[int], gate_name: str
 ):
     entry_body = get_entry_point_body(qir)
     op_count = 0
@@ -263,7 +263,7 @@ def check_two_qubit_gate_op(
 
 # pylint: disable-next=too-many-locals
 def check_single_qubit_u3_op(
-    entry_body: List[str], expected_ops: int, qubit_list: List[int], param_list: List[float]
+    entry_body: list[str], expected_ops: int, qubit_list: list[int], param_list: list[float]
 ):
     theta, phi, lam = param_list
     op_count = 0
@@ -306,10 +306,10 @@ def check_single_qubit_u3_op(
 
 
 def check_single_qubit_rotation_op(
-    qir: List[str],
+    qir: list[str],
     expected_ops: int,
-    qubit_list: List[int],
-    param_list: List[float],
+    qubit_list: list[int],
+    param_list: list[float],
     gate_name: str,
 ):
     entry_body = get_entry_point_body(qir)
@@ -338,7 +338,7 @@ def check_single_qubit_rotation_op(
 
 
 def check_three_qubit_gate_op(
-    qir: List[str], expected_ops: int, qubit_lists: List[int], gate_name: str
+    qir: list[str], expected_ops: int, qubit_lists: list[int], gate_name: str
 ):
     entry_body = get_entry_point_body(qir)
     op_count = 0
@@ -361,7 +361,7 @@ def check_three_qubit_gate_op(
         ), f"Incorrect three qubit gate count: {expected_ops} expected, {op_count} actual"
 
 
-def _validate_simple_custom_op(entry_body: List[str]):
+def _validate_simple_custom_op(entry_body: list[str]):
     custom_op_lines = [
         initialize_call_string(),
         single_op_call_string("h", 0),
@@ -378,7 +378,7 @@ def _validate_simple_custom_op(entry_body: List[str]):
         assert body_line.strip() == custom_op_lines[i].strip(), "Incorrect custom op line"
 
 
-def _validate_nested_custom_op(entry_body: List[str]):
+def _validate_nested_custom_op(entry_body: list[str]):
     nested_op_lines = [
         initialize_call_string(),
         single_op_call_string("h", 1),
@@ -397,7 +397,7 @@ def _validate_nested_custom_op(entry_body: List[str]):
         assert body_line.strip() == nested_op_lines[i].strip(), "Incorrect nested op line"
 
 
-def _validate_complex_custom_op(entry_body: List[str]):
+def _validate_complex_custom_op(entry_body: list[str]):
     complex_op_lines = [
         initialize_call_string(),
         single_op_call_string("h", 0),
@@ -416,7 +416,7 @@ def _validate_complex_custom_op(entry_body: List[str]):
         assert body_line.strip() == complex_op_lines[i].strip(), "Incorrect complex op line"
 
 
-def check_custom_qasm_gate_op(qir: List[str], test_type: str):
+def check_custom_qasm_gate_op(qir: list[str], test_type: str):
     entry_body = get_entry_point_body(qir)
     print(entry_body)
     if test_type == "simple":
@@ -430,7 +430,7 @@ def check_custom_qasm_gate_op(qir: List[str], test_type: str):
 
 
 def check_expressions(
-    qir: List[str], expected_ops: int, gates: List[str], expression_values, qubits: List[int]
+    qir: list[str], expected_ops: int, gates: list[str], expression_values, qubits: list[int]
 ):
     entry_body = get_entry_point_body(qir)
     op_count = 0
@@ -452,12 +452,12 @@ def check_expressions(
 
 
 def check_simple_if(
-    qir: List[str],  # pylint: disable=unused-argument
+    qir: list[str],  # pylint: disable=unused-argument
 ):
     pass
 
 
 def check_complex_if(
-    qir: List[str],  # pylint: disable=unused-argument
+    qir: list[str],  # pylint: disable=unused-argument
 ):
     pass
