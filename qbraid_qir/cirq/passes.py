@@ -13,7 +13,7 @@ Module for processing Cirq circuits before conversion to QIR.
 
 """
 import itertools
-from typing import List
+from typing import Iterable
 
 import cirq
 
@@ -21,15 +21,15 @@ from .exceptions import CirqConversionError
 from .opsets import map_cirq_op_to_pyqir_callable
 
 
-def _decompose_gate_op(operation: cirq.GateOperation) -> List[cirq.OP_TREE]:
+def _decompose_gate_op(operation: cirq.Operation) -> Iterable[cirq.OP_TREE]:
     """Decomposes a single Cirq gate operation into a sequence of operations
     that are directly supported by PyQIR.
 
     Args:
-        operation (cirq.GateOperation): The gate operation to decompose.
+        operation (cirq.Operation): The gate operation to decompose.
 
     Returns:
-        List[cirq.OP_TREE]: A list of decomposed gate operations.
+        Iterable[cirq.OP_TREE]: A list of decomposed gate operations.
     """
     try:
         # Try converting to PyQIR. If successful, keep the operation.
@@ -58,7 +58,7 @@ def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
         new_ops = []
         for operation in moment:
             if isinstance(operation, cirq.GateOperation):
-                decomposed_ops = _decompose_gate_op(operation)
+                decomposed_ops = list(_decompose_gate_op(operation))
                 new_ops.extend(decomposed_ops)
             elif isinstance(operation, cirq.ClassicallyControlledOperation):
                 new_ops.append(operation)

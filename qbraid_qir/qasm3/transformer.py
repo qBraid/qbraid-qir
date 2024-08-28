@@ -141,7 +141,7 @@ class Qasm3Transformer:
 
         Args:
             gate_op (QuantumGate): The gate operation to transform.
-            param_map (Dict[str, Expression]): The parameter map to use for transformation.
+            param_map (dict[str, Expression]): The parameter map to use for transformation.
 
         Returns:
             None

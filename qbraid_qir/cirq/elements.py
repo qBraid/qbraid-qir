@@ -14,7 +14,7 @@ Module defining Cirq LLVM Module elements.
 
 import hashlib
 from abc import ABCMeta, abstractmethod
-from typing import FrozenSet, List, Optional
+from typing import Optional
 
 import cirq
 from pyqir import Context, Module
@@ -50,7 +50,7 @@ class _CircuitElement(metaclass=ABCMeta):
 
 
 class _Register(_CircuitElement):
-    def __init__(self, register: FrozenSet[cirq.Qid]):
+    def __init__(self, register: list[cirq.Qid]):
         self._register = register
 
     def accept(self, visitor):
@@ -77,7 +77,7 @@ class CirqModule:
         name (str): Name of the module.
         module (Module): QIR Module instance.
         num_qubits (int): Number of qubits in the circuit.
-        elements (List[_CircuitElement]): List of circuit elements.
+        elements (list[_CircuitElement]): list of circuit elements.
 
     Example:
         >>> circuit = cirq.Circuit()
@@ -90,7 +90,7 @@ class CirqModule:
         name: str,
         module: Module,
         num_qubits: int,
-        elements: List[_CircuitElement],
+        elements: list[_CircuitElement],
     ):
         self._name = name
         self._module = module
@@ -122,7 +122,7 @@ class CirqModule:
     def from_circuit(cls, circuit: cirq.Circuit, module: Optional[Module] = None) -> "CirqModule":
         """Class method. Constructs a CirqModule from a given cirq.Circuit object
         and an optional QIR Module."""
-        elements: List[_CircuitElement] = []
+        elements: list[_CircuitElement] = []
 
         # Register(s). Tentatively using cirq.Qid as input. Better approaches might exist tbd.
         elements.append(_Register(list(circuit.all_qubits())))

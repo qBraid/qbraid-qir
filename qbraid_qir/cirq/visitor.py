@@ -14,7 +14,6 @@ Module defining CirqVisitor.
 """
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import List
 
 import cirq
 import pyqir
@@ -49,11 +48,11 @@ class BasicCirqVisitor(CircuitElementVisitor):
     """
 
     def __init__(self, initialize_runtime: bool = True, record_output: bool = True):
-        self._module = None
-        self._builder = None
-        self._entry_point = None
-        self._qubit_labels = {}
-        self._measured_qubits = {}
+        self._module: pyqir.Module
+        self._builder: pyqir.Builder
+        self._entry_point: str
+        self._qubit_labels: dict[cirq.Qid, int] = {}
+        self._measured_qubits: dict = {}
         self._initialize_runtime = initialize_runtime
         self._record_output = record_output
 
@@ -89,11 +88,8 @@ class BasicCirqVisitor(CircuitElementVisitor):
             result_ref = pyqir.result(self._module.context, i)
             pyqir.rt.result_record_output(self._builder, result_ref, Constant.null(i8p))
 
-    def visit_register(self, qids: List[cirq.Qid]) -> None:
+    def visit_register(self, qids: list[cirq.Qid]) -> None:
         logger.debug("Visiting qids '%s'", str(qids))
-
-        if not isinstance(qids, list):
-            raise TypeError("Parameter is not a list.")
 
         if not all(isinstance(x, cirq.Qid) for x in qids):
             raise TypeError("All elements in the list must be of type cirq.Qid.")
@@ -102,7 +98,8 @@ class BasicCirqVisitor(CircuitElementVisitor):
         logger.debug("Added labels for qubits %s", str(qids))
 
     def visit_operation(self, operation: cirq.Operation) -> None:
-        qlabels = [self._qubit_labels.get(bit) for bit in operation.qubits]
+        qlabels = [self._qubit_labels[bit] for bit in operation.qubits]
+
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in qlabels]
 
@@ -125,7 +122,9 @@ class BasicCirqVisitor(CircuitElementVisitor):
             # pylint: disable=unnecessary-lambda-assignment
             if op_str in ["Rx", "Ry", "Rz"]:
                 pyqir_func = lambda: temp_pyqir_func(
-                    self._builder, operation._sub_operation.gate._rads, *qubits
+                    self._builder,
+                    operation._sub_operation.gate._rads,  # type: ignore[union-attr]
+                    *qubits,
                 )
             else:
                 pyqir_func = lambda: temp_pyqir_func(self._builder, *qubits)
@@ -149,12 +148,9 @@ class BasicCirqVisitor(CircuitElementVisitor):
             if op_str.startswith("measure"):
                 handle_measurement(pyqir_func)
             elif op_str in ["Rx", "Ry", "Rz"]:
-                pyqir_func(self._builder, operation.gate._rads, *qubits)
+                pyqir_func(self._builder, operation.gate._rads, *qubits)  # type: ignore[union-attr]
             else:
                 pyqir_func(self._builder, *qubits)
 
     def ir(self) -> str:
         return str(self._module)
-
-    def bitcode(self) -> bytes:
-        return self._module.bitcode()

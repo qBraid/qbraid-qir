@@ -64,7 +64,7 @@ def cirq_to_qir(circuit: cirq.Circuit, name: Optional[str] = None, **kwargs) -> 
     visitor = BasicCirqVisitor(**kwargs)
     module.accept(visitor)
 
-    err = llvm_module.verify()
-    if err is not None:
-        raise CirqConversionError(err)
+    error = llvm_module.verify()
+    if error is not None:
+        raise CirqConversionError(error)
     return llvm_module

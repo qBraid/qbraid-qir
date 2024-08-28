@@ -57,7 +57,7 @@ class Variable:
         name (str): Name of the variable.
         base_type (Any): Base type of the variable.
         base_size (int): Base size of the variable.
-        dims (List[int]): Dimensions of the variable.
+        dims (list[int]): Dimensions of the variable.
         value (Optional[Union[int, float, list]]): Value of the variable.
         is_constant (bool): Flag indicating if the variable is constant.
 
@@ -122,7 +122,7 @@ class Qasm3Module:
         module (Module): QIR Module instance.
         num_qubits (int): Number of qubits in the circuit.
         num_clbits (int): Number of classical bits in the circuit.
-        elements (List[Statement]): List of openqasm3 Statements.
+        elements (list[Statement]): list of openqasm3 Statements.
     """
 
     # pylint: disable-next=too-many-arguments
