@@ -667,6 +667,15 @@ VARIABLE_TYPE_MAP = {
     ComplexType: complex,
     # AngleType: None,  # not sure
 }
+VARIABLE_TYPE_STR = {
+    BitType: "bit",
+    IntType: "int",
+    UintType: "uint",
+    BoolType: "bool",
+    FloatType: "float",
+    ComplexType: "complex",
+    AngleType: "angle",
+}
 
 # Reference: https://openqasm.com/language/types.html#allowed-casts
 VARIABLE_TYPE_CAST_MAP = {

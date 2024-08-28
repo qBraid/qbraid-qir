@@ -29,8 +29,10 @@ from openqasm3.ast import (
     UnaryExpression,
 )
 
+from .elements import Variable
 from .exceptions import raise_qasm3_error
 from .expressions import Qasm3ExprEvaluator
+from .maps import VARIABLE_TYPE_STR
 from .validator import Qasm3Validator
 
 # mypy: disable-error-code="attr-defined, union-attr"
@@ -226,3 +228,20 @@ class Qasm3Transformer:
             )
 
         return transformed_qubits
+
+    @staticmethod
+    def get_type_string(variable: Variable) -> str:
+        """Get the type string for a variable."""
+        base_type = variable.base_type
+        base_size = variable.base_size
+        dims = variable.dims
+        is_array = dims and len(dims) > 0
+        type_str = "" if not is_array else "array["
+
+        type_str += VARIABLE_TYPE_STR[base_type.__class__]
+        if base_size:
+            type_str += f"[{base_size}]"
+
+        if is_array:
+            type_str += f", {', '.join([str(dim) for dim in dims])}]"
+        return type_str

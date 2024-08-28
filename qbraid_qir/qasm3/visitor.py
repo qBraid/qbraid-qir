@@ -1227,7 +1227,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         quantum_vars, classical_vars = [], []
 
-        def _process_classical_arg(formal_arg, actual_arg, actual_arg_name):
+        def _process_classical_arg_by_value(formal_arg, actual_arg, actual_arg_name):
             """
             Process the classical argument for a function call.
 
@@ -1244,7 +1244,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             # 1. variable mapping is equivalent to declaring the variable
             #     with the formal argument name and doing classical assignment
             #     in the scope of the function
-            if actual_arg_name:
+            if actual_arg_name:  # actual arg is a variable not literal
                 if actual_arg_name in self._global_qreg_size_map:
                     raise_qasm3_error(
                         f"Expecting classical argument for '{formal_arg.name.name}'. "
@@ -1276,6 +1276,77 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     False,
                 )
             )
+
+        def _process_classical_arg_by_reference(formal_arg, actual_arg, actual_arg_name):
+            """Process the classical args by reference in the QASM3 visitor.
+               Currently being used for array references only.
+
+            Args:
+                formal_arg (Qasm3Expression): The formal argument of the function.
+                actual_arg (Qasm3Expression): The actual argument passed to the function.
+                actual_arg_name (str): The name of the actual argument.
+
+            Raises:
+                Qasm3ConversionError: If the actual argument is not an array.
+                Qasm3ConversionError: If the actual argument is an undefined variable.
+            """
+
+            formal_arg_type = formal_arg.type.base_type
+            formal_arg_size = Qasm3ExprEvaluator.evaluate_expression(formal_arg.type.base_type.size)
+            array_expected_type_msg = (
+                "Expecting array with base type "
+                f"'{formal_arg_type.__class__.__name__.lower().removesuffix('type')}"
+                f"[{formal_arg_size}]' for '{formal_arg.name.name}' in function '{fn_name}'. "
+            )
+
+            if actual_arg_name is None:
+                raise_qasm3_error(
+                    array_expected_type_msg + f"Literal found in function call for '{fn_name}'",
+                    span=statement.span,
+                )
+
+            if actual_arg_name in self._global_qreg_size_map:
+                raise_qasm3_error(
+                    array_expected_type_msg
+                    + f"Qubit register '{actual_arg_name}' found for function '{fn_name}'",
+                    span=statement.span,
+                )
+
+            # verify actual argument is defined in the parent scope of function call
+            if not self._check_in_scope(actual_arg_name):
+                raise_qasm3_error(
+                    f"Undefined variable '{actual_arg_name}' used for function call '{fn_name}'",
+                    span=statement.span,
+                )
+
+            array_reference = self._get_from_visible_scope(actual_arg_name)
+            actual_type_string = Qasm3Transformer.get_type_string(array_reference)
+
+            # ensure that actual argument is an array
+            if not array_reference.dims:
+                raise_qasm3_error(
+                    array_expected_type_msg
+                    + f"Variable '{actual_arg_name}' has type '{actual_type_string}'.",
+                    span=statement.span,
+                )
+
+            # The base types of the elements in array should match
+            actual_arg_type = array_reference.base_type
+            actual_arg_size = array_reference.base_size
+
+            if formal_arg_type != actual_arg_type or formal_arg_size != actual_arg_size:
+                raise_qasm3_error(
+                    array_expected_type_msg
+                    + f"Variable '{actual_arg_name}' has type '{actual_type_string}'.",
+                    span=statement.span,
+                )
+
+            # The dimensions passed in the formal arg should be
+            # within limits of the actual argument
+
+            # TODO...
+
+            readonly_arr = formal_arg.access == qasm3_ast.AccessControl.readonly
 
         def _process_quantum_arg(formal_arg, actual_arg, formal_reg_name, actual_arg_name):
             """
@@ -1358,8 +1429,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 actual_arg_name = actual_arg.collection.name
 
             if isinstance(formal_arg, qasm3_ast.ClassicalArgument):
-                # TODO: add the handling for access : mutable / readonly arrays
-                _process_classical_arg(formal_arg, actual_arg, actual_arg_name)
+                if isinstance(formal_arg.type, qasm3_ast.ArrayReferenceType):
+                    _process_classical_arg_by_reference(formal_arg, actual_arg, actual_arg_name)
+                else:
+                    _process_classical_arg_by_value(formal_arg, actual_arg, actual_arg_name)
             else:
                 _process_quantum_arg(formal_arg, actual_arg, formal_arg.name.name, actual_arg_name)
 
