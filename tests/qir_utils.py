@@ -219,7 +219,6 @@ def check_single_qubit_gate_op(
         gate_call_id = (
             f"qis__{gate_name}" if "dg" not in gate_name else f"qis__{gate_name.removesuffix('dg')}"
         )
-        print(gate_call_id)
         if line.strip().startswith("call") and gate_call_id in line:
             assert line.strip() == single_op_call_string(
                 gate_name, qubit_list[q_id]
@@ -418,7 +417,6 @@ def _validate_complex_custom_op(entry_body: list[str]):
 
 def check_custom_qasm_gate_op(qir: list[str], test_type: str):
     entry_body = get_entry_point_body(qir)
-    print(entry_body)
     if test_type == "simple":
         _validate_simple_custom_op(entry_body)
     elif test_type == "nested":

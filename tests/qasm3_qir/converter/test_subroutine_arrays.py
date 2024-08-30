@@ -37,8 +37,6 @@ def test_simple_function_call():
 
     result = qasm3_to_qir(qasm_str)
     generated_qir = str(result).splitlines()
-    for line in generated_qir:
-        print(line)
 
     check_attributes(generated_qir, 1, 0)
 
@@ -80,8 +78,8 @@ def test_literal_raises_error():
 
     with pytest.raises(
         Qasm3ConversionError,
-        match=r"Expecting array with base type 'int\[8\]' for 'my_arr' in function 'my_function'. "
-        r"Literal found in function call for 'my_function'",
+        match=r"Expecting array with base type 'int\[8\]' for 'my_arr' in function 'my_function'."
+        r" Literal 5 found in function call",
     ):
         qasm3_to_qir(qasm_str)
 
@@ -104,5 +102,157 @@ def test_type_mismatch_in_array():
         Qasm3ConversionError,
         match=r"Expecting array with base type 'int\[8\]' for 'my_arr' in function 'my_function'."
         r" Variable 'arr' has type 'array\[float\[32\], 2, 2\]'.",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_dimension_count_mismatch_1():
+    """Test that passing an array with different dimension count raises error."""
+    qasm_str = """OPENQASM 3.0;
+    include "stdgates.inc";
+
+    def my_function(qubit a, readonly array[int[8], 2, 2] my_arr) {
+        return;
+    }
+    qubit q;
+    array[int[8], 2] arr;
+    my_function(q, arr);
+
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Dimension mismatch for 'my_arr' in function 'my_function'. Expected 2 dimensions"
+        r" but variable 'arr' has 1",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_dimension_count_mismatch_2():
+    """Test that passing an array with different dimension count raises error."""
+    qasm_str = """OPENQASM 3.0;
+    include "stdgates.inc";
+
+    def my_function(qubit a, readonly array[int[8], #dim = 4] my_arr) {
+        return;
+    }
+    qubit q;
+    array[int[8], 2, 2] arr;
+    my_function(q, arr);
+
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Dimension mismatch for 'my_arr' in function 'my_function'. Expected 4 dimensions "
+        r"but variable 'arr' has 2",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_qubit_passed_as_array():
+    """Test that passing a qubit as an array raises error."""
+    qasm_str = """OPENQASM 3.0;
+    include "stdgates.inc";
+
+    def my_function(mutable array[int[8], 2, 2] my_arr) {
+        return;
+    }
+    qubit[2] q;
+    my_function(q);
+
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Expecting array with base type 'int\[8\]' for 'my_arr' in function 'my_function'."
+        r" Qubit register 'q' found for function call",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_invalid_dimension_number():
+    """Test that passing an array with invalid dimension number raises error."""
+    qasm_str = """OPENQASM 3.0;
+    include "stdgates.inc";
+
+    def my_function(qubit a, readonly array[int[8], #dim = -3] my_arr) {
+        return;
+    }
+    qubit q;
+    array[int[8], 2, 2, 2] arr;
+    my_function(q, arr);
+
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Invalid number of dimensions -3 for 'my_arr' in function 'my_function'",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_invalid_non_int_dimensions_1():
+    """Test that passing an array with non-integer dimensions raises error."""
+    qasm_str = """OPENQASM 3.0;
+    include "stdgates.inc";
+
+    def my_function(qubit a, mutable array[int[8], #dim = 2.5] my_arr) {
+        return;
+    }
+    qubit q;
+    array[int[8], 2, 2] arr;
+    my_function(q, arr);
+
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Invalid value 2.5 with type <class 'openqasm3.ast.FloatLiteral'> for required type "
+        r"<class 'openqasm3.ast.IntType'>",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_invalid_non_int_dimensions_2():
+    """Test that passing an array with non-integer dimensions raises error."""
+    qasm_str = """OPENQASM 3.0;
+    include "stdgates.inc";
+
+    def my_function(qubit a, readonly array[int[8], 2.5, 2] my_arr) {
+        return;
+    }
+    qubit q;
+    array[int[8], 2, 2] arr;
+    my_function(q, arr);
+
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Invalid value 2.5 with type <class 'openqasm3.ast.FloatLiteral'> for required type"
+        r" <class 'openqasm3.ast.IntType'>",
+    ):
+        qasm3_to_qir(qasm_str)
+
+
+def test_extra_dimensions_for_array():
+    """Test that passing an array with extra dimensions raises error."""
+    qasm_str = """OPENQASM 3.0;
+    include "stdgates.inc";
+
+    def my_function(qubit a, mutable array[int[8], 4, 2] my_arr) {
+        return;
+    }
+    qubit q;
+    array[int[8], 2, 2] arr;
+    my_function(q, arr);
+
+    """
+
+    with pytest.raises(
+        Qasm3ConversionError,
+        match=r"Dimension mismatch for 'my_arr' in function 'my_function'. "
+        r"Expected dimension 0 with size >= 4 but got 2",
     ):
         qasm3_to_qir(qasm_str)

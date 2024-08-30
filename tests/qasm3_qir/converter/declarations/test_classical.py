@@ -335,6 +335,34 @@ def test_array_initializations():
     check_single_qubit_rotation_op(generated_qir, 5, [0, 0, 0, 0, 0], [2, 2, 2.0, 2.0, 0], "rx")
 
 
+def test_array_range_assignment():
+    """Test array range assignment"""
+
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+
+    array[int[32], 3, 2] arr_int = { {1, 2}, {3, 4}, {5, 6} };
+    // array[uint[32], 3, 2] arr_uint = { {1, 2}, {3, 4}, {5, 6} };
+    // array[float[32], 3, 2] arr_float32 = { {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0} };
+
+    arr_int[0, 0:1] = arr_int[1, 0:1]; // array literals not allowed here 
+    // arr_uint[0:2, 1] = arr_uint[0:2, 0];
+    // arr_float32[0:2, 1] = arr_float32[0:2, 0];
+
+    qubit q;
+    rx(arr_int[0][1]) q;
+    // rx(arr_uint[0][1]) q;
+    // rx(arr_float32[1][1]) q;
+
+    """
+
+    result = qasm3_to_qir(qasm3_string)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_rotation_op(generated_qir, 1, [0], [4], "rx")
+
+
 @pytest.mark.parametrize("test_name", DECLARATION_TESTS.keys())
 def test_incorrect_declarations(test_name):
     qasm_input, error_message = DECLARATION_TESTS[test_name]

@@ -43,7 +43,8 @@ class Qasm3Analyzer:
             Qasm3ConversionError: If the indices are invalid.
 
         Returns:
-            list: The list of indices.
+            list[list]: The list of indices. Note, we can also have a list of indices within
+                        a list if the variable is a multi-dimensional array.
         """
         indices_list = []
         var_name = var.name
@@ -66,33 +67,61 @@ class Qasm3Analyzer:
                 span=indices[0].span,
             )
 
-        for i, index in enumerate(indices):
-            if isinstance(index, RangeDefinition):
+        def _validate_index(index, dimension, var_name, span, dim_num):
+            if index < 0 or index >= dimension:
                 raise_qasm3_error(
-                    message=f"Range based indexing {index} not supported for "
-                    f"classical variable {var_name}",
+                    message=f"Index {index} out of bounds for dimension {dim_num} "
+                    f"of variable {var_name}",
                     err_type=Qasm3ConversionError,
-                    span=index.span,
+                    span=span,
                 )
 
-            if not isinstance(index, IntegerLiteral):
+        def _validate_step(start_id, end_id, step, span):
+            if (step < 0 and start_id < end_id) or (step > 0 and start_id > end_id):
+                direction = "less than" if step < 0 else "greater than"
+                raise_qasm3_error(
+                    message=f"Index {start_id} is {direction} {end_id} but step"
+                    f" is {'negative' if step < 0 else 'positive'}",
+                    err_type=Qasm3ConversionError,
+                    span=span,
+                )
+
+        for i, index in enumerate(indices):
+            if not isinstance(index, (RangeDefinition, IntegerLiteral)):
                 raise_qasm3_error(
                     message=f"Unsupported index type {type(index)} for "
                     f"classical variable {var_name}",
                     err_type=Qasm3ConversionError,
                     span=index.span,
                 )
-            index_value = index.value
-            curr_dimension = var_dimensions[i]  # type: ignore[index]
 
-            if index_value < 0 or index_value >= curr_dimension:
-                raise_qasm3_error(
-                    message=f"Index {index_value} out of bounds for dimension {i+1} "
-                    f"of variable {var_name}",
-                    err_type=Qasm3ConversionError,
-                    span=index.span,
+            if isinstance(index, RangeDefinition):
+                range_def = index
+                # TODO : add support for identifiers here
+                assert var_dimensions is not None
+
+                start_id = (
+                    range_def.start.value if isinstance(range_def.start, IntegerLiteral) else 0
                 )
-            indices_list.append(index_value)
+                end_id = (
+                    range_def.end.value
+                    if isinstance(range_def.end, IntegerLiteral)
+                    else var_dimensions[i] - 1
+                )
+                step = range_def.step.value if isinstance(range_def.step, IntegerLiteral) else 1
+
+                _validate_index(start_id, var_dimensions[i], var_name, range_def.span, i)
+                _validate_index(end_id, var_dimensions[i], var_name, range_def.span, i)
+                _validate_step(start_id, end_id, step, range_def.span)
+
+                indices_list.append((start_id, end_id, step))
+
+            if isinstance(index, IntegerLiteral):
+                index_value = index.value
+                curr_dimension = var_dimensions[i]  # type: ignore[index]
+                _validate_index(index_value, curr_dimension, var_name, index.span, i)
+
+                indices_list.append((index_value, index_value, 1))
 
         return indices_list
 
@@ -100,13 +129,13 @@ class Qasm3Analyzer:
     def analyze_index_expression(
         index_expr: IndexExpression,
     ) -> tuple[str, list[Union[Any, Expression, RangeDefinition]]]:
-        """analyze an index expression to get the variable name and indices.
+        """Analyze an index expression to get the variable name and indices.
 
         Args:
             index_expr (IndexExpression): The index expression to analyze.
 
         Returns:
-            tuple[str, list[Any]]: The variable name and indices.
+            tuple[str, list[Any]]: The variable name and indices in openqasm objects
 
         """
         indices: list[Any] = []
@@ -132,7 +161,7 @@ class Qasm3Analyzer:
         return var_name, indices
 
     @staticmethod
-    def find_array_element(multi_dim_arr: list[Any], indices: list[int]) -> Any:
+    def find_array_element(multi_dim_arr: list[Any], indices: list[tuple[int, int, int]]) -> Any:
         """Find the value of an array at the specified indices.
 
         Args:
@@ -143,8 +172,11 @@ class Qasm3Analyzer:
             Any: The value at the specified indices.
         """
         temp = multi_dim_arr
-        for index in indices:
-            temp = temp[index]
+        for index_element in indices:
+            start, end, step = index_element
+            temp = temp[start : end + 1 : step]
+            if start == end:  # if literal index, we decrease the dimension by 1
+                temp = temp[0]
         return temp
 
     @staticmethod

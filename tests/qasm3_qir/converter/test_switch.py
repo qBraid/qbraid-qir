@@ -383,7 +383,7 @@ def test_non_int_expression_case():
 
     with pytest.raises(
         Qasm3ConversionError,
-        match=r"Invalid type .* for required type <class 'openqasm3.ast.IntType'>",
+        match=r"Invalid value 4.3 with type .* for required type <class 'openqasm3.ast.IntType'>",
     ):
         qasm3_switch_program = base_invalid_program
         qasm3_to_qir(qasm3_switch_program, name="test")
