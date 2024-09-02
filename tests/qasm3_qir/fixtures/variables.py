@@ -248,7 +248,8 @@ ASSIGNMENT_TESTS = {
         array[int[32], 3] x;
         x[0.1] = 3;
         """,
-        "Unsupported index type <class 'openqasm3.ast.FloatLiteral'> for classical variable x",
+        "Invalid value 0.1 with type <class 'openqasm3.ast.FloatLiteral'> for "
+        "required type <class 'openqasm3.ast.IntType'>",
     ),
     "index_out_of_range": (
         """

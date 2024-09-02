@@ -168,6 +168,20 @@ SUBROUTINE_INCORRECT_TESTS = {
         """,
         "Expecting qubit argument for 'q'. Qubit register 'b' not found for function 'my_function'",
     ),
+    "test_invalid_qubit_size": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        def my_function(qubit[-3] q) {
+            h q;
+            return;
+        }
+        qubit[4] q;
+        my_function(q);
+        """,
+        "Invalid qubit size -3 for variable 'q' in function 'my_function'",
+    ),
     "test_type_mismatch_for_function": (
         """
         OPENQASM 3;
@@ -197,7 +211,7 @@ SUBROUTINE_INCORRECT_TESTS = {
         """,
         r"Duplicate qubit argument for register 'q' in function call for 'my_function'",
     ),
-    "undefined_variable_in_actual_arg": (
+    "undefined_variable_in_actual_arg_1": (
         """
         OPENQASM 3;
         include "stdgates.inc";
@@ -209,6 +223,18 @@ SUBROUTINE_INCORRECT_TESTS = {
         qubit q;
         my_function(b);
         """,
-        "Undefined variable 'b' used for function 'my_function'",
+        "Undefined variable 'b' used for function call 'my_function'",
+    ),
+    "undefined_array_arg_in_function_call": (
+        """
+        OPENQASM 3;
+        include "stdgates.inc";
+
+        def my_function(readonly array[int[32], 1, 2] a) {
+            return;
+        }
+        my_function(b);
+        """,
+        "Undefined variable 'b' used for function call 'my_function'",
     ),
 }

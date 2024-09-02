@@ -14,6 +14,7 @@ Module with transformation functions for QASM3 visitor
 """
 from typing import Any, Union
 
+import numpy as np
 from openqasm3.ast import (
     BinaryExpression,
     DiscreteSet,
@@ -26,13 +27,14 @@ from openqasm3.ast import (
     QuantumGate,
     QuantumReset,
     RangeDefinition,
+    UintType,
     UnaryExpression,
 )
 
 from .elements import Variable
 from .exceptions import raise_qasm3_error
 from .expressions import Qasm3ExprEvaluator
-from .maps import VARIABLE_TYPE_STR
+from .maps import VARIABLE_TYPE_MAP
 from .validator import Qasm3Validator
 
 # mypy: disable-error-code="attr-defined, union-attr"
@@ -49,39 +51,23 @@ class Qasm3Transformer:
 
     @staticmethod
     def update_array_element(
-        multi_dim_arr: list[Any], indices: list[tuple[int, int, int]], value: Any
+        multi_dim_arr: np.ndarray, indices: list[tuple[int, int, int]], value: Any
     ) -> None:
         """Update the value of an array at the specified indices. Single element only.
 
         Args:
-            multi_dim_arr (list): The multi-dimensional array to update.
-            indices (list[int]): The indices to update.
+            multi_dim_arr (np.ndarray): The multi-dimensional array to update.
+            indices (list[tuple[int,int,int]]): The indices to update.
             value (Any): The value to update.
 
         Returns:
             None
         """
-        # print("\n****")
-        # print("Original array: ", multi_dim_arr)
-        for index_element in indices[:-1]:
-            start, end, step = index_element
-            # print("start, end, step", start, end, step)
-            multi_dim_arr = multi_dim_arr[start : end + 1 : step]
-            if start == end:
-                multi_dim_arr = multi_dim_arr[0]
-            # print("Current array", multi_dim_arr)
-
-        last_start, last_end, last_step = indices[-1]
-        # print("Final indices: ", last_start, last_end, last_step)
-        if not isinstance(value, list):
-            value = [value]
-
-        # print("Final value: ", value)
-        # print("Final array: ", multi_dim_arr[last_start:last_end+1:last_step])
-        multi_dim_arr[last_start : last_end + 1 : last_step] = value
-
-        # print("Updated array: ", multi_dim_arr)
-        # print("****")
+        slicing = tuple(
+            slice(start, stop + 1, step) if start != stop else start
+            for start, stop, step in indices
+        )
+        multi_dim_arr[slicing] = value
 
     @staticmethod
     def extract_values_from_discrete_set(discrete_set: DiscreteSet) -> list[int]:
@@ -152,8 +138,7 @@ class Qasm3Transformer:
                     span=qubit.span,
                 )
             gate_qubit_name = qubit.name
-            if isinstance(gate_qubit_name, Identifier):
-                gate_qubit_name = gate_qubit_name.name
+            assert isinstance(gate_qubit_name, str)
             gate_op.qubits[i] = qubit_map[gate_qubit_name]
 
     @staticmethod
@@ -304,7 +289,9 @@ class Qasm3Transformer:
         is_array = dims and len(dims) > 0
         type_str = "" if not is_array else "array["
 
-        type_str += VARIABLE_TYPE_STR[base_type.__class__]
+        type_str += VARIABLE_TYPE_MAP[base_type.__class__].__name__
+        if base_type.__class__ == UintType:
+            type_str = type_str.replace("int", "uint")
         if base_size:
             type_str += f"[{base_size}]"
 

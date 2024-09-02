@@ -14,6 +14,7 @@ Module with utility functions for QASM3 visitor
 """
 from typing import Any, Optional, Union
 
+import numpy as np
 from openqasm3.ast import ArrayType, ClassicalDeclaration
 from openqasm3.ast import IntType as Qasm3IntType
 from openqasm3.ast import QuantumGate, QuantumGateDefinition, ReturnStatement, SubroutineDefinition
@@ -161,26 +162,26 @@ class Qasm3Validator:
 
     @staticmethod
     def validate_array_assignment_values(
-        variable: Variable, dimensions: list[int], values: list
+        variable: Variable, dimensions: list[int], values: np.ndarray
     ) -> None:
         """Validate the assignment of values to an array variable.
 
         Args:
             variable (Variable): The variable to assign to.
             dimensions (list[int]): The dimensions of the array.
-            values (list[Any]): The values to assign.
+            values (np.ndarray[Any]): The values to assign.
 
         Raises:
             Qasm3ConversionError: If the values are not of the correct type.
         """
         # recursively check the array
-        if len(values) != dimensions[0]:
+        if values.shape[0] != dimensions[0]:
             raise_qasm3_error(
                 f"Invalid dimensions for array assignment to variable {variable.name}. "
-                f"Expected {dimensions[0]} but got {len(values)}",
+                f"Expected {dimensions[0]} but got {values.shape[0]}",
             )
         for i, value in enumerate(values):
-            if isinstance(value, list):
+            if isinstance(value, np.ndarray):
                 Qasm3Validator.validate_array_assignment_values(variable, dimensions[1:], value)
             else:
                 if len(dimensions) != 1:

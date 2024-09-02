@@ -18,6 +18,7 @@ from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import Optional, Union
 
+import numpy as np
 from openqasm3.ast import BitType, ClassicalDeclaration, Program, QubitDeclaration, Statement
 from pyqir import Context as qirContext
 from pyqir import Module
@@ -60,6 +61,7 @@ class Variable:
         dims (list[int]): Dimensions of the variable.
         value (Optional[Union[int, float, list]]): Value of the variable.
         is_constant (bool): Flag indicating if the variable is constant.
+        readonly(bool): Flag indicating if the variable is readonly.
 
     """
 
@@ -70,8 +72,9 @@ class Variable:
         base_type,
         base_size: int,
         dims: Optional[list[int]] = None,
-        value: Optional[Union[int, float, list]] = None,
+        value: Optional[Union[int, float, np.ndarray]] = None,
         is_constant: bool = False,
+        readonly: bool = False,
     ):
         self.name = name
         self.base_type = base_type
@@ -79,6 +82,7 @@ class Variable:
         self.dims = dims
         self.value = value
         self.is_constant = is_constant
+        self.readonly = readonly
 
 
 class _ProgramElement(metaclass=ABCMeta):

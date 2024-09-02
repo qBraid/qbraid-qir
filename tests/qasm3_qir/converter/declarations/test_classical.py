@@ -287,7 +287,9 @@ def test_array_expressions():
     float[64] d = 6.7;
     bool f = true;
 
+
     arr_int[0][1] = a*a;
+    arr_int[1][0] = arr_int[0][1];
     arr_uint[0][1] = b*b;
     arr_float32[0][1] = c*c;
     arr_float64[0][1] = d*d;
@@ -343,24 +345,24 @@ def test_array_range_assignment():
     include "stdgates.inc";
 
     array[int[32], 3, 2] arr_int = { {1, 2}, {3, 4}, {5, 6} };
-    // array[uint[32], 3, 2] arr_uint = { {1, 2}, {3, 4}, {5, 6} };
-    // array[float[32], 3, 2] arr_float32 = { {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0} };
+    array[uint[32], 3, 2] arr_uint = { {1, 2}, {3, 4}, {5, 6} };
+    array[float[32], 3, 2] arr_float32 = { {1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0} };
 
-    arr_int[0, 0:1] = arr_int[1, 0:1]; // array literals not allowed here 
-    // arr_uint[0:2, 1] = arr_uint[0:2, 0];
-    // arr_float32[0:2, 1] = arr_float32[0:2, 0];
+    arr_int[0, 0:1] = arr_int[1, 0:1]; 
+    arr_uint[0:2, 1] = arr_uint[0:2, 0];
+    arr_float32[0:2, 1] = arr_float32[0:2, 0];
 
     qubit q;
     rx(arr_int[0][1]) q;
-    // rx(arr_uint[0][1]) q;
-    // rx(arr_float32[1][1]) q;
+    rx(arr_uint[0][1]) q;
+    rx(arr_float32[1][1]) q;
 
     """
 
     result = qasm3_to_qir(qasm3_string)
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 1, 0)
-    check_single_qubit_rotation_op(generated_qir, 1, [0], [4], "rx")
+    check_single_qubit_rotation_op(generated_qir, 3, [0, 0, 0], [4, 1, 3.0], "rx")
 
 
 @pytest.mark.parametrize("test_name", DECLARATION_TESTS.keys())
