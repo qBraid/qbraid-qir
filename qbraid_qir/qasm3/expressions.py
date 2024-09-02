@@ -245,7 +245,8 @@ class Qasm3ExprEvaluator:
                 if reqd_type == Qasm3FloatType and isinstance(expression, FloatLiteral):
                     return expression.value
                 raise_qasm3_error(
-                    f"Invalid type {type(expression)} for required type {reqd_type}",
+                    f"Invalid value {expression.value} with type {type(expression)} "
+                    f"for required type {reqd_type}",
                     Qasm3ConversionError,
                     expression.span,
                 )

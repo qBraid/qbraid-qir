@@ -20,6 +20,7 @@ from abc import ABCMeta, abstractmethod
 from collections import deque
 from typing import Any, Optional, Union
 
+import numpy as np
 import openqasm3.ast as qasm3_ast
 import pyqir
 import pyqir._native
@@ -30,12 +31,14 @@ from .elements import Context, InversionOp, Qasm3Module, Variable
 from .exceptions import Qasm3ConversionError, raise_qasm3_error
 from .expressions import Qasm3ExprEvaluator
 from .maps import (
+    ARRAY_TYPE_MAP,
     CONSTANTS_MAP,
     MAX_ARRAY_DIMENSIONS,
     SWITCH_BLACKLIST_STMTS,
     map_qasm_inv_op_to_pyqir_callable,
     map_qasm_op_to_pyqir_callable,
 )
+from .subroutines import Qasm3SubroutineProcessor
 from .transformer import Qasm3Transformer
 from .validator import Qasm3Validator
 
@@ -109,7 +112,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
     def _init_utilities(self):
         """Initialize the utilities for the visitor."""
-        for class_obj in [Qasm3Transformer, Qasm3ExprEvaluator]:
+        for class_obj in [Qasm3Transformer, Qasm3ExprEvaluator, Qasm3SubroutineProcessor]:
             class_obj.set_visitor_obj(self)
 
     @property
@@ -903,10 +906,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 final_dimensions.append(dim_value)
                 num_elements *= dim_value
 
-            init_value = None
-            for dim in reversed(final_dimensions):
-                assert isinstance(dim, int)
-                init_value = [init_value for _ in range(dim)]
+            init_value = np.full(final_dimensions, None)
 
         if statement.init_expression:
             if isinstance(statement.init_expression, qasm3_ast.ArrayLiteral):
@@ -936,7 +936,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         variable = Variable(var_name, base_type, base_size, final_dimensions, init_value)
 
         if statement.init_expression:
-            if isinstance(init_value, list):
+            if isinstance(init_value, np.ndarray):
                 assert variable.dims is not None
                 Qasm3Validator.validate_array_assignment_values(variable, variable.dims, init_value)
             else:
@@ -956,51 +956,72 @@ class BasicQasmVisitor(ProgramElementVisitor):
             None
         """
         lvalue = statement.lvalue
-        var_name = lvalue.name
+        lvar_name = lvalue.name
+        if isinstance(lvar_name, qasm3_ast.Identifier):
+            lvar_name = lvar_name.name
 
-        if isinstance(var_name, qasm3_ast.Identifier):
-            var_name = var_name.name
-
-        var = self._get_from_visible_scope(var_name)
-
-        if var is None:  # we check for none here, so type errors are irrelevant afterwards
-            raise_qasm3_error(f"Undefined variable {var_name} in assignment", span=statement.span)
-
-        if var.is_constant:  # type: ignore[union-attr]
+        lvar = self._get_from_visible_scope(lvar_name)
+        if lvar is None:  # we check for none here, so type errors are irrelevant afterwards
+            raise_qasm3_error(f"Undefined variable {lvar_name} in assignment", span=statement.span)
+        if lvar.is_constant:  # type: ignore[union-attr]
             raise_qasm3_error(
-                f"Assignment to constant variable {var_name} not allowed", span=statement.span
+                f"Assignment to constant variable {lvar_name} not allowed", span=statement.span
             )
 
-        var_value = Qasm3ExprEvaluator.evaluate_expression(statement.rvalue)
-
-        # currently we support single array assignment only.
-        # TODO: range based assignment
+        # rvalue will be an evaluated value (scalar, list)
+        # if rvalue is a list, we want a copy of it
+        rvalue = statement.rvalue
+        rvalue_raw = Qasm3ExprEvaluator.evaluate_expression(
+            rvalue
+        )  # consists of scope check and index validation
 
         # cast + validation
-        var_value = Qasm3Validator.validate_variable_assignment_value(
-            var, var_value  # type: ignore[arg-type]
-        )
-        # handle assignment for arrays
+        # rhs is a scalar
+        rvalue_eval = None
+        if not isinstance(rvalue_raw, np.ndarray):
+            rvalue_eval = Qasm3Validator.validate_variable_assignment_value(
+                lvar, rvalue_raw  # type: ignore[arg-type]
+            )
+        else:  # rhs is a list
+            rvalue_dimensions = list(rvalue_raw.shape)
+
+            # validate that the values inside rvar are valid for lvar
+            Qasm3Validator.validate_array_assignment_values(
+                variable=lvar,  # type: ignore[arg-type]
+                dimensions=rvalue_dimensions,
+                values=rvalue_raw,  # type: ignore[arg-type]
+            )
+            rvalue_eval = rvalue_raw
+
+        if lvar.readonly:  # type: ignore[union-attr]
+            raise_qasm3_error(
+                f"Assignment to readonly variable '{lvar_name}' not allowed" " in function call",
+                span=statement.span,
+            )
+
+        # lvalue will be the variable which will HOLD this value
         if isinstance(lvalue, qasm3_ast.IndexedIdentifier):
             # stupid indices structure in openqasm :/
             if len(lvalue.indices[0]) > 1:  # type: ignore[arg-type]
-                indices = lvalue.indices[0]
+                l_indices = lvalue.indices[0]
             else:
-                indices = [idx[0] for idx in lvalue.indices]  # type: ignore[assignment, index]
+                l_indices = [idx[0] for idx in lvalue.indices]  # type: ignore[assignment, index]
 
-            validated_indices = Qasm3Analyzer.analyze_classical_indices(
-                indices, self._get_from_visible_scope(var_name)  # type: ignore[arg-type]
+            validated_l_indices = Qasm3Analyzer.analyze_classical_indices(
+                l_indices, lvar  # type: ignore[arg-type]
             )
             Qasm3Transformer.update_array_element(
-                var.value, validated_indices, var_value  # type: ignore[union-attr, arg-type]
+                multi_dim_arr=lvar.value,  # type: ignore[union-attr, arg-type]
+                indices=validated_l_indices,
+                value=rvalue_eval,
             )
         else:
-            var.value = var_value  # type: ignore[union-attr]
-        self._update_var_in_scope(var)  # type: ignore[arg-type]
+            lvar.value = rvalue_eval  # type: ignore[union-attr]
+        self._update_var_in_scope(lvar)  # type: ignore[arg-type]
 
     def _evaluate_array_initialization(
         self, array_literal: qasm3_ast.ArrayLiteral, dimensions: list[int], base_type: Any
-    ) -> list:
+    ) -> np.ndarray:
         """Evaluate an array initialization.
 
         Args:
@@ -1009,20 +1030,18 @@ class BasicQasmVisitor(ProgramElementVisitor):
             base_type (Any): The base type of the array.
 
         Returns:
-            list: The evaluated array initialization.
+            np.ndarray: The evaluated array initialization.
         """
         init_values = []
-
         for value in array_literal.values:
             if isinstance(value, qasm3_ast.ArrayLiteral):
-                init_values.append(
-                    self._evaluate_array_initialization(value, dimensions[1:], base_type)
-                )
+                nested_array = self._evaluate_array_initialization(value, dimensions[1:], base_type)
+                init_values.append(nested_array)
             else:
                 eval_value = Qasm3ExprEvaluator.evaluate_expression(value)
                 init_values.append(eval_value)
 
-        return init_values
+        return np.array(init_values, dtype=ARRAY_TYPE_MAP[base_type.__class__])
 
     def _visit_branching_statement(self, statement: qasm3_ast.BranchingStatement) -> None:
         """Visit a branching statement element.
@@ -1155,49 +1174,6 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
         self._subroutine_defns[fn_name] = statement
 
-    def _get_target_qubits(self, target, qreg_size_map, target_name):
-        """Get the target qubits of a statement.
-
-        Args:
-            target (Any): The target of the statement.
-            qreg_size_map (dict[str: int]): The quantum register size map.
-            target_name (str): The name of the register.
-
-        Returns:
-            tuple: The target qubits.
-        """
-        target_qids = None
-        target_qubits_size = None
-
-        if isinstance(target, qasm3_ast.Identifier):  # "(q);"
-            target_qids = list(range(qreg_size_map[target_name]))
-            target_qubits_size = qreg_size_map[target_name]
-
-        elif isinstance(target, qasm3_ast.IndexExpression):
-            if isinstance(target.index, qasm3_ast.DiscreteSet):  # "(q[{0,1}]);"
-                target_qids = Qasm3Transformer.extract_values_from_discrete_set(target.index)
-                for qid in target_qids:
-                    Qasm3Validator.validate_register_index(
-                        qid, qreg_size_map[target_name], qubit=True
-                    )
-                target_qubits_size = len(target_qids)
-            elif isinstance(
-                target.index[0], (qasm3_ast.IntegerLiteral, qasm3_ast.Identifier)
-            ):  # "(q[0]); OR (q[i]);"
-                target_qids = [Qasm3ExprEvaluator.evaluate_expression(target.index[0])]
-                Qasm3Validator.validate_register_index(
-                    target_qids[0], qreg_size_map[target_name], qubit=True
-                )
-                target_qubits_size = 1
-            elif isinstance(target.index[0], qasm3_ast.RangeDefinition):  # "(q[0:1:2]);"
-                target_qids = Qasm3Transformer.get_qubits_from_range_definition(
-                    target.index[0],
-                    qreg_size_map[target_name],
-                    is_qubit_reg=True,
-                )
-                target_qubits_size = len(target_qids)
-        return target_qids, target_qubits_size
-
     # pylint: disable=too-many-locals, too-many-statements
     def _visit_function_call(self, statement: qasm3_ast.FunctionCall) -> None:
         """Visit a function call element.
@@ -1226,142 +1202,25 @@ class BasicQasmVisitor(ProgramElementVisitor):
         formal_qreg_size_map: dict = {}
 
         quantum_vars, classical_vars = [], []
-
-        def _process_classical_arg(formal_arg, actual_arg, actual_arg_name):
-            """
-            Process the classical argument for a function call.
-
-            Args:
-                formal_arg (FormalArgument): The formal argument of the function.
-                actual_arg (ActualArgument): The actual argument passed to the function.
-                actual_arg_name (str): The name of the actual argument.
-
-            Raises:
-                Qasm3ConversionError: If the actual argument is a qubit register instead
-                                    of a classical argument.
-                Qasm3ConversionError: If the actual argument is an undefined variable.
-            """
-            # 1. variable mapping is equivalent to declaring the variable
-            #     with the formal argument name and doing classical assignment
-            #     in the scope of the function
-            if actual_arg_name:
-                if actual_arg_name in self._global_qreg_size_map:
-                    raise_qasm3_error(
-                        f"Expecting classical argument for '{formal_arg.name.name}'. "
-                        f"Qubit register '{actual_arg_name}' found for function '{fn_name}'",
-                        span=statement.span,
-                    )
-
-                # 2. as we have pushed the scope for fn, we need to check in parent
-                #    scope for argument validation
-                if not self._check_in_scope(actual_arg_name):
-                    raise_qasm3_error(
-                        f"Undefined variable '{actual_arg_name}' used for function '{fn_name}'",
-                        span=statement.span,
-                    )
-
-            # NOTE: actual_argument can also be an EXPRESSION
-            # Better to just evaluate that expression and assign that value later to
-            # the formal argument
-            actual_arg_value = Qasm3ExprEvaluator.evaluate_expression(actual_arg)
-
-            # save this value to be updated later in scope
-            classical_vars.append(
-                Variable(
-                    formal_arg.name.name,
-                    formal_arg.type,
-                    Qasm3ExprEvaluator.evaluate_expression(formal_arg.type.size),
-                    None,
-                    actual_arg_value,
-                    False,
-                )
-            )
-
-        def _process_quantum_arg(formal_arg, actual_arg, formal_reg_name, actual_arg_name):
-            """
-            Process a quantum argument in the QASM3 visitor.
-
-            Args:
-                formal_arg (Qasm3Expression): The formal argument in the function signature.
-                actual_arg (Qasm3Expression): The actual argument passed to the function.
-                formal_reg_name (str): The name of the formal quantum register.
-                actual_arg_name (str): The name of the actual quantum register.
-
-            Returns:
-                list: The list of actual qubit ids.
-
-            Raises:
-                Qasm3ConversionError: If there is a mismatch in the quantum register size or
-                                      if the actual argument is not a qubit register.
-
-            """
-            formal_qubit_size = Qasm3ExprEvaluator.evaluate_expression(
-                formal_arg.size, reqd_type=qasm3_ast.IntType, const_expr=True
-            )
-            if formal_qubit_size is None:
-                formal_qubit_size = 1
-            formal_qreg_size_map[formal_reg_name] = formal_qubit_size
-
-            # we expect that actual arg is qubit type only
-            # note that we ONLY check in global scope as
-            # we always map the qubit arguments to the global scope
-            if actual_arg_name not in self._global_qreg_size_map:
-                raise_qasm3_error(
-                    f"Expecting qubit argument for '{formal_reg_name}'. "
-                    f"Qubit register '{actual_arg_name}' not found for function '{fn_name}'",
-                    span=statement.span,
-                )
-            self._label_scope_level[self._curr_scope].add(formal_reg_name)
-
-            actual_qids, actual_qubits_size = self._get_target_qubits(
-                actual_arg, self._global_qreg_size_map, actual_arg_name
-            )
-
-            if formal_qubit_size != actual_qubits_size:
-                raise_qasm3_error(
-                    f"Qubit register size mismatch for function '{fn_name}'. "
-                    f"Expected {formal_qubit_size} in variable '{formal_reg_name}' "
-                    f"but got {actual_qubits_size}",
-                    span=statement.span,
-                )
-
-            quantum_vars.append(
-                Variable(
-                    formal_reg_name,
-                    qasm3_ast.QubitDeclaration,
-                    formal_qubit_size,
-                    None,
-                    None,
-                    False,
-                )
-            )
-
-            if not Qasm3Validator.validate_unique_qubits(
-                duplicate_qubit_detect_map, actual_arg_name, actual_qids
-            ):
-                raise_qasm3_error(
-                    f"Duplicate qubit argument for register '{actual_arg_name}' "
-                    f"in function call for '{fn_name}'",
-                    span=statement.span,
-                )
-
-            for idx, qid in enumerate(actual_qids):
-                qubit_transform_map[(formal_reg_name, idx)] = (actual_arg_name, qid)
-
         for actual_arg, formal_arg in zip(statement.arguments, subroutine_def.arguments):
-            actual_arg_name = None
-            if isinstance(actual_arg, qasm3_ast.Identifier):
-                actual_arg_name = actual_arg.name
-            elif isinstance(actual_arg, qasm3_ast.IndexExpression) and isinstance(
-                actual_arg.collection, qasm3_ast.Identifier
-            ):
-                actual_arg_name = actual_arg.collection.name
-
             if isinstance(formal_arg, qasm3_ast.ClassicalArgument):
-                # TODO: add the handling for access : mutable / readonly arrays
-                _process_classical_arg(formal_arg, actual_arg, actual_arg_name)
+                classical_vars.append(
+                    Qasm3SubroutineProcessor.process_classical_arg(
+                        formal_arg, actual_arg, fn_name, statement.span
+                    )
+                )
             else:
-                _process_quantum_arg(formal_arg, actual_arg, formal_arg.name.name, actual_arg_name)
+                quantum_vars.append(
+                    Qasm3SubroutineProcessor.process_quantum_arg(
+                        formal_arg,
+                        actual_arg,
+                        formal_qreg_size_map,
+                        duplicate_qubit_detect_map,
+                        qubit_transform_map,
+                        fn_name,
+                        statement.span,
+                    )
+                )
 
         self._push_scope({})
         self._curr_scope += 1
@@ -1378,16 +1237,18 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._function_qreg_size_map.append(formal_qreg_size_map)
         self._function_qreg_transform_map.append(qubit_transform_map)
 
+        return_statement = None
         for function_op in subroutine_def.body:
             if isinstance(function_op, qasm3_ast.ReturnStatement):
                 return_statement = copy.deepcopy(function_op)
                 break
             self.visit_statement(copy.deepcopy(function_op))
 
-        return_value = Qasm3ExprEvaluator.evaluate_expression(return_statement.expression)
-        return_value = Qasm3Validator.validate_return_statement(
-            subroutine_def, return_statement, return_value
-        )
+        if return_statement:
+            return_value = Qasm3ExprEvaluator.evaluate_expression(return_statement.expression)
+            return_value = Qasm3Validator.validate_return_statement(
+                subroutine_def, return_statement, return_value
+            )
 
         # remove qubit transformation map
         self._function_qreg_transform_map.pop()

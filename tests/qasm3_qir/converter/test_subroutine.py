@@ -66,8 +66,6 @@ def test_simple_function_call():
 
     result = qasm3_to_qir(qasm_str)
     generated_qir = str(result).splitlines()
-    for line in generated_qir:
-        print(line)
 
     check_attributes(generated_qir, 1, 1)
     check_single_qubit_rotation_op(generated_qir, 2, [0, 0], [3.14, 6.28], "rx")

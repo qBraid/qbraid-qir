@@ -670,12 +670,22 @@ VARIABLE_TYPE_MAP = {
 
 # Reference: https://openqasm.com/language/types.html#allowed-casts
 VARIABLE_TYPE_CAST_MAP = {
-    BoolType: [int, float, bool],
-    IntType: [bool, int, float],
-    BitType: [bool, int],
-    UintType: [bool, int, float],
-    FloatType: [bool, int, float],
-    AngleType: [float],
+    BoolType: (int, float, bool, np.int64, np.float64, np.bool_),
+    IntType: (bool, int, float, np.int64, np.float64, np.bool_),
+    BitType: (bool, int, np.int64, np.bool_),
+    UintType: (bool, int, float, np.int64, np.uint64, np.float64, np.bool_),
+    FloatType: (bool, int, float, np.int64, np.float64, np.bool_),
+    AngleType: (float, np.float64),
+}
+
+ARRAY_TYPE_MAP = {
+    BitType: np.bool_,
+    IntType: np.int64,
+    UintType: np.uint64,
+    FloatType: np.float64,
+    ComplexType: np.complex128,
+    BoolType: np.bool_,
+    AngleType: np.float64,
 }
 
 

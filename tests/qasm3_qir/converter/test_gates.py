@@ -56,7 +56,6 @@ def test_two_qubit_qasm3_gates(circuit_name, request):
     qasm3_string = request.getfixturevalue(circuit_name)
     result = qasm3_to_qir(qasm3_string)
 
-    print(result)
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 2, 0)
     check_two_qubit_gate_op(generated_qir, 2, qubit_list, gate_name)

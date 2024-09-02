@@ -14,6 +14,7 @@ Module with transformation functions for QASM3 visitor
 """
 from typing import Any, Union
 
+import numpy as np
 from openqasm3.ast import (
     BinaryExpression,
     DiscreteSet,
@@ -26,11 +27,14 @@ from openqasm3.ast import (
     QuantumGate,
     QuantumReset,
     RangeDefinition,
+    UintType,
     UnaryExpression,
 )
 
+from .elements import Variable
 from .exceptions import raise_qasm3_error
 from .expressions import Qasm3ExprEvaluator
+from .maps import VARIABLE_TYPE_MAP
 from .validator import Qasm3Validator
 
 # mypy: disable-error-code="attr-defined, union-attr"
@@ -46,21 +50,24 @@ class Qasm3Transformer:
         cls.visitor_obj = visitor_obj
 
     @staticmethod
-    def update_array_element(multi_dim_arr: list[Any], indices: list[int], value: Any) -> None:
-        """Update the value of an array at the specified indices.
+    def update_array_element(
+        multi_dim_arr: np.ndarray, indices: list[tuple[int, int, int]], value: Any
+    ) -> None:
+        """Update the value of an array at the specified indices. Single element only.
 
         Args:
-            multi_dim_arr (list): The multi-dimensional array to update.
-            indices (list[int]): The indices to update.
+            multi_dim_arr (np.ndarray): The multi-dimensional array to update.
+            indices (list[tuple[int,int,int]]): The indices to update.
             value (Any): The value to update.
 
         Returns:
             None
         """
-        temp = multi_dim_arr
-        for index in indices[:-1]:
-            temp = temp[index]
-        temp[indices[-1]] = value
+        slicing = tuple(
+            slice(start, stop + 1, step) if start != stop else start
+            for start, stop, step in indices
+        )
+        multi_dim_arr[slicing] = value
 
     @staticmethod
     def extract_values_from_discrete_set(discrete_set: DiscreteSet) -> list[int]:
@@ -131,8 +138,7 @@ class Qasm3Transformer:
                     span=qubit.span,
                 )
             gate_qubit_name = qubit.name
-            if isinstance(gate_qubit_name, Identifier):
-                gate_qubit_name = gate_qubit_name.name
+            assert isinstance(gate_qubit_name, str)
             gate_op.qubits[i] = qubit_map[gate_qubit_name]
 
     @staticmethod
@@ -226,3 +232,69 @@ class Qasm3Transformer:
             )
 
         return transformed_qubits
+
+    @classmethod
+    def get_target_qubits(
+        cls,
+        target: Union[Identifier, IndexExpression],
+        qreg_size_map: dict[str, int],
+        target_name: str,
+    ) -> tuple:
+        """Get the target qubits of a statement.
+
+        Args:
+            target (Any): The target of the statement.
+            qreg_size_map (dict[str: int]): The quantum register size map.
+            target_name (str): The name of the register.
+
+        Returns:
+            tuple: The target qubits.
+        """
+        target_qids = None
+        target_qubits_size = None
+
+        if isinstance(target, Identifier):  # "(q);"
+            target_qids = list(range(qreg_size_map[target_name]))
+            target_qubits_size = qreg_size_map[target_name]
+
+        elif isinstance(target, IndexExpression):
+            if isinstance(target.index, DiscreteSet):  # "(q[{0,1}]);"
+                target_qids = Qasm3Transformer.extract_values_from_discrete_set(target.index)
+                for qid in target_qids:
+                    Qasm3Validator.validate_register_index(
+                        qid, qreg_size_map[target_name], qubit=True
+                    )
+                target_qubits_size = len(target_qids)
+            elif isinstance(target.index[0], (IntegerLiteral, Identifier)):  # "(q[0]); OR (q[i]);"
+                target_qids = [Qasm3ExprEvaluator.evaluate_expression(target.index[0])]
+                Qasm3Validator.validate_register_index(
+                    target_qids[0], qreg_size_map[target_name], qubit=True
+                )
+                target_qubits_size = 1
+            elif isinstance(target.index[0], RangeDefinition):  # "(q[0:1:2]);"
+                target_qids = Qasm3Transformer.get_qubits_from_range_definition(
+                    target.index[0],
+                    qreg_size_map[target_name],
+                    is_qubit_reg=True,
+                )
+                target_qubits_size = len(target_qids)
+        return target_qids, target_qubits_size
+
+    @staticmethod
+    def get_type_string(variable: Variable) -> str:
+        """Get the type string for a variable."""
+        base_type = variable.base_type
+        base_size = variable.base_size
+        dims = variable.dims
+        is_array = dims and len(dims) > 0
+        type_str = "" if not is_array else "array["
+
+        type_str += VARIABLE_TYPE_MAP[base_type.__class__].__name__
+        if base_type.__class__ == UintType:
+            type_str = type_str.replace("int", "uint")
+        if base_size:
+            type_str += f"[{base_size}]"
+
+        if is_array:
+            type_str += f", {', '.join([str(dim) for dim in dims])}]"
+        return type_str

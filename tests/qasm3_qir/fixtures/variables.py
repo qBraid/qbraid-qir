@@ -202,15 +202,6 @@ ASSIGNMENT_TESTS = {
             "<class 'openqasm3.ast.BitType'>"
         ),
     ),
-    "invalid_assignment_for_range": (
-        """
-        OPENQASM 3.0;
-        include "stdgates.inc";
-        array[int[32], 4, 4] my_arr;
-        my_arr[0, 1:1] = 3;
-        """,
-        "Range based indexing .* not supported for classical variable .*",
-    ),
     "int_out_of_range": (
         """
         OPENQASM 3.0;
@@ -257,7 +248,8 @@ ASSIGNMENT_TESTS = {
         array[int[32], 3] x;
         x[0.1] = 3;
         """,
-        "Unsupported index type <class 'openqasm3.ast.FloatLiteral'> for classical variable x",
+        "Invalid value 0.1 with type <class 'openqasm3.ast.FloatLiteral'> for "
+        "required type <class 'openqasm3.ast.IntType'>",
     ),
     "index_out_of_range": (
         """
@@ -267,6 +259,6 @@ ASSIGNMENT_TESTS = {
         array[int[32], 3] x;
         x[3] = 3;
         """,
-        "Index 3 out of bounds for dimension 1 of variable x",
+        "Index 3 out of bounds for dimension 0 of variable x",
     ),
 }
