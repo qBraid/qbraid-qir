@@ -12,8 +12,8 @@
 | QuantumGateModifier            | ✅          | Complete (pow, inv)    |
 | QubitDeclaration               | ✅          | Completed              |
 | Clbit Declarations             | ✅          | Completed              |
-| BinaryExpression               | ✅          | In progress            | 
-| UnaryExpression                | ✅          | In progress            |
+| BinaryExpression               | ✅          | Completed              | 
+| UnaryExpression                | ✅          | Completed              |
 | ClassicalDeclaration           | ✅          | Completed              |
 | ConstantDeclaration            | ✅          | Completed              |
 | ClassicalAssignment            | ✅          | Completed              |
