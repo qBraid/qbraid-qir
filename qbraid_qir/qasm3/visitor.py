@@ -65,7 +65,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
         record_output (bool): If True, output of the circuit will be recorded. Defaults to True.
     """
 
-    def __init__(self, initialize_runtime: bool = True, record_output: bool = True):
+    def __init__(
+        self, initialize_runtime: bool = True, record_output: bool = True, check_only: bool = False
+    ):
         self._module: pyqir.Module
         self._builder: pyqir.Builder
         self._entry_point: str = ""
@@ -81,6 +83,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._subroutine_defns: dict[str, qasm3_ast.SubroutineDefinition] = {}
         self._initialize_runtime: bool = initialize_runtime
         self._record_output: bool = record_output
+        self._check_only: bool = check_only
         self._curr_scope: int = 0
         self._label_scope_level: dict[int, set] = {self._curr_scope: set()}
 
@@ -290,7 +293,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         return len(self._scope) > 1 and self._get_curr_context() == Context.BLOCK
 
     def record_output(self, module: Qasm3Module) -> None:
-        if self._record_output is False:
+        if self._record_output is False or self._check_only:
             return
 
         i8p = pyqir.PointerType(pyqir.IntType(self._module.context, 8))
@@ -521,9 +524,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 "for measurement operation",
                 span=statement.span,
             )
-
-        for src_id, tgt_id in zip(source_ids, target_ids):
-            pyqir._native.mz(self._builder, src_id, tgt_id)  # type: ignore[arg-type]
+        if not self._check_only:
+            for src_id, tgt_id in zip(source_ids, target_ids):
+                pyqir._native.mz(self._builder, src_id, tgt_id)  # type: ignore[arg-type]
 
     def _visit_reset(self, statement: qasm3_ast.QuantumReset) -> None:
         """Visit a reset statement element.
@@ -546,9 +549,10 @@ class BasicQasmVisitor(ProgramElementVisitor):
             )
         qubit_ids = self._get_op_bits(statement, self._global_qreg_size_map, True)
 
-        for qid in qubit_ids:
-            # qid is of type Constant which is inherited from Value, so we ignore the type error
-            pyqir._native.reset(self._builder, qid)  # type: ignore[arg-type]
+        if not self._check_only:
+            for qid in qubit_ids:
+                # qid is of type Constant which is inherited from Value, so we ignore the type error
+                pyqir._native.reset(self._builder, qid)  # type: ignore[arg-type]
 
     def _visit_barrier(self, barrier: qasm3_ast.QuantumBarrier) -> None:
         """Visit a barrier statement element.
@@ -575,7 +579,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
         barrier_qubits = self._get_op_bits(barrier, self._global_qreg_size_map)
         total_qubit_count = sum(self._global_qreg_size_map.values())
         if len(barrier_qubits) == total_qubit_count:
-            pyqir._native.barrier(self._builder)
+            if not self._check_only:
+                pyqir._native.barrier(self._builder)
         else:
             raise_qasm3_error(
                 "Barrier operation on a qubit subset is not supported in pyqir",
@@ -662,13 +667,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
             if inverse_action == InversionOp.INVERT_ROTATION:
                 op_parameters = [-1 * param for param in op_parameters]
 
-        for i in range(0, len(op_qubits), op_qubit_count):
-            # we apply the gate on the qubit subset linearly
-            qubit_subset = op_qubits[i : i + op_qubit_count]
-            if op_parameters is not None:
-                qir_func(self._builder, *op_parameters, *qubit_subset)
-            else:
-                qir_func(self._builder, *qubit_subset)
+        if not self._check_only:
+            for i in range(0, len(op_qubits), op_qubit_count):
+                # we apply the gate on the qubit subset linearly
+                qubit_subset = op_qubits[i : i + op_qubit_count]
+                if op_parameters is not None:
+                    qir_func(self._builder, *op_parameters, *qubit_subset)
+                else:
+                    qir_func(self._builder, *qubit_subset)
 
     def _visit_custom_gate_operation(
         self, operation: qasm3_ast.QuantumGate, inverse: bool = False
@@ -1082,13 +1088,14 @@ class BasicQasmVisitor(ProgramElementVisitor):
             for stmt in block:
                 self.visit_statement(stmt)
 
-        # if the condition is true, we visit the if block
-        pyqir._native.if_result(
-            self._builder,
-            pyqir.result(self._module.context, self._clbit_labels[f"{reg_name}_{reg_id}"]),
-            zero=lambda: _visit_statement_block(else_block),
-            one=lambda: _visit_statement_block(if_block),
-        )
+        if not self._check_only:
+            # if the condition is true, we visit the if block
+            pyqir._native.if_result(
+                self._builder,
+                pyqir.result(self._module.context, self._clbit_labels[f"{reg_name}_{reg_id}"]),
+                zero=lambda: _visit_statement_block(else_block),
+                one=lambda: _visit_statement_block(if_block),
+            )
 
         del self._label_scope_level[self._curr_scope]
         self._curr_scope -= 1
@@ -1144,6 +1151,11 @@ class BasicQasmVisitor(ProgramElementVisitor):
             # scope not persistent between loop iterations
             self._pop_scope()
             self._restore_context()
+
+            # as we are only checking compile time errors
+            # not runtime errors, we can break here
+            if self._check_only:
+                break
 
     def _visit_subroutine_definition(self, statement: qasm3_ast.SubroutineDefinition) -> None:
         """Visit a subroutine definition element.
