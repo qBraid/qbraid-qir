@@ -707,7 +707,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             for formal_arg, actual_arg in zip(gate_definition.qubits, op_qubits)
         }
         param_map = {
-            formal_arg.name: actual_arg
+            formal_arg.name: Qasm3ExprEvaluator.evaluate_expression(actual_arg)
             for formal_arg, actual_arg in zip(gate_definition.arguments, operation.arguments)
         }
 

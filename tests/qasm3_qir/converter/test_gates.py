@@ -86,6 +86,37 @@ def test_three_qubit_qasm3_gates(circuit_name, request):
     check_three_qubit_gate_op(generated_qir, 2, qubit_list, gate_name)
 
 
+def test_gate_body_param_expression():
+    qasm3_str = """
+    OPENQASM 3;
+    include "stdgates.inc";
+
+    gate my_gate_2(p) q {
+        ry(p * 2) q;
+    }
+
+    gate my_gate(a, b, c) q {
+        rx(5 * a) q;
+        rz(2 * b / a) q;
+        my_gate_2(a) q;
+        rx(!a) q; // not a = False 
+        rx(c) q;
+    }
+
+    qubit q;
+    int[32] m = 3;
+    float[32] n = 6.0;
+    bool o = true;
+    my_gate(m, n, o) q;
+    """
+    result = qasm3_to_qir(qasm3_str)
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 1, 0)
+    check_single_qubit_rotation_op(generated_qir, 3, [0, 0, 0], [5 * 3, 0.0, True], "rx")
+    check_single_qubit_rotation_op(generated_qir, 1, [0], [2 * 6.0 / 3], "rz")
+    check_single_qubit_rotation_op(generated_qir, 1, [0], [3 * 2], "ry")
+
+
 def test_id_gate():
     qasm3_string = """
     OPENQASM 3;

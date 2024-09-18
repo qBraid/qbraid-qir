@@ -17,8 +17,9 @@ from typing import Any, Union
 import numpy as np
 from openqasm3.ast import (
     BinaryExpression,
+    BooleanLiteral,
     DiscreteSet,
-    Expression,
+    FloatLiteral,
     Identifier,
     IndexedIdentifier,
     IndexExpression,
@@ -142,20 +143,68 @@ class Qasm3Transformer:
             gate_op.qubits[i] = qubit_map[gate_qubit_name]
 
     @staticmethod
-    def transform_gate_params(gate_op: QuantumGate, param_map: dict[str, Expression]) -> None:
+    def transform_expression(expression, variable_map: dict[str, Union[int, float, bool]]):
+        """Transform an expression by replacing variables with their values.
+
+        Args:
+            expression (Any): The expression to transform.
+            variable_map (dict): The mapping of variables to their values.
+
+        Returns:
+            expression (Any): The transformed expression.
+        """
+        if expression is None:
+            return None
+
+        if isinstance(expression, (BooleanLiteral, IntegerLiteral, FloatLiteral)):
+            return expression
+
+        if isinstance(expression, BinaryExpression):
+            lhs = Qasm3Transformer.transform_expression(expression.lhs, variable_map)
+            rhs = Qasm3Transformer.transform_expression(expression.rhs, variable_map)
+            expression.lhs = lhs
+            expression.rhs = rhs
+
+        if isinstance(expression, UnaryExpression):
+            operand = Qasm3Transformer.transform_expression(expression.expression, variable_map)
+            expression.expression = operand
+
+        if isinstance(expression, Identifier):
+            if expression.name in variable_map:
+                value = variable_map[expression.name]
+                if isinstance(value, int):
+                    return IntegerLiteral(value)
+                if isinstance(value, float):
+                    return FloatLiteral(value)
+                if isinstance(value, bool):
+                    return BooleanLiteral(value)
+
+        return expression
+
+    @staticmethod
+    def transform_gate_params(
+        gate_op: QuantumGate, param_map: dict[str, Union[int, float, bool]]
+    ) -> None:
         """Transform the parameters of a gate operation with a parameter map.
 
         Args:
             gate_op (QuantumGate): The gate operation to transform.
-            param_map (dict[str, Expression]): The parameter map to use for transformation.
+            param_map (dict[str, Union[int, float, bool]]): The parameter map to use
+                                                            for transformation.
 
         Returns:
-            None
+            None: arguments are transformed in place
         """
-        for i, param in enumerate(gate_op.arguments):
-            if isinstance(param, Identifier):
-                gate_op.arguments[i] = param_map[param.name]
-            # TODO : update the arg value in expressions not just SINGLE identifiers
+        # gate_op.arguments is a list of "actual" arguments used in the gate call inside body
+
+        # param map is a "global dict for this gate" which contains the binding of the params
+        # to the actual values used in the call
+        for i, actual_arg in enumerate(gate_op.arguments):
+            # recursively replace ALL instances of the parameter in the expression
+            # with the actual value
+            print("Before transformation: ", actual_arg)
+            gate_op.arguments[i] = Qasm3Transformer.transform_expression(actual_arg, param_map)
+            print("After transformation: ", gate_op.arguments[i])
 
     @staticmethod
     def get_branch_params(condition: Any) -> tuple[int, str]:
