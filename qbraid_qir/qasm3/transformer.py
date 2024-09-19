@@ -202,9 +202,7 @@ class Qasm3Transformer:
         for i, actual_arg in enumerate(gate_op.arguments):
             # recursively replace ALL instances of the parameter in the expression
             # with the actual value
-            print("Before transformation: ", actual_arg)
             gate_op.arguments[i] = Qasm3Transformer.transform_expression(actual_arg, param_map)
-            print("After transformation: ", gate_op.arguments[i])
 
     @staticmethod
     def get_branch_params(condition: Any) -> tuple[int, str]:
