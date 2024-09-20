@@ -20,32 +20,28 @@ from qbraid_qir.qasm3.exceptions import Qasm3ConversionError
 
 
 def test_correct_check():
-    check, err = semantic_check("OPENQASM 3; include 'stdgates.inc'; qubit q;")
-    assert check
-    assert err is None
+    assert semantic_check("OPENQASM 3; include 'stdgates.inc'; qubit q;") is None
 
 
 def test_incorrect_check():
-    check, err = semantic_check(
-        """
-        //semantically incorrect program
-        OPENQASM 3;
-        include 'stdgates.inc';
-        qubit q;
-        for int[32] i in [0:10] {
-           h q;
-        }
-        rx(3.14) q[2];
-        """,
-        name="test",
-    )
-    assert not check
-    assert err is not None
-    assert isinstance(err, Qasm3ConversionError)
+    with pytest.raises(Qasm3ConversionError):
+        semantic_check(
+            """
+            //semantically incorrect program
+            OPENQASM 3;
+            include 'stdgates.inc';
+            qubit q;
+            for int[32] i in [0:10] {
+            h q;
+            }
+            rx(3.14) q[2];
+            """,
+            name="test",
+        )
 
 
 def test_incorrect_program_type():
     with pytest.raises(
         TypeError, match="Input quantum program must be of type openqasm3.ast.Program or str."
     ):
-        _, _ = semantic_check(1234)
+        semantic_check(1234)

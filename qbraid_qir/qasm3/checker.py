@@ -26,7 +26,7 @@ def semantic_check(
     program: Union[openqasm3.ast.Program, str],
     name: Optional[str] = None,
     **kwargs,
-) -> tuple[bool, Optional[Exception]]:
+) -> None:
     """Validates a given OpenQASM 3 program for semantic correctness.
 
     Args:
@@ -39,11 +39,11 @@ def semantic_check(
         record_output (bool): Whether to record output calls for registers, default `True`
 
     Returns:
-        bool : True if the program is semantically correct, False otherwise.
-        err : The exception that caused the program to be semantically incorrect.
+        Optional[Exception]: None if the program is semantically correct, otherwise an exception.
 
     Raises:
         Exception: If the input is not a valid OpenQASM 3 program.
+        Qasm3ConversionError: If the program is semantically incorrect.
     """
     if isinstance(program, str):
         program = openqasm3.parse(program)
@@ -61,6 +61,4 @@ def semantic_check(
         visitor = BasicQasmVisitor(check_only=True, **kwargs)
         module.accept(visitor)
     except (Qasm3ConversionError, TypeError, ValueError) as err:
-        return (False, err)
-
-    return (True, None)
+        raise err
