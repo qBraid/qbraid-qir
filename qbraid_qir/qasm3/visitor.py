@@ -28,7 +28,7 @@ import pyqir.rt
 
 from .analyzer import Qasm3Analyzer
 from .elements import Context, InversionOp, Qasm3Module, Variable
-from .exceptions import Qasm3ConversionError, raise_qasm3_error
+from .exceptions import Qasm3ConversionError, WarnType, emit_qasm3_warning, raise_qasm3_error
 from .expressions import Qasm3ExprEvaluator
 from .maps import (
     ARRAY_TYPE_MAP,
@@ -66,11 +66,16 @@ class BasicQasmVisitor(ProgramElementVisitor):
     """
 
     def __init__(
-        self, initialize_runtime: bool = True, record_output: bool = True, check_only: bool = False
+        self,
+        initialize_runtime: bool = True,
+        record_output: bool = True,
+        check_only: bool = False,
+        suppress_warnings: bool = False,
     ):
         self._module: pyqir.Module
         self._builder: pyqir.Builder
         self._entry_point: str = ""
+        self._suppress_warnings: bool = suppress_warnings
         self._scope: deque = deque([{}])
         self._context: deque = deque([Context.GLOBAL])
         self._qubit_labels: dict[str, int] = {}
@@ -80,7 +85,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._function_qreg_transform_map: deque = deque([])  # for nested functions
         self._global_creg_size_map: dict[str, int] = {}
         self._custom_gates: dict[str, qasm3_ast.QuantumGateDefinition] = {}
+        self._custom_gates_usage: dict[str, bool] = {}
         self._subroutine_defns: dict[str, qasm3_ast.SubroutineDefinition] = {}
+        self._subroutine_usage: dict[str, bool] = {}
         self._initialize_runtime: bool = initialize_runtime
         self._record_output: bool = record_output
         self._check_only: bool = check_only
@@ -135,9 +142,44 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise TypeError("Context must be an instance of Context")
         self._context.append(context)
 
+    def _warn_unused_vars(self, scope: dict) -> None:
+        for var_name, var in scope.items():
+            if not var.referenced:
+                emit_qasm3_warning(
+                    WarnType.UNUSED_VAR,
+                    f"Variable '{var_name}' is declared but not used.",
+                    span=None,
+                )
+
+    def _emit_unresolved_warnings(self) -> None:
+        if self._suppress_warnings:
+            return
+        # emit unused gates
+        for gate, usage in self._custom_gates_usage.items():
+            if not usage:
+                emit_qasm3_warning(
+                    WarnType.UNUSED_GATE,
+                    f"Gate '{gate}' is declared but not used.",
+                    self._custom_gates[gate].span,
+                )
+
+        # emit unused functions
+        for func, usage in self._subroutine_usage.items():
+            if not usage:
+                emit_qasm3_warning(
+                    WarnType.UNUSED_FUNCTION,
+                    f"Function '{func}' is declared but not used.",
+                    self._subroutine_defns[func].span,
+                )
+
+        # emit unused global variables
+        self._warn_unused_vars(self._scope[0])
+
     def _pop_scope(self) -> None:
         if len(self._scope) == 0:
             raise IndexError("Scope list is empty, can not pop")
+        if not self._suppress_warnings:
+            self._warn_unused_vars(self._scope[-1])
         self._scope.pop()
 
     def _restore_context(self) -> None:
@@ -193,17 +235,24 @@ class BasicQasmVisitor(ProgramElementVisitor):
         global_scope = self._get_global_scope()
         curr_scope = self._get_curr_scope()
         if self._in_global_scope():
+            if var_name in global_scope:
+                global_scope[var_name].referenced = True
             return var_name in global_scope
         if self._in_function_scope() or self._in_gate_scope():
             if var_name in curr_scope:
+                curr_scope[var_name].referenced = True
                 return True
             if var_name in global_scope:
+                global_scope[var_name].referenced = True
                 return global_scope[var_name].is_constant
         if self._in_block_scope():
             for scope, context in zip(reversed(self._scope), reversed(self._context)):
                 if context != Context.BLOCK:
+                    if var_name in scope:
+                        scope[var_name].referenced = True
                     return var_name in scope
                 if var_name in scope:
+                    scope[var_name].referenced = True
                     return True
         return False
 
@@ -221,17 +270,24 @@ class BasicQasmVisitor(ProgramElementVisitor):
         curr_scope = self._get_curr_scope()
 
         if self._in_global_scope():
+            if var_name in global_scope:
+                global_scope[var_name].referenced = True
             return global_scope.get(var_name, None)
         if self._in_function_scope() or self._in_gate_scope():
             if var_name in curr_scope:
+                curr_scope[var_name].referenced = True
                 return curr_scope[var_name]
             if var_name in global_scope and global_scope[var_name].is_constant:
+                global_scope[var_name].referenced = True
                 return global_scope[var_name]
         if self._in_block_scope():
             for scope, context in zip(reversed(self._scope), reversed(self._context)):
                 if context != Context.BLOCK:
+                    if var_name in scope:
+                        scope[var_name].referenced = True
                     return scope.get(var_name, None)
                 if var_name in scope:
+                    scope[var_name].referenced = True
                     return scope[var_name]
                     # keep on checking
         return None
@@ -417,6 +473,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
                     span=operation.span,
                 )
             self._check_if_name_in_scope(reg_name, operation)
+            # mark the variable as referenced
+            if self._get_from_visible_scope(reg_name):
+                self._get_from_visible_scope(reg_name).referenced = True  # type: ignore[union-attr]
 
             if isinstance(bit, qasm3_ast.IndexedIdentifier):
                 if isinstance(bit.indices[0], qasm3_ast.DiscreteSet):
@@ -617,6 +676,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         if gate_name in self._custom_gates:
             raise_qasm3_error(f"Duplicate gate definition for {gate_name}", span=definition.span)
         self._custom_gates[gate_name] = definition
+        self._custom_gates_usage[gate_name] = False
 
     def _visit_basic_gate_operation(
         self, operation: qasm3_ast.QuantumGate, inverse: bool = False
@@ -808,6 +868,9 @@ class BasicQasmVisitor(ProgramElementVisitor):
             )
         # Applying the inverse first and then the power is same as
         # apply the power first and then inverting the result
+        if operation.name.name in self._custom_gates:
+            self._custom_gates_usage[operation.name.name] = True
+
         for _ in range(power_value):
             if operation.name.name in self._custom_gates:
                 self._visit_custom_gate_operation(operation, inverse_value)
@@ -1185,6 +1248,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             )
 
         self._subroutine_defns[fn_name] = statement
+        self._subroutine_usage[fn_name] = False
 
     # pylint: disable=too-many-locals, too-many-statements
     def _visit_function_call(self, statement: qasm3_ast.FunctionCall) -> None:
@@ -1201,6 +1265,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
             raise_qasm3_error(f"Undefined subroutine '{fn_name}' was called", span=statement.span)
 
         subroutine_def = self._subroutine_defns[fn_name]
+        self._subroutine_usage[fn_name] = True
 
         if len(statement.arguments) != len(subroutine_def.arguments):
             raise_qasm3_error(
@@ -1482,3 +1547,8 @@ class BasicQasmVisitor(ProgramElementVisitor):
 
     def bitcode(self) -> bytes:
         return self._module.bitcode
+
+    def finalize_check(self):
+        if self._suppress_warnings:
+            return
+        self._emit_unresolved_warnings()

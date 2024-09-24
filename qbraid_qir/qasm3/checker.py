@@ -60,5 +60,7 @@ def semantic_check(
     try:
         visitor = BasicQasmVisitor(check_only=True, **kwargs)
         module.accept(visitor)
+        visitor.finalize_check()
+
     except (Qasm3ConversionError, TypeError, ValueError) as err:
         raise err
