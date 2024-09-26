@@ -20,7 +20,7 @@ Functions
    :toctree: ../stubs/
 
    qasm3_to_qir
-
+   validate_qasm
 
 Classes
 ---------
@@ -31,7 +31,6 @@ Classes
    Qasm3Module
    BasicQasmVisitor
 
-
 Exceptions
 -----------
 
@@ -41,14 +40,14 @@ Exceptions
    Qasm3ConversionError
 
 """
-from .checker import semantic_check
+from .checker import validate_qasm
 from .convert import qasm3_to_qir
 from .elements import Qasm3Module
 from .exceptions import Qasm3ConversionError
 from .visitor import BasicQasmVisitor
 
 __all__ = [
-    "semantic_check",
+    "validate_qasm",
     "qasm3_to_qir",
     "Qasm3Module",
     "Qasm3ConversionError",
