@@ -8,6 +8,8 @@
 #
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+
 """
 Module defining Qasm3 Converter elements.
 
@@ -16,7 +18,7 @@ Module defining Qasm3 Converter elements.
 import uuid
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 from openqasm3.ast import BitType, ClassicalDeclaration, Program, QubitDeclaration, Statement
@@ -65,11 +67,10 @@ class Variable:
 
     """
 
-    # pylint: disable-next=too-many-arguments
     def __init__(
         self,
         name: str,
-        base_type,
+        base_type: Any,
         base_size: int,
         dims: Optional[list[int]] = None,
         value: Optional[Union[int, float, np.ndarray]] = None,
@@ -86,6 +87,7 @@ class Variable:
 
 
 class _ProgramElement(metaclass=ABCMeta):
+
     @classmethod
     def from_element_list(cls, elements):
         return [cls(elem) for elem in elements]
@@ -96,6 +98,7 @@ class _ProgramElement(metaclass=ABCMeta):
 
 
 class _Register(_ProgramElement):
+
     def __init__(self, register: Union[QubitDeclaration, ClassicalDeclaration]):
         self._register: Union[QubitDeclaration, ClassicalDeclaration] = register
 
@@ -107,6 +110,7 @@ class _Register(_ProgramElement):
 
 
 class _Statement(_ProgramElement):
+
     def __init__(self, statement: Statement):
         self._statement = statement
 
@@ -129,7 +133,6 @@ class Qasm3Module:
         elements (list[Statement]): list of openqasm3 Statements.
     """
 
-    # pylint: disable-next=too-many-arguments
     def __init__(
         self,
         name: str,

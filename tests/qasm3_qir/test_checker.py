@@ -15,7 +15,7 @@ Tests the checker module of qasm3
 
 import pytest
 
-from qbraid_qir.qasm3.checker import validate_qasm, QasmValidationError
+from qbraid_qir.qasm3.checker import QasmValidationError, validate_qasm
 
 
 def test_correct_check():

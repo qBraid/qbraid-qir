@@ -8,6 +8,8 @@
 #
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
+# pylint: disable=too-many-instance-attributes,too-many-lines,too-many-branches
+
 """
 Module defining Qasm3 Visitor.
 
@@ -15,8 +17,6 @@ Module defining Qasm3 Visitor.
 import copy
 import logging
 from abc import ABCMeta, abstractmethod
-
-# pylint: disable=too-many-instance-attributes,too-many-lines,too-many-branches
 from collections import deque
 from typing import Any, Optional, Union
 

@@ -8,6 +8,8 @@
 #
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches
+
 """
 Module containing the class for validating QASM3 subroutines.
 
@@ -29,8 +31,6 @@ from .exceptions import raise_qasm3_error
 from .expressions import Qasm3ExprEvaluator
 from .transformer import Qasm3Transformer
 from .validator import Qasm3Validator
-
-# pylint: disable=too-many-arguments, too-many-locals, too-many-branches
 
 
 class Qasm3SubroutineProcessor:

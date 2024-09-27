@@ -12,8 +12,6 @@
 Module mapping supported QASM gates/operations to pyqir functions.
 
 """
-
-
 from typing import Callable, Union
 
 import numpy as np
@@ -389,7 +387,8 @@ def gpi2_gate(builder, phi, qubit):
     u3_gate(builder, theta_0, phi_0, lambda_0, qubit)
 
 
-def ms_gate(builder, phi0, phi1, theta, qubit0, qubit1):  # pylint: disable=too-many-arguments
+# pylint: disable-next=too-many-arguments,too-many-positional-arguments
+def ms_gate(builder, phi0, phi1, theta, qubit0, qubit1):
     """
     Implements the Molmer Sorenson gate as a decomposition of other gates.
     """

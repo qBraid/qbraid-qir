@@ -8,13 +8,15 @@
 #
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
+# pylint: disable=import-outside-toplevel,cyclic-import
+
 """
 Module with analysis functions for QASM3 visitor
 
 """
-# pylint: disable=cyclic-import, import-outside-toplevel
+from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import numpy as np
 from openqasm3.ast import (
@@ -29,8 +31,10 @@ from openqasm3.ast import (
     UnaryExpression,
 )
 
-from .elements import Variable
 from .exceptions import Qasm3ConversionError, raise_qasm3_error
+
+if TYPE_CHECKING:
+    from qbraid_qir.qasm3.elements import Variable
 
 
 class Qasm3Analyzer:
