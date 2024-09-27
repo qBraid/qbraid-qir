@@ -15,17 +15,16 @@ Tests the checker module of qasm3
 
 import pytest
 
-from qbraid_qir.qasm3.checker import semantic_check
-from qbraid_qir.qasm3.exceptions import Qasm3ConversionError
+from qbraid_qir.qasm3.checker import QasmValidationError, validate_qasm
 
 
 def test_correct_check():
-    assert semantic_check("OPENQASM 3; include 'stdgates.inc'; qubit q;") is None
+    assert validate_qasm("OPENQASM 3; include 'stdgates.inc'; qubit q;") is None
 
 
 def test_incorrect_check():
-    with pytest.raises(Qasm3ConversionError):
-        semantic_check(
+    with pytest.raises(QasmValidationError):
+        validate_qasm(
             """
             //semantically incorrect program
             OPENQASM 3;
@@ -35,13 +34,12 @@ def test_incorrect_check():
             h q;
             }
             rx(3.14) q[2];
-            """,
-            name="test",
+            """
         )
 
 
 def test_incorrect_program_type():
     with pytest.raises(
-        TypeError, match="Input quantum program must be of type openqasm3.ast.Program or str."
+        TypeError, match="Input quantum program must be of type 'str' or 'openqasm3.ast.Program'."
     ):
-        semantic_check(1234)
+        validate_qasm(1234)
