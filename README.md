@@ -172,7 +172,7 @@ citation details, please refer to [CITATION.cff](CITATION.cff).
   month = aug,
   title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
   url = {https://github.com/qBraid/qbraid-qir},
-  version = {0.2.2},
+  version = {0.2.3},
   year = {2024}
 }
 ```
