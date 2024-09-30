@@ -52,5 +52,7 @@ def validate_qasm(program: Union[openqasm3.ast.Program, str]) -> None:
     try:
         visitor = BasicQasmVisitor(check_only=True)
         module.accept(visitor)
+        visitor.finalize_check()
+
     except (Qasm3ConversionError, TypeError, ValueError) as err:
         raise QasmValidationError(f"Semantic validation failed: {err}") from err

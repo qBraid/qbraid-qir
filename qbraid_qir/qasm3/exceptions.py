@@ -13,11 +13,23 @@ Module defining exceptions for errors raised during QASM3 conversions.
 
 """
 import logging
+from enum import Enum
 from typing import Optional, Type
 
 from openqasm3.ast import Span
 
 from qbraid_qir.exceptions import QirConversionError
+
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s - %(message)s")
+
+
+class WarnType(Enum):
+    """Enum for different qasm3 semantic warnings."""
+
+    UNUSED_VAR = "unused"
+    IMPLICIT_CAST = "implicit_cast"
+    UNUSED_FUNCTION = "unused_function"
+    UNUSED_GATE = "unused_gate"
 
 
 class Qasm3ConversionError(QirConversionError):
@@ -49,3 +61,30 @@ def raise_qasm3_error(
     if raised_from:
         raise err_type(message) from raised_from
     raise err_type(message)
+
+
+def emit_qasm3_warning(
+    warning_type: WarnType,
+    message: Optional[str] = None,
+    span: Optional[Span] = None,
+):
+    """Emits a QASM3 conversion warning.
+
+    Args:
+        warning_type: The type of warning.
+        message: The warning message.
+        span: The span (location) in the QASM file where the warning occurred.
+
+    Returns:
+        None
+    """
+    err_message = "No message provided."
+    if span:
+        err_message = (
+            f"Warning at line {span.start_line}, column {span.start_column} in QASM file. "
+        )
+
+    if message:
+        err_message = message if not span else f"{err_message} {message}"
+
+    logging.warning(f"{warning_type} warning emitted: {err_message}")

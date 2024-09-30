@@ -59,6 +59,7 @@ def qasm3_to_qir(
 
     visitor = BasicQasmVisitor(**kwargs)
     module.accept(visitor)
+    visitor.finalize_check()
 
     err = llvm_module.verify()
     if err is not None:

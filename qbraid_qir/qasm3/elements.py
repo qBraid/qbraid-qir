@@ -84,6 +84,7 @@ class Variable:
         self.value = value
         self.is_constant = is_constant
         self.readonly = readonly
+        self.referenced = False
 
 
 class _ProgramElement(metaclass=ABCMeta):
