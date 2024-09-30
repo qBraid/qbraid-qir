@@ -46,7 +46,7 @@ version = {attr = "qbraid_qir.__version__"}
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 100
-disable = "C0103, C0115, C0116, I1101, R0903, W0212, W0511"
+disable = "C0103, C0115, C0116, I1101, R0903, R0917, W0212, W0511"
 
 [tool.black]
 line-length = 100
