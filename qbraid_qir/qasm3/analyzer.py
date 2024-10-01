@@ -35,13 +35,16 @@ from .exceptions import Qasm3ConversionError, raise_qasm3_error
 
 if TYPE_CHECKING:
     from qbraid_qir.qasm3.elements import Variable
+    from qbraid_qir.qasm3.expressions import Qasm3ExprEvaluator
 
 
 class Qasm3Analyzer:
     """Class with utility functions for analyzing QASM3 elements"""
 
     @classmethod
-    def analyze_classical_indices(cls, indices: list[Any], var: Variable) -> list:
+    def analyze_classical_indices(
+        cls, indices: list[Any], var: Variable, expr_evaluator: Qasm3ExprEvaluator
+    ) -> list:
         """Validate the indices for a classical variable.
 
         Args:
@@ -94,8 +97,6 @@ class Qasm3Analyzer:
                     span=span,
                 )
 
-        from .expressions import Qasm3ExprEvaluator
-
         for i, index in enumerate(indices):
             if not isinstance(index, (Identifier, Expression, RangeDefinition, IntegerLiteral)):
                 raise_qasm3_error(
@@ -110,17 +111,15 @@ class Qasm3Analyzer:
 
                 start_id = 0
                 if index.start is not None:
-                    start_id = Qasm3ExprEvaluator.evaluate_expression(
-                        index.start, reqd_type=IntType
-                    )
+                    start_id = expr_evaluator.evaluate_expression(index.start, reqd_type=IntType)
 
                 end_id = var_dimensions[i] - 1
                 if index.end is not None:
-                    end_id = Qasm3ExprEvaluator.evaluate_expression(index.end, reqd_type=IntType)
+                    end_id = expr_evaluator.evaluate_expression(index.end, reqd_type=IntType)
 
                 step = 1
                 if index.step is not None:
-                    step = Qasm3ExprEvaluator.evaluate_expression(index.step, reqd_type=IntType)
+                    step = expr_evaluator.evaluate_expression(index.step, reqd_type=IntType)
 
                 _validate_index(start_id, var_dimensions[i], var.name, index.span, i)
                 _validate_index(end_id, var_dimensions[i], var.name, index.span, i)
@@ -129,7 +128,7 @@ class Qasm3Analyzer:
                 indices_list.append((start_id, end_id, step))
 
             if isinstance(index, (Identifier, IntegerLiteral, Expression)):
-                index_value = Qasm3ExprEvaluator.evaluate_expression(index, reqd_type=IntType)
+                index_value = expr_evaluator.evaluate_expression(index, reqd_type=IntType)
                 curr_dimension = var_dimensions[i]  # type: ignore[index]
                 _validate_index(index_value, curr_dimension, var.name, index.span, i)
 

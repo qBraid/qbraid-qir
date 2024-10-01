@@ -387,7 +387,7 @@ def gpi2_gate(builder, phi, qubit):
     u3_gate(builder, theta_0, phi_0, lambda_0, qubit)
 
 
-# pylint: disable-next=too-many-arguments,too-many-positional-arguments
+# pylint: disable-next=too-many-arguments
 def ms_gate(builder, phi0, phi1, theta, qubit0, qubit1):
     """
     Implements the Molmer Sorenson gate as a decomposition of other gates.

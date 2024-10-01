@@ -8,7 +8,7 @@
 #
 # THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
 
-# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches
+# pylint: disable=too-many-arguments,too-many-locals,too-many-branches
 
 """
 Module containing the class for validating QASM3 subroutines.
@@ -257,7 +257,7 @@ class Qasm3SubroutineProcessor:
         if isinstance(actual_arg, IndexExpression):
             _, actual_indices = Qasm3Analyzer.analyze_index_expression(actual_arg)
             actual_indices = Qasm3Analyzer.analyze_classical_indices(
-                actual_indices, array_reference
+                actual_indices, array_reference, Qasm3ExprEvaluator
             )
             actual_array_view = Qasm3Analyzer.find_array_element(
                 array_reference.value, actual_indices

@@ -1014,7 +1014,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 l_indices = [idx[0] for idx in lvalue.indices]  # type: ignore[assignment, index]
 
             validated_l_indices = Qasm3Analyzer.analyze_classical_indices(
-                l_indices, lvar  # type: ignore[arg-type]
+                l_indices, lvar, Qasm3ExprEvaluator  # type: ignore[arg-type]
             )
             Qasm3Transformer.update_array_element(
                 multi_dim_arr=lvar.value,  # type: ignore[union-attr, arg-type]
