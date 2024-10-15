@@ -16,14 +16,9 @@ Module defining Qasm3 Converter elements.
 """
 
 import uuid
-from abc import ABCMeta, abstractmethod
-from enum import Enum
-from typing import Any, Optional, Union
 
-import numpy as np
-from openqasm3.ast import BitType, ClassicalDeclaration, Program, QubitDeclaration, Statement
-from pyqir import Context as qirContext
-from pyqir import Module
+from pyqasm.elements import Qasm3Module
+from pyqir import Module as qirModule
 
 
 def generate_module_id() -> str:
@@ -36,116 +31,25 @@ def generate_module_id() -> str:
     return f"program-{generated_id}"
 
 
-class InversionOp(Enum):
-    NO_OP = 1
-    INVERT_ROTATION = 2
-
-
-class Context(Enum):
-    """
-    Enum for the different contexts in Qasm.
-    """
-
-    GLOBAL = "global"
-    BLOCK = "block"
-    FUNCTION = "function"
-    GATE = "gate"
-
-
-class Variable:
-    """
-    Class representing an openqasm variable.
-
-    Args:
-        name (str): Name of the variable.
-        base_type (Any): Base type of the variable.
-        base_size (int): Base size of the variable.
-        dims (list[int]): Dimensions of the variable.
-        value (Optional[Union[int, float, list]]): Value of the variable.
-        is_constant (bool): Flag indicating if the variable is constant.
-        readonly(bool): Flag indicating if the variable is readonly.
-
-    """
-
-    def __init__(
-        self,
-        name: str,
-        base_type: Any,
-        base_size: int,
-        dims: Optional[list[int]] = None,
-        value: Optional[Union[int, float, np.ndarray]] = None,
-        is_constant: bool = False,
-        readonly: bool = False,
-    ):
-        self.name = name
-        self.base_type = base_type
-        self.base_size = base_size
-        self.dims = dims
-        self.value = value
-        self.is_constant = is_constant
-        self.readonly = readonly
-
-
-class _ProgramElement(metaclass=ABCMeta):
-
-    @classmethod
-    def from_element_list(cls, elements):
-        return [cls(elem) for elem in elements]
-
-    @abstractmethod
-    def accept(self, visitor):
-        pass
-
-
-class _Register(_ProgramElement):
-
-    def __init__(self, register: Union[QubitDeclaration, ClassicalDeclaration]):
-        self._register: Union[QubitDeclaration, ClassicalDeclaration] = register
-
-    def accept(self, visitor):
-        visitor.visit_register(self._register)
-
-    def __str__(self) -> str:
-        return f"Register({self._register})"
-
-
-class _Statement(_ProgramElement):
-
-    def __init__(self, statement: Statement):
-        self._statement = statement
-
-    def accept(self, visitor):
-        visitor.visit_statement(self._statement)
-
-    def __str__(self) -> str:
-        return f"Statement({self._statement})"
-
-
-class Qasm3Module:
+class QasmQIRModule:
     """
     A module representing an openqasm3 quantum program using QIR.
 
     Args:
         name (str): Name of the module.
-        module (Module): QIR Module instance.
-        num_qubits (int): Number of qubits in the circuit.
-        num_clbits (int): Number of classical bits in the circuit.
-        elements (list[Statement]): list of openqasm3 Statements.
+        qasm_module (pyqasm.elements.Qasm3Module): The pyqasm qasm3 module.
+        llvm_module (pyqir.Module): The QIR module.
     """
 
     def __init__(
         self,
         name: str,
-        module: Module,
-        num_qubits: int,
-        num_clbits: int,
-        elements,
+        qasm_module: Qasm3Module,
+        llvm_module: qirModule,
     ):
         self._name = name
-        self._module = module
-        self._num_qubits = num_qubits
-        self._num_clbits = num_clbits
-        self._elements = elements
+        self._llvm_module = llvm_module
+        self._qasm_program = qasm_module
 
     @property
     def name(self) -> str:
@@ -153,68 +57,19 @@ class Qasm3Module:
         return self._name
 
     @property
-    def module(self) -> Module:
+    def llvm_module(self) -> qirModule:
         """Returns the QIR Module instance."""
-        return self._module
+        return self._llvm_module
 
     @property
-    def num_qubits(self) -> int:
-        """Returns the number of qubits in the circuit."""
-        return self._num_qubits
-
-    @property
-    def num_clbits(self) -> int:
-        """Returns the number of classical bits in the circuit."""
-        return self._num_clbits
-
-    @classmethod
-    def from_program(cls, program: Program, module: Optional[Module] = None):
-        """
-        Class method. Construct a Qasm3Module from a given openqasm3.ast.Program object
-        and an optional QIR Module.
-        """
-        elements: list[Union[_Register, _Statement]] = []
-
-        num_qubits = 0
-        num_clbits = 0
-        for statement in program.statements:
-            if isinstance(statement, QubitDeclaration):
-                size = 1
-                if statement.size:
-                    size = statement.size.value  # type: ignore[attr-defined]
-                num_qubits += size
-                elements.append(_Register(statement))
-
-            elif isinstance(statement, ClassicalDeclaration) and isinstance(
-                statement.type, BitType
-            ):
-                size = 1
-                if statement.type.size:
-                    size = statement.type.size.value  # type: ignore[attr-defined]
-                num_clbits += size
-                elements.append(_Register(statement))
-                # as bit arrays are just 0 / 1 values, we can treat them as
-                # classical variables too. Thus, need to add them to normal
-                # statements too.
-                elements.append(_Statement(statement))
-            else:
-                elements.append(_Statement(statement))
-
-        if module is None:
-            # pylint: disable-next=too-many-function-args
-            module = Module(qirContext(), generate_module_id())
-
-        return cls(
-            name="main",
-            module=module,
-            num_qubits=num_qubits,
-            num_clbits=num_clbits,
-            elements=elements,
-        )
+    def qasm_program(self) -> Qasm3Module:
+        """Returns the QASM3 program."""
+        return self._qasm_program
 
     def accept(self, visitor):
         visitor.visit_qasm3_module(self)
-        for element in self._elements:
-            element.accept(visitor)
+        statements = self.qasm_program.unrolled_ast.statements
+        for statement in statements:
+            visitor.visit_statement(statement)
         visitor.record_output(self)
         visitor.finalize()

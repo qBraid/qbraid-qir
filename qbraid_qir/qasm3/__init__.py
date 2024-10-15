@@ -20,7 +20,6 @@ Functions
    :toctree: ../stubs/
 
    qasm3_to_qir
-   validate_qasm
 
 Classes
 ---------
@@ -28,7 +27,7 @@ Classes
 .. autosummary::
    :toctree: ../stubs/
 
-   Qasm3Module
+   QasmQIRModule
    BasicQasmVisitor
 
 Exceptions
@@ -40,16 +39,14 @@ Exceptions
    Qasm3ConversionError
 
 """
-from .checker import validate_qasm
 from .convert import qasm3_to_qir
-from .elements import Qasm3Module
+from .elements import QasmQIRModule
 from .exceptions import Qasm3ConversionError
 from .visitor import BasicQasmVisitor
 
 __all__ = [
-    "validate_qasm",
     "qasm3_to_qir",
-    "Qasm3Module",
+    "QasmQIRModule",
     "Qasm3ConversionError",
     "BasicQasmVisitor",
 ]

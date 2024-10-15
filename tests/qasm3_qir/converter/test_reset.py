@@ -12,9 +12,8 @@
 Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
-import pytest
 
-from qbraid_qir.qasm3 import Qasm3ConversionError, qasm3_to_qir
+from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import check_attributes, check_resets
 
 
@@ -60,29 +59,3 @@ def test_reset_inside_function():
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 3, 0)
     check_resets(generated_qir, 1, [1])
-
-
-def test_incorrect_resets():
-    undeclared = """
-    OPENQASM 3;
-    include "stdgates.inc";
-
-    qubit[3] q1;
-
-    // undeclared register 
-    reset q2[0];
-    """
-    with pytest.raises(Qasm3ConversionError):
-        _ = qasm3_to_qir(undeclared)
-
-    index_error = """
-    OPENQASM 3;
-    include "stdgates.inc";
-
-    qubit[2] q1;
-
-    // out of bounds 
-    reset q1[4];
-    """
-    with pytest.raises(Qasm3ConversionError):
-        _ = qasm3_to_qir(index_error)

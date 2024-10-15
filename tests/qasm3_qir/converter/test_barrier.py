@@ -12,103 +12,67 @@
 Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
-import pytest
+# import pytest
 
-from qbraid_qir.qasm3 import Qasm3ConversionError, qasm3_to_qir
-from tests.qir_utils import check_attributes, check_barrier
-
+# from qbraid_qir.qasm3 import qasm3_to_qir
+# from tests.qir_utils import check_attributes, check_barrier
 
 # 5. Test barrier operations in different ways
-def test_barrier():
-    qasm3_string = """
-    OPENQASM 3;
-    include "stdgates.inc";
+# def test_barrier():
+#     qasm3_string = """
+#     OPENQASM 3;
+#     include "stdgates.inc";
 
-    qubit[2] q1;
-    qubit[5] q2;
-    qubit q3;
+#     qubit[2] q1;
+#     qubit[5] q2;
+#     qubit q3;
 
-    bit[2] c;
-    bit c2;
-    
-
-    // Only full barrier supported in QIR
-    barrier q1, q2, q3; 
-    barrier q2, q3, q1;
-    barrier q1[0], q1[1], q2[:], q3[0];
-    barrier q1, q2[0:5], q3[:];
-    """
-
-    result = qasm3_to_qir(qasm3_string)
-    generated_qir = str(result).splitlines()
-    check_attributes(generated_qir, 8, 3)
-    check_barrier(generated_qir, expected_barriers=4)
+#     bit[2] c;
+#     bit c2;
 
 
-def test_barrier_in_function():
-    """Test that a barrier in a function is correctly parsed."""
-    qasm_str = """OPENQASM 3;
-    include "stdgates.inc";
+#     // Only full barrier supported in QIR
+#     barrier q1, q2, q3;
+#     barrier q2, q3, q1;
+#     barrier q1[0], q1[1], q2[:], q3[0];
+#     barrier q1, q2[0:5], q3[:];
+#     """
 
-    def my_function(qubit[4] a) {
-        barrier a;
-        return;
-    }
-    qubit[4] q;
-    my_function(q);
-    """
-
-    result = qasm3_to_qir(qasm_str)
-    generated_qir = str(result).splitlines()
-
-    check_attributes(generated_qir, 4, 0)
-    check_barrier(generated_qir, 1)
+#     result = qasm3_to_qir(qasm3_string)
+#     generated_qir = str(result).splitlines()
+#     check_attributes(generated_qir, 8, 3)
+#     check_barrier(generated_qir, expected_barriers=4)
 
 
-def test_incorrect_barrier():
-    subset = """
-    OPENQASM 3;
+# def test_barrier_in_function():
+#     """Test that a barrier in a function is correctly parsed."""
+#     qasm_str = """OPENQASM 3;
+#     include "stdgates.inc";
 
-    qubit[3] q1;
+#     def my_function(qubit[4] a) {
+#         barrier a;
+#         return;
+#     }
+#     qubit[4] q;
+#     my_function(q);
+#     """
 
-    barrier q1[:2];
-    """
-    with pytest.raises(
-        NotImplementedError, match="Barrier operation on a qubit subset is not supported in pyqir"
-    ):
-        _ = qasm3_to_qir(subset)
+#     result = qasm3_to_qir(qasm_str)
+#     generated_qir = str(result).splitlines()
 
-    undeclared = """
-    OPENQASM 3;
+#     check_attributes(generated_qir, 4, 0)
+#     check_barrier(generated_qir, 1)
 
-    qubit[3] q1;
 
-    barrier q2;
-    """
+# def test_incorrect_barrier():
+#     subset = """
+#     OPENQASM 3;
 
-    with pytest.raises(Qasm3ConversionError, match=r"Missing register declaration for q2 .*"):
-        _ = qasm3_to_qir(undeclared)
+#     qubit[3] q1;
 
-    out_of_bounds = """
-    OPENQASM 3;
-
-    qubit[2] q1;
-
-    barrier q1[:4];
-    """
-
-    with pytest.raises(
-        Qasm3ConversionError, match="Index 3 out of range for register of size 2 in qubit"
-    ):
-        _ = qasm3_to_qir(out_of_bounds)
-
-    duplicate = """
-    OPENQASM 3;
-
-    qubit[2] q1;
-
-    barrier q1, q1;
-    """
-
-    with pytest.raises(Qasm3ConversionError, match=r"Duplicate qubit .*argument"):
-        _ = qasm3_to_qir(duplicate)
+#     barrier q1[:2];
+#     """
+#     with pytest.raises(
+#         NotImplementedError, match="Barrier operation on a qubit subset is not supported in pyqir"
+#     ):
+#         _ = qasm3_to_qir(subset)

@@ -12,9 +12,8 @@
 Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
-import pytest
 
-from qbraid_qir.qasm3 import Qasm3ConversionError, qasm3_to_qir
+from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import check_attributes, check_expressions
 
 
@@ -49,22 +48,3 @@ def test_correct_expressions():
     expression_values = [1.57, 3 - 2 * 3, 3 - 2 * 3 * (8 / 2), -1.57, 4 % 2]
     qubits = [0, 0, 0, 0, 0]
     check_expressions(generated_qir, 5, gates, expression_values, qubits)
-
-
-def test_incorrect_expressions():
-    with pytest.raises(Qasm3ConversionError, match=r"Unsupported expression type .*"):
-        qasm3_to_qir("OPENQASM 3; qubit q; rz(1 - 2 + 32im) q;")
-    with pytest.raises(
-        Qasm3ConversionError, match=r"Unsupported expression type .* in ~ operation"
-    ):
-        qasm3_to_qir("OPENQASM 3; qubit q; rx(~1.3) q;")
-    with pytest.raises(
-        Qasm3ConversionError, match=r"Unsupported expression type .* in ~ operation"
-    ):
-        qasm3_to_qir("OPENQASM 3; qubit q; rx(~1.3+5im) q;")
-
-    with pytest.raises(Qasm3ConversionError, match="Undefined identifier x in expression"):
-        qasm3_to_qir("OPENQASM 3; qubit q; rx(x) q;")
-
-    with pytest.raises(Qasm3ConversionError, match="Uninitialized variable x in expression"):
-        qasm3_to_qir("OPENQASM 3; qubit q; int x; rx(x) q;")

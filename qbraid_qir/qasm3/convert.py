@@ -15,9 +15,10 @@ Module containing OpenQASM to QIR conversion functions
 from typing import Optional, Union
 
 import openqasm3
+from pyqasm.unroller import unroll
 from pyqir import Context, Module, qir_module
 
-from .elements import Qasm3Module, generate_module_id
+from .elements import QasmQIRModule, generate_module_id
 from .exceptions import Qasm3ConversionError
 from .visitor import BasicQasmVisitor
 
@@ -45,20 +46,23 @@ def qasm3_to_qir(
         TypeError: If the input is not a valid OpenQASM 3 program.
         Qasm3ConversionError: If the conversion fails.
     """
-    if isinstance(program, str):
-        program = openqasm3.parse(program)
+    if isinstance(program, openqasm3.ast.Program):
+        program = openqasm3.dumps(program)
 
-    elif not isinstance(program, openqasm3.ast.Program):
+    elif not isinstance(program, str):
         raise TypeError("Input quantum program must be of type openqasm3.ast.Program or str.")
 
+    qasm3_module = unroll(program)
+
+    print(qasm3_module.unrolled_qasm)
     if name is None:
         name = generate_module_id()
-
     llvm_module = qir_module(Context(), name)
-    module = Qasm3Module.from_program(program, llvm_module)
+
+    final_module = QasmQIRModule(name, qasm3_module, llvm_module)
 
     visitor = BasicQasmVisitor(**kwargs)
-    module.accept(visitor)
+    final_module.accept(visitor)
 
     err = llvm_module.verify()
     if err is not None:

@@ -16,4 +16,3 @@ without needing to import them (pytest will automatically discover them).
 # pylint: disable=unused-import,wildcard-import,unused-wildcard-import
 
 from .fixtures.gates import *
-from .fixtures.variables import *
