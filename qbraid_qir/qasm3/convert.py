@@ -1,12 +1,12 @@
 # Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module containing OpenQASM to QIR conversion functions
@@ -20,7 +20,7 @@ from pyqir import Context, Module, qir_module
 
 from .elements import QasmQIRModule, generate_module_id
 from .exceptions import Qasm3ConversionError
-from .visitor import BasicQasmVisitor
+from .visitor import QasmQIRVisitor
 
 
 def qasm3_to_qir(
@@ -61,7 +61,7 @@ def qasm3_to_qir(
 
     final_module = QasmQIRModule(name, qasm3_module, llvm_module)
 
-    visitor = BasicQasmVisitor(**kwargs)
+    visitor = QasmQIRVisitor(**kwargs)
     final_module.accept(visitor)
 
     err = llvm_module.verify()

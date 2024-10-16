@@ -1,12 +1,12 @@
 # Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 # pylint: disable=too-many-instance-attributes,too-many-lines,too-many-branches
 
@@ -30,10 +30,10 @@ from .maps import map_qasm_op_to_pyqir_callable
 logger = logging.getLogger(__name__)
 
 
-class BasicQasmVisitor:
-    """A visitor for basic OpenQASM program elements.
+class QasmQIRVisitor:
+    """A visitor for converting OpenQASM 3 programs to QIR.
 
-    This class is designed to traverse and interact with elements in an OpenQASM program.
+    This class is designed to traverse and interact with statements in an OpenQASM program.
 
     Args:
         initialize_runtime (bool): If True, quantum runtime will be initialized. Defaults to True.
@@ -41,7 +41,9 @@ class BasicQasmVisitor:
     """
 
     def __init__(
-        self, initialize_runtime: bool = True, record_output: bool = True, check_only: bool = False
+        self,
+        initialize_runtime: bool = True,
+        record_output: bool = True,
     ):
         self._llvm_module: pyqir.Module
         self._builder: pyqir.Builder
@@ -53,9 +55,6 @@ class BasicQasmVisitor:
         self._custom_gates: dict[str, qasm3_ast.QuantumGateDefinition] = {}
         self._initialize_runtime: bool = initialize_runtime
         self._record_output: bool = record_output
-        self._check_only: bool = check_only
-
-        # self._init_utilities()
 
     def visit_qasm3_module(self, module: QasmQIRModule) -> None:
         """
@@ -92,7 +91,7 @@ class BasicQasmVisitor:
         self._builder.ret(None)
 
     def record_output(self, module: QasmQIRModule) -> None:
-        if self._record_output is False or self._check_only:
+        if self._record_output is False:
             return
         i8p = pyqir.PointerType(pyqir.IntType(self._llvm_module.context, 8))
         for i in range(module.qasm_program.num_qubits):
@@ -102,7 +101,7 @@ class BasicQasmVisitor:
     def _visit_register(
         self, register: Union[qasm3_ast.QubitDeclaration, qasm3_ast.ClassicalDeclaration]
     ) -> None:
-        """Visit a register element.
+        """Visit a register statement.
 
         Args:
             register (QubitDeclaration|ClassicalDeclaration): The register name and size.
@@ -134,15 +133,12 @@ class BasicQasmVisitor:
         label_map = self._qubit_labels if is_qubit else self._clbit_labels
 
         for i in range(register_size):
-            # required if indices are not used while applying a gate or measurement
             size_map[f"{register_name}"] = register_size
             label_map[f"{register_name}_{i}"] = current_size + i
 
         logger.debug("Added labels for register '%s'", str(register))
 
-    def _get_op_bits(
-        self, operation: Any, reg_size_map: dict, qubits: bool = True
-    ) -> list[pyqir.Constant]:
+    def _get_op_bits(self, operation: Any, qubits: bool = True) -> list[pyqir.Constant]:
         """Get the quantum / classical bits for the operation.
 
         Args:
@@ -164,16 +160,15 @@ class BasicQasmVisitor:
             )
 
         for bit in bit_list:
-            if isinstance(bit, qasm3_ast.IndexedIdentifier):
-                reg_name = bit.name.name
-            else:
-                reg_name = bit.name
+            # as we have unrolled qasm3, we can assume that the bit is an IndexedIdentifier
+            assert isinstance(bit, qasm3_ast.IndexedIdentifier)
+            reg_name = bit.name.name
 
-            if isinstance(bit, qasm3_ast.IndexedIdentifier):
-                bit_id = bit.indices[0][0].value
-                bit_ids = [bit_id]
-            else:
-                bit_ids = list(range(reg_size_map[reg_name]))
+            assert isinstance(bit.indices, list) and len(bit.indices) == 1
+            assert isinstance(bit.indices[0], list) and len(bit.indices[0]) == 1
+            assert isinstance(bit.indices[0][0], qasm3_ast.IntegerLiteral)
+            bit_id = bit.indices[0][0].value
+            bit_ids = [bit_id]
 
             label_map = self._qubit_labels if qubits else self._clbit_labels
             reg_ids = [label_map[f"{reg_name}_{bit_id}"] for bit_id in bit_ids]
@@ -205,12 +200,8 @@ class BasicQasmVisitor:
         source = statement.measure.qubit
         target = statement.target
         assert source and target
-        source_ids = self._get_op_bits(
-            statement, reg_size_map=self._global_qreg_size_map, qubits=True
-        )
-        target_ids = self._get_op_bits(
-            statement, reg_size_map=self._global_creg_size_map, qubits=False
-        )
+        source_ids = self._get_op_bits(statement, qubits=True)
+        target_ids = self._get_op_bits(statement, qubits=False)
         for src_id, tgt_id in zip(source_ids, target_ids):
             pyqir._native.mz(self._builder, src_id, tgt_id)  # type: ignore[arg-type]
 
@@ -224,7 +215,7 @@ class BasicQasmVisitor:
             None
         """
         logger.debug("Visiting reset statement '%s'", str(statement))
-        qubit_ids = self._get_op_bits(statement, self._global_qreg_size_map, True)
+        qubit_ids = self._get_op_bits(statement, True)
 
         for qid in qubit_ids:
             # qid is of type Constant which is inherited from Value, so we ignore the type error
@@ -267,6 +258,7 @@ class BasicQasmVisitor:
         """
         param_list = []
         for param in operation.arguments:
+            assert hasattr(param, "value")
             param_value = param.value
             param_list.append(param_value)
 
@@ -289,15 +281,9 @@ class BasicQasmVisitor:
 
         logger.debug("Visiting basic gate operation '%s'", str(operation))
         op_name: str = operation.name.name
-        op_qubits = self._get_op_bits(operation, self._global_qreg_size_map)
+        op_qubits = self._get_op_bits(operation)
         qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
         op_parameters = None
-
-        if len(op_qubits) % op_qubit_count != 0:
-            raise_qasm3_error(
-                f"Invalid number of qubits {len(op_qubits)} for operation {operation.name.name}",
-                span=operation.span,
-            )
 
         if len(operation.arguments) > 0:  # parametric gate
             op_parameters = self._get_op_parameters(operation)
@@ -322,7 +308,7 @@ class BasicQasmVisitor:
         # TODO: maybe needs to be extended for custom gates
         self._visit_basic_gate_operation(operation)
 
-    def _get_branch_params(self, condition: Any) -> tuple[int, str, bool]:
+    def _get_branch_params(self, condition: Any) -> tuple[str, int, bool]:
         """
         Get the branch parameters from the branching condition
 
@@ -330,27 +316,35 @@ class BasicQasmVisitor:
             condition (Any): The condition to analyze
 
         Returns:
-            tuple[int, str, bool]: The branch parameters
+            tuple[str, int, bool]: (register name, register id, positive branch)
         """
+
+        def validate_index_expression(expression):
+            assert isinstance(expression, qasm3_ast.IndexExpression)
+            assert isinstance(expression.collection, qasm3_ast.Identifier)
+            assert isinstance(expression.index, list) and len(expression.index) == 1
+            assert isinstance(expression.index[0], qasm3_ast.IntegerLiteral)
+
         if isinstance(condition, qasm3_ast.UnaryExpression):
+            validate_index_expression(condition.expression)
             return (
-                condition.expression.collection.name,
-                condition.expression.index[0].value,
-                not condition.operator == UnaryOperator["!"],
+                condition.expression.collection.name,  # type: ignore
+                condition.expression.index[0].value,  # type: ignore
+                not condition.op == UnaryOperator["!"],
             )
         if isinstance(condition, qasm3_ast.BinaryExpression):
             assert isinstance(
                 condition.rhs, qasm3_ast.BooleanLiteral
             ), "Invalid branching condition"
-
+            validate_index_expression(condition.lhs)
             return (
-                condition.lhs.collection.name,
-                condition.lhs.index[0].value,
+                condition.lhs.collection.name,  # type: ignore
+                condition.lhs.index[0].value,  # type: ignore
                 condition.rhs.value,
             )
         if isinstance(condition, qasm3_ast.IndexExpression):
-            if isinstance(condition.index, list):
-                return (condition.collection.name, condition.index[0].value, True)
+            assert isinstance(condition.index, list) and len(condition.index) == 1
+            return (condition.collection.name, condition.index[0].value, True)  # type: ignore
         # default case
         return "", -1, True
 
@@ -369,6 +363,7 @@ class BasicQasmVisitor:
         if_block = statement.if_block
         else_block = statement.else_block
         reg_name, reg_id, positive_branch = self._get_branch_params(condition)
+
         if not positive_branch:
             if_block, else_block = else_block, if_block
 
@@ -376,14 +371,12 @@ class BasicQasmVisitor:
             for stmt in block:
                 self.visit_statement(stmt)
 
-        if not self._check_only:
-            # if the condition is true, we visit the if block
-            pyqir._native.if_result(
-                self._builder,
-                pyqir.result(self._llvm_module.context, self._clbit_labels[f"{reg_name}_{reg_id}"]),
-                zero=lambda: _visit_statement_block(else_block),
-                one=lambda: _visit_statement_block(if_block),
-            )
+        pyqir._native.if_result(
+            self._builder,
+            pyqir.result(self._llvm_module.context, self._clbit_labels[f"{reg_name}_{reg_id}"]),
+            zero=lambda: _visit_statement_block(else_block),
+            one=lambda: _visit_statement_block(if_block),
+        )
 
     def visit_statement(self, statement: qasm3_ast.Statement) -> None:
         """Visit a statement element.
@@ -405,9 +398,6 @@ class BasicQasmVisitor:
             qasm3_ast.QuantumBarrier: self._visit_barrier,
             qasm3_ast.QuantumGate: self._visit_generic_gate_operation,
             qasm3_ast.BranchingStatement: self._visit_branching_statement,
-            qasm3_ast.IODeclaration: lambda x: (_ for _ in ()).throw(
-                NotImplementedError("OpenQASM 3 IO declarations not yet supported")
-            ),
         }
 
         visitor_function = visit_map.get(type(statement))

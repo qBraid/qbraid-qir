@@ -1,12 +1,12 @@
 # Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module mapping supported QASM gates/operations to pyqir functions.
@@ -489,10 +489,6 @@ def map_qasm_op_to_pyqir_callable(op_name: str):
     except KeyError as exc:
         raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}") from exc
 
-
-# IEEE 754 Standard for floats
-# https://openqasm.com/language/types.html#floating-point-numbers
-LIMITS_MAP = {"float_32": 1.70141183 * (10**38), "float_64": 10**308}
 
 CONSTANTS_MAP = {
     "π": 3.141592653589793,
