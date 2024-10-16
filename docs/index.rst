@@ -125,3 +125,9 @@ Resources
 
    qbraid_core <https://sdk.qbraid.com/projects/core/en/stable/api/qbraid_core.html>
    qbraid_core.services <https://sdk.qbraid.com/projects/core/en/stable/api/qbraid_core.services.html>
+
+.. toctree::
+   :caption: PYQASM API Reference
+   :hidden:
+
+   pyqasm <https://sdk.qbraid.com/projects/pyqasm/en/stable/api/pyqasm.html>
