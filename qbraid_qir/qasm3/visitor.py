@@ -1187,7 +1187,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
         self._subroutine_defns[fn_name] = statement
 
     # pylint: disable=too-many-locals, too-many-statements
-    def _visit_function_call(self, statement: qasm3_ast.FunctionCall) -> None:
+    def _visit_function_call(self, statement: qasm3_ast.FunctionCall) -> Optional[Any]:
         """Visit a function call element.
 
         Args:
@@ -1256,6 +1256,7 @@ class BasicQasmVisitor(ProgramElementVisitor):
                 break
             self.visit_statement(copy.deepcopy(function_op))
 
+        return_value = None
         if return_statement:
             return_value = Qasm3ExprEvaluator.evaluate_expression(return_statement.expression)
             return_value = Qasm3Validator.validate_return_statement(
