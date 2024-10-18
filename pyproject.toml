@@ -38,7 +38,7 @@ cirq = ["cirq-core>=1.3.0,<1.5.0"]
 qasm3 = ["pyqasm>=0.0.1"]
 test = ["qbraid>=0.7.1,<0.9.0", "pytest", "pytest-cov", "autoqasm>=0.1.0"]
 lint = ["black[jupyter]", "isort", "pylint", "qbraid-cli>=0.8.7"]
-docs = ["pyqasm>=0.0.1", "sphinx>=7.3.7,<8.1.0", "sphinx-autodoc-typehints>=1.24,<2.5", "sphinx-rtd-theme>=2.0,<3.1", "docutils<0.22", "sphinx-copybutton"]
+docs = ["pyqasm>=0.0.1", "sphinx>=7.3.7,<8.2.0", "sphinx-autodoc-typehints>=1.24,<2.5", "sphinx-rtd-theme>=2.0,<3.1", "docutils<0.22", "sphinx-copybutton"]
 
 [tool.setuptools.dynamic]
 version = {attr = "qbraid_qir.__version__"}
