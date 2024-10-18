@@ -94,7 +94,7 @@ Resources
 - `User Guide <https://docs.qbraid.com/qir/user-guide>`_
 - `Example Notebooks <https://github.com/qBraid/qbraid-qir/tree/main/examples>`_
 - `API Reference <https://sdk.qbraid.com/projects/qir/en/stable/api/qbraid_qir.html>`_
-- `Source Code <https://github.com/qBraid/qbraid-qir>_`
+- `Source Code <https://github.com/qBraid/qbraid-qir>`_
 
 
 .. toctree::

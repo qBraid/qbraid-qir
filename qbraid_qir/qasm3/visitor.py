@@ -53,6 +53,7 @@ class QasmQIRVisitor:
         self._global_qreg_size_map: dict[str, int] = {}
         self._global_creg_size_map: dict[str, int] = {}
         self._custom_gates: dict[str, qasm3_ast.QuantumGateDefinition] = {}
+        self._barrier_qubits: set[pyqir.Constant] = set()
         self._initialize_runtime: bool = initialize_runtime
         self._record_output: bool = record_output
 
@@ -88,6 +89,7 @@ class QasmQIRVisitor:
         return self._entry_point
 
     def finalize(self) -> None:
+        self._check_and_apply_barrier()  # to check if we have an incomplete barrier at program end
         self._builder.ret(None)
 
     def record_output(self, module: QasmQIRModule) -> None:
@@ -221,31 +223,52 @@ class QasmQIRVisitor:
             # qid is of type Constant which is inherited from Value, so we ignore the type error
             pyqir._native.reset(self._builder, qid)  # type: ignore[arg-type]
 
-    # TODO: implement barrier check for all qubits in program
+    def _barrier_applicable(self) -> bool:
+        """Check if the barrier operation is applicable.
+
+        Args:
+            None
+
+        Returns:
+            bool: Whether the barrier operation is applicable.
+        """
+        total_qubit_count = sum(self._global_qreg_size_map.values())
+        return len(self._barrier_qubits) == total_qubit_count
+
+    def _check_and_apply_barrier(self) -> None:
+        """Apply the barrier operation.
+
+        Returns:
+            None
+        """
+        if len(self._barrier_qubits) == 0:
+            return
+
+        if self._barrier_applicable():
+            pyqir._native.barrier(self._builder)
+            self._barrier_qubits.clear()
+        else:
+            raise_qasm3_error(
+                "Barrier operation on a qubit subset is not supported in pyqir",
+                err_type=NotImplementedError,
+            )
+
     # pylint: disable=unused-argument
     def _visit_barrier(self, barrier: qasm3_ast.QuantumBarrier) -> None:
-        #     """Visit a barrier statement element.
-        return
+        """Visit a barrier statement element.
 
-    #     Args:
-    #         statement (qasm3_ast.QuantumBarrier): The barrier statement to visit.
+        Args:
+            statement (qasm3_ast.QuantumBarrier): The barrier statement to visit.
+        Returns:
+            None
+        """
+        barrier_qubit = self._get_op_bits(barrier, qubits=True)
+        self._barrier_qubits.update(barrier_qubit)
 
-    #     Returns:
-    #         None
-    #     """
-
-    # if barrier is applied to ALL qubits at once, we are fine
-    # barrier_qubits = self._get_op_bits(barrier, self._global_qreg_size_map)
-    # total_qubit_count = sum(self._global_qreg_size_map.values())
-
-    # if len(barrier_qubits) == total_qubit_count:
-    #     pyqir._native.barrier(self._builder)
-    # else:
-    #     raise_qasm3_error(
-    #         "Barrier operation on a qubit subset is not supported in pyqir",
-    #         err_type=NotImplementedError,
-    #         span=barrier.span,
-    #     )
+        # try to apply barrier in case all qubits are covered here itself
+        if self._barrier_applicable():
+            pyqir._native.barrier(self._builder)
+            self._barrier_qubits.clear()
 
     def _get_op_parameters(self, operation: qasm3_ast.QuantumGate) -> list[float]:
         """Get the parameters for the operation.
@@ -401,6 +424,9 @@ class QasmQIRVisitor:
         }
 
         visitor_function = visit_map.get(type(statement))
+
+        if not isinstance(statement, qasm3_ast.QuantumBarrier):
+            self._check_and_apply_barrier()
 
         if visitor_function:
             visitor_function(statement)  # type: ignore[operator]
