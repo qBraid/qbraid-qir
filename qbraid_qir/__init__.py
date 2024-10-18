@@ -32,6 +32,9 @@ Exceptions
    QirConversionError
 
 """
+import importlib
+from typing import TYPE_CHECKING
+
 from ._version import __version__
 from .exceptions import QbraidQirError, QirConversionError
 from .serialization import dumps
@@ -41,20 +44,34 @@ __all__ = [
     "QbraidQirError",
     "QirConversionError",
     "dumps",
+    "qasm3_to_qir",
+    "cirq_to_qir",
 ]
 
-_lazy_mods = ["cirq", "qasm3"]
+_lazy = {"cirq": "cirq_to_qir", "qasm3": "qasm3_to_qir"}
+
+if TYPE_CHECKING:
+    from .cirq import cirq_to_qir
+    from .qasm3 import qasm3_to_qir
 
 
 def __getattr__(name):
-    if name in _lazy_mods:
-        import importlib  # pylint: disable=import-outside-toplevel
+    for mod_name, objects in _lazy.items():
+        if name == mod_name:
+            module = importlib.import_module(f".{mod_name}", __name__)
+            globals()[mod_name] = module
+            return module
 
-        module = importlib.import_module(f".{name}", __name__)
-        globals()[name] = module
-        return module
+        if name in objects:
+            module = importlib.import_module(f".{mod_name}", __name__)
+            obj = getattr(module, name)
+            globals()[name] = obj
+            return obj
+
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def __dir__():
-    return sorted(__all__ + _lazy_mods)
+    return sorted(
+        __all__ + list(_lazy.keys()) + [item for sublist in _lazy.values() for item in sublist]
+    )
