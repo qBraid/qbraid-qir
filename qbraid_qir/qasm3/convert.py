@@ -15,7 +15,7 @@ Module containing OpenQASM to QIR conversion functions
 from typing import Optional, Union
 
 import openqasm3
-from pyqasm.unroller import unroll
+import pyqasm
 from pyqir import Context, Module, qir_module
 
 from .elements import QasmQIRModule, generate_module_id
@@ -52,7 +52,7 @@ def qasm3_to_qir(
     elif not isinstance(program, str):
         raise TypeError("Input quantum program must be of type openqasm3.ast.Program or str.")
 
-    qasm3_module = unroll(program)
+    qasm3_module = pyqasm.unroll(program)
 
     print(qasm3_module.unrolled_qasm)
     if name is None:
