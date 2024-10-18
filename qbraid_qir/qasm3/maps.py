@@ -1,88 +1,24 @@
 # Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module mapping supported QASM gates/operations to pyqir functions.
 
 """
-from typing import Callable, Union
+from typing import Union
 
 import numpy as np
 import pyqir
-from openqasm3.ast import (
-    AngleType,
-    BitType,
-    BoolType,
-    ClassicalDeclaration,
-    ComplexType,
-    FloatType,
-    IntType,
-    QuantumGateDefinition,
-    QubitDeclaration,
-    SubroutineDefinition,
-    UintType,
-)
 
-from .elements import InversionOp
 from .exceptions import Qasm3ConversionError
 from .linalg import kak_decomposition_angles
-
-# Define the type for the operator functions
-OperatorFunction = Union[
-    Callable[[Union[int, float, bool]], Union[int, float, bool]],
-    Callable[[Union[int, float, bool], Union[int, float, bool]], Union[int, float, bool]],
-]
-
-OPERATOR_MAP: dict[str, OperatorFunction] = {
-    "+": lambda x, y: x + y,
-    "-": lambda x, y: x - y,
-    "*": lambda x, y: x * y,
-    "/": lambda x, y: x / y,
-    "%": lambda x, y: x % y,
-    "==": lambda x, y: x == y,
-    "!=": lambda x, y: x != y,
-    "<": lambda x, y: x < y,
-    ">": lambda x, y: x > y,
-    "<=": lambda x, y: x <= y,
-    ">=": lambda x, y: x >= y,
-    "&&": lambda x, y: x and y,
-    "||": lambda x, y: x or y,
-    "^": lambda x, y: x ^ y,
-    "&": lambda x, y: x & y,
-    "|": lambda x, y: x | y,
-    "<<": lambda x, y: x << y,
-    ">>": lambda x, y: x >> y,
-    "~": lambda x: ~x,
-    "!": lambda x: not x,
-    "UMINUS": lambda x: -x,
-}
-
-
-def qasm3_expression_op_map(op_name: str, *args) -> Union[float, int, bool]:
-    """
-    Return the result of applying the given operator to the given operands.
-
-    Args:
-        op_name (str): The operator name.
-        *args: The operands of type Union[int, float, bool]
-                1. For unary operators, a single operand (e.g., ~3)
-                2. For binary operators, two operands (e.g., 3 + 2)
-
-    Returns:
-        (Union[float, int, bool]): The result of applying the operator to the operands.
-    """
-    try:
-        operator = OPERATOR_MAP[op_name]
-        return operator(*args)
-    except KeyError as exc:
-        raise Qasm3ConversionError(f"Unsupported / undeclared QASM operator: {op_name}") from exc
 
 
 def id_gate(builder, qubits):
@@ -460,7 +396,6 @@ def prx_gate(builder, theta, phi, qubit):
 
 
 PYQIR_ONE_QUBIT_OP_MAP = {
-    "i": id_gate,
     "id": id_gate,
     "h": pyqir._native.h,
     "x": pyqir._native.x,
@@ -555,99 +490,6 @@ def map_qasm_op_to_pyqir_callable(op_name: str):
         raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}") from exc
 
 
-PYQIR_SELF_INVERTING_ONE_QUBIT_OP_SET = {"id", "h", "x", "y", "z"}
-PYQIR_ST_GATE_INV_MAP = {
-    "s": "sdg",
-    "t": "tdg",
-    "sdg": "s",
-    "tdg": "t",
-}
-PYQIR_ROTATION_INVERSION_ONE_QUBIT_OP_MAP = {"rx", "ry", "rz"}
-PYQIR_U_INV_ROTATION_MAP = {
-    "U": u3_inv_gate,
-    "u3": u3_inv_gate,
-    "U3": u3_inv_gate,
-    "U2": u2_inv_gate,
-    "u2": u2_inv_gate,
-}
-
-
-def map_qasm_inv_op_to_pyqir_callable(op_name: str):
-    """
-    Map a QASM operation to a PyQIR callable.
-
-    Args:
-        op_name (str): The QASM operation name.
-
-    Returns:
-        tuple: A tuple containing the PyQIR callable, the number of qubits the operation acts on,
-        and what is to be done with the basic gate which we are trying to invert.
-    """
-    if op_name in PYQIR_SELF_INVERTING_ONE_QUBIT_OP_SET:
-        return PYQIR_ONE_QUBIT_OP_MAP[op_name], 1, InversionOp.NO_OP
-    if op_name in PYQIR_ST_GATE_INV_MAP:
-        inv_gate_name = PYQIR_ST_GATE_INV_MAP[op_name]
-        return PYQIR_ONE_QUBIT_OP_MAP[inv_gate_name], 1, InversionOp.NO_OP
-    if op_name in PYQIR_TWO_QUBIT_OP_MAP:
-        return PYQIR_TWO_QUBIT_OP_MAP[op_name], 2, InversionOp.NO_OP
-    if op_name in PYQIR_THREE_QUBIT_OP_MAP:
-        return PYQIR_THREE_QUBIT_OP_MAP[op_name], 3, InversionOp.NO_OP
-    if op_name in PYQIR_U_INV_ROTATION_MAP:
-        # Special handling for U gate as it is composed of multiple
-        # basic gates and we need to invert each of them
-        return PYQIR_U_INV_ROTATION_MAP[op_name], 1, InversionOp.NO_OP
-    if op_name in PYQIR_ROTATION_INVERSION_ONE_QUBIT_OP_MAP:
-        return (
-            PYQIR_ONE_QUBIT_ROTATION_MAP[op_name],
-            1,
-            InversionOp.INVERT_ROTATION,
-        )
-    raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
-
-
-# pylint: disable=inconsistent-return-statements
-def qasm_variable_type_cast(openqasm_type, var_name, base_size, rhs_value):
-    """Cast the variable type to the type to match, if possible.
-
-    Args:
-        openqasm_type : The type of the variable.
-        type_of_rhs (type): The type to match.
-
-    Returns:
-        The casted variable type.
-
-    Raises:
-        Qasm3ConversionError: If the cast is not possible.
-    """
-    type_of_rhs = type(rhs_value)
-
-    if type_of_rhs not in VARIABLE_TYPE_CAST_MAP[openqasm_type]:
-        raise Qasm3ConversionError(
-            f"Cannot cast {type_of_rhs} to {openqasm_type}. "
-            f"Invalid assignment of type {type_of_rhs} to variable {var_name} "
-            f"of type {openqasm_type}"
-        )
-
-    if openqasm_type == BoolType:
-        return bool(rhs_value)
-    if openqasm_type == IntType:
-        return int(rhs_value)
-    if openqasm_type == UintType:
-        return int(rhs_value) % (2**base_size)
-    if openqasm_type == FloatType:
-        return float(rhs_value)
-    # not sure if we wanna hande array bit assignments too.
-    # For now, we only cater to single bit assignment.
-    if openqasm_type == BitType:
-        return bool(rhs_value)
-    if openqasm_type == AngleType:
-        return rhs_value  # not sure
-
-
-# IEEE 754 Standard for floats
-# https://openqasm.com/language/types.html#floating-point-numbers
-LIMITS_MAP = {"float_32": 1.70141183 * (10**38), "float_64": 10**308}
-
 CONSTANTS_MAP = {
     "π": 3.141592653589793,
     "pi": 3.141592653589793,
@@ -655,47 +497,4 @@ CONSTANTS_MAP = {
     "euler": 2.718281828459045,
     "τ": 6.283185307179586,
     "tau": 6.283185307179586,
-}
-
-VARIABLE_TYPE_MAP = {
-    BitType: bool,
-    IntType: int,
-    UintType: int,
-    BoolType: bool,
-    FloatType: float,
-    ComplexType: complex,
-    # AngleType: None,  # not sure
-}
-
-# Reference: https://openqasm.com/language/types.html#allowed-casts
-VARIABLE_TYPE_CAST_MAP = {
-    BoolType: (int, float, bool, np.int64, np.float64, np.bool_),
-    IntType: (bool, int, float, np.int64, np.float64, np.bool_),
-    BitType: (bool, int, np.int64, np.bool_),
-    UintType: (bool, int, float, np.int64, np.uint64, np.float64, np.bool_),
-    FloatType: (bool, int, float, np.int64, np.float64, np.bool_),
-    AngleType: (float, np.float64),
-}
-
-ARRAY_TYPE_MAP = {
-    BitType: np.bool_,
-    IntType: np.int64,
-    UintType: np.uint64,
-    FloatType: np.float64,
-    ComplexType: np.complex128,
-    BoolType: np.bool_,
-    AngleType: np.float64,
-}
-
-
-# Reference : https://openqasm.com/language/types.html#arrays
-MAX_ARRAY_DIMENSIONS = 7
-
-# Reference : https://openqasm.com/language/classical.html#the-switch-statement
-# Paragraph 14
-SWITCH_BLACKLIST_STMTS = {
-    QubitDeclaration,
-    ClassicalDeclaration,
-    SubroutineDefinition,
-    QuantumGateDefinition,
 }

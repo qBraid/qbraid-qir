@@ -1,12 +1,12 @@
-# Copyright (C) 2023 qBraid
+# Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module containing unit tests for parsing, unrolling, and
@@ -17,7 +17,6 @@ converting OpenQASM3 programs that contain loops.
 import pytest
 
 from qbraid_qir.qasm3 import qasm3_to_qir
-from qbraid_qir.qasm3.visitor import Qasm3ConversionError
 from tests.qir_utils import (
     check_attributes,
     check_single_qubit_gate_op,
@@ -47,7 +46,7 @@ source_filename = "test"
 %Qubit = type opaque
 %Result = type opaque
 
-define void @main() #0 {
+define void @test() #0 {
 entry:
   call void @__quantum__rt__initialize(i8* null)
   call void @__quantum__qis__h__body(%Qubit* null)
@@ -383,31 +382,3 @@ def test_loop_in_nested_function_call():
 
     check_attributes(generated_qir, 1, 0)
     check_single_qubit_rotation_op(generated_qir, 3, [0, 0, 0], [0, 3, 6], "rx")
-
-
-def test_convert_qasm3_for_loop_unsupported_type():
-    """Test correct error when converting a QASM3 program that contains a for loop initialized from
-    an unsupported type."""
-    with pytest.raises(
-        Qasm3ConversionError,
-        match=(
-            "Unexpected type <class 'openqasm3.ast.BitstringLiteral'>"
-            " of set_declaration in loop."
-        ),
-    ):
-        _ = qasm3_to_qir(
-            """
-            OPENQASM 3.0;
-            include "stdgates.inc";
-
-            qubit[4] q;
-            bit[4] c;
-
-            h q;
-            for bit b in "001" { 
-                x q[b];
-            } 
-            measure q->c;
-            """,
-            name="test",
-        )

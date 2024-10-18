@@ -1,20 +1,19 @@
-# Copyright (C) 2023 qBraid
+# Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
-import pytest
 
-from qbraid_qir.qasm3 import Qasm3ConversionError, qasm3_to_qir
+from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import check_attributes, check_expressions
 
 
@@ -49,22 +48,3 @@ def test_correct_expressions():
     expression_values = [1.57, 3 - 2 * 3, 3 - 2 * 3 * (8 / 2), -1.57, 4 % 2]
     qubits = [0, 0, 0, 0, 0]
     check_expressions(generated_qir, 5, gates, expression_values, qubits)
-
-
-def test_incorrect_expressions():
-    with pytest.raises(Qasm3ConversionError, match=r"Unsupported expression type .*"):
-        qasm3_to_qir("OPENQASM 3; qubit q; rz(1 - 2 + 32im) q;")
-    with pytest.raises(
-        Qasm3ConversionError, match=r"Unsupported expression type .* in ~ operation"
-    ):
-        qasm3_to_qir("OPENQASM 3; qubit q; rx(~1.3) q;")
-    with pytest.raises(
-        Qasm3ConversionError, match=r"Unsupported expression type .* in ~ operation"
-    ):
-        qasm3_to_qir("OPENQASM 3; qubit q; rx(~1.3+5im) q;")
-
-    with pytest.raises(Qasm3ConversionError, match="Undefined identifier x in expression"):
-        qasm3_to_qir("OPENQASM 3; qubit q; rx(x) q;")
-
-    with pytest.raises(Qasm3ConversionError, match="Uninitialized variable x in expression"):
-        qasm3_to_qir("OPENQASM 3; qubit q; int x; rx(x) q;")

@@ -1,12 +1,12 @@
 # Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Tests the convert module of autoqasm to qir
@@ -56,7 +56,7 @@ def _process_qasm(qasm: str) -> str:
     qasm = add_stdgates_include(qasm)
     qasm = insert_gate_def(qasm, "iswap")
     qasm = insert_gate_def(qasm, "sxdg")
-
+    print(qasm)
     return qasm
 
 
@@ -81,7 +81,6 @@ def autoqasm_to_qir(program: "MainProgram", **kwargs) -> "Module":
 @aq.main(num_qubits=1)
 def one_qubit_gates():
     ins.h(0)
-    ins.i(0)
     ins.s(0)
     ins.si(0)
     ins.t(0)
@@ -91,7 +90,7 @@ def one_qubit_gates():
     ins.z(0)
     ins.v(0)
     ins.vi(0)
-    return ins.measure(0)
+    # return ins.measure() # Refernce : https://github.com/qBraid/pyqasm/issues/15
 
 
 @aq.main(num_qubits=1)

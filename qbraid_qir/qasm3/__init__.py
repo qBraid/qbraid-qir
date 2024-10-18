@@ -1,12 +1,12 @@
 # Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module containing OpenQASM 3 QIR functionality.
@@ -20,7 +20,6 @@ Functions
    :toctree: ../stubs/
 
    qasm3_to_qir
-   validate_qasm
 
 Classes
 ---------
@@ -28,8 +27,8 @@ Classes
 .. autosummary::
    :toctree: ../stubs/
 
-   Qasm3Module
-   BasicQasmVisitor
+   QasmQIRModule
+   QasmQIRVisitor
 
 Exceptions
 -----------
@@ -40,16 +39,14 @@ Exceptions
    Qasm3ConversionError
 
 """
-from .checker import validate_qasm
 from .convert import qasm3_to_qir
-from .elements import Qasm3Module
+from .elements import QasmQIRModule
 from .exceptions import Qasm3ConversionError
-from .visitor import BasicQasmVisitor
+from .visitor import QasmQIRVisitor
 
 __all__ = [
-    "validate_qasm",
     "qasm3_to_qir",
-    "Qasm3Module",
+    "QasmQIRModule",
     "Qasm3ConversionError",
-    "BasicQasmVisitor",
+    "QasmQIRVisitor",
 ]

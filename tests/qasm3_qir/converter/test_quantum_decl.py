@@ -1,21 +1,19 @@
-# Copyright (C) 2023 qBraid
+# Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
-import pytest
 
 from qbraid_qir.qasm3.convert import qasm3_to_qir
-from qbraid_qir.qasm3.exceptions import Qasm3ConversionError
 from tests.qir_utils import check_attributes
 
 
@@ -76,31 +74,3 @@ def test_qubit_clbit_declarations():
     result = qasm3_to_qir(qasm3_string)
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 7, 7)
-
-
-def test_qubit_redeclaration_error():
-    """Test redeclaration of qubit"""
-    with pytest.raises(
-        Qasm3ConversionError, match="Invalid declaration of register with name 'q1'"
-    ):
-        qasm3_string = """
-        OPENQASM 3;
-        include "stdgates.inc";
-        qubit q1;
-        qubit q1;
-        """
-        qasm3_to_qir(qasm3_string)
-
-
-def test_clbit_redeclaration_error():
-    """Test redeclaration of clbit"""
-    with pytest.raises(
-        Qasm3ConversionError, match="Invalid declaration of register with name 'c1'"
-    ):
-        qasm3_string = """
-        OPENQASM 3;
-        include "stdgates.inc";
-        bit c1;
-        bit[4] c1;
-        """
-        qasm3_to_qir(qasm3_string)

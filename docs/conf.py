@@ -35,7 +35,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.coverage",
     "sphinx.ext.viewcode",
-    "sphinx_copybutton"
+    "sphinx_copybutton",
 ]
 
 # set_type_checking_flag = True

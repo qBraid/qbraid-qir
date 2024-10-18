@@ -1,12 +1,12 @@
-# Copyright (C) 2023 qBraid
+# Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module containing unit tests for QASM3 to QIR conversion functions.
@@ -14,10 +14,8 @@ Module containing unit tests for QASM3 to QIR conversion functions.
 """
 import pytest
 
-from qbraid_qir.qasm3 import Qasm3ConversionError, qasm3_to_qir
+from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qasm3_qir.fixtures.gates import (
-    CUSTOM_GATE_INCORRECT_TESTS,
-    SINGLE_QUBIT_GATE_INCORRECT_TESTS,
     custom_op_tests,
     double_op_tests,
     rotation_tests,
@@ -160,13 +158,6 @@ def test_qasm_u2_gates():
     check_single_qubit_rotation_op(generated_qir, 1, [0], [0.5, 0.5], "u2")
 
 
-@pytest.mark.parametrize("test_name", SINGLE_QUBIT_GATE_INCORRECT_TESTS.keys())
-def test_incorrect_single_qubit_gates(test_name):
-    qasm_input, error_message = SINGLE_QUBIT_GATE_INCORRECT_TESTS[test_name]
-    with pytest.raises(Qasm3ConversionError, match=error_message):
-        _ = qasm3_to_qir(qasm_input)
-
-
 @pytest.mark.parametrize("test_name", custom_op_tests)
 def test_custom_ops(test_name, request):
     qasm3_string = request.getfixturevalue(test_name)
@@ -258,10 +249,3 @@ def test_unsupported_modifiers():
                 {modifier} @ h q[0], q[1];
                 """
             )
-
-
-@pytest.mark.parametrize("test_name", CUSTOM_GATE_INCORRECT_TESTS.keys())
-def test_incorrect_custom_ops(test_name):
-    qasm_input, error_message = CUSTOM_GATE_INCORRECT_TESTS[test_name]
-    with pytest.raises(Qasm3ConversionError, match=error_message):
-        _ = qasm3_to_qir(qasm_input)

@@ -1,12 +1,12 @@
-# Copyright (C) 2023 qBraid
+# Copyright (C) 2024 qBraid
 #
-# This file is part of the qBraid-SDK
+# This file is part of qbraid-qir
 #
-# The qBraid-SDK is free software released under the GNU General Public License v3
+# Qbraid-qir is free software released under the GNU General Public License v3
 # or later. You can redistribute and/or modify it under the terms of the GPL v3.
 # See the LICENSE file in the project root or <https://www.gnu.org/licenses/gpl-3.0.html>.
 #
-# THERE IS NO WARRANTY for the qBraid-SDK, as per Section 15 of the GPL v3.
+# THERE IS NO WARRANTY for qbraid-qir, as per Section 15 of the GPL v3.
 
 """
 Module defining Cirq basic gate fixtures for use in tests.
@@ -164,7 +164,7 @@ for test_name in CUSTOM_OPS:
     locals()[name] = _generate_custom_op_fixture(test_name)
 
 single_op_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_OP_MAP]
-already_tested_single_op = ["i", "id", "si", "ti", "v", "sx", "vi", "sxdg"]
+already_tested_single_op = ["id", "si", "ti", "v", "sx", "vi", "sxdg"]
 for gate in already_tested_single_op:
     single_op_tests.remove(_fixture_name(gate))
 
@@ -202,160 +202,3 @@ for gate in already_tested_triple_op:
     triple_op_tests.remove(_fixture_name(gate))
 
 custom_op_tests = [_fixture_name(s) for s in CUSTOM_OPS]
-
-# qasm_input, expected_error
-SINGLE_QUBIT_GATE_INCORRECT_TESTS = {
-    "missing_register": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        qubit[2] q1;
-        h q2;  // undeclared register
-        """,
-        "Missing register declaration for q2 .*",
-    ),
-    "undeclared_1qubit_op": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        qubit[2] q1;
-        u_abc(0.5, 0.5, 0.5) q1;  // unsupported gate
-        """,
-        "Unsupported / undeclared QASM operation: u_abc",
-    ),
-    "undeclared_1qubit_op_with_indexing": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        qubit[2] q1;
-        u_abc(0.5, 0.5, 0.5) q1[0], q1[1];  // unsupported gate
-        """,
-        "Unsupported / undeclared QASM operation: u_abc",
-    ),
-    "undeclared_3qubit_op": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        qubit[3] q1;
-        u_abc(0.5, 0.5, 0.5) q1[0], q1[1], q1[2];  // unsupported gate
-        """,
-        "Unsupported / undeclared QASM operation: u_abc",
-    ),
-    "invalid_gate_application": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        qubit[3] q1;
-        cx q1;  // invalid application of gate, as we apply it to 3 qubits in blocks of 2
-        """,
-        "Invalid number of qubits 3 for operation .*",
-    ),
-    "unsupported_parameter_type": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        qubit[2] q1;
-        rx(a) q1; // unsupported parameter type
-        """,
-        "Undefined identifier a in.*",
-    ),
-}
-
-# qasm_input, expected_error
-CUSTOM_GATE_INCORRECT_TESTS = {
-    "undeclared_custom": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        qubit[2] q1;
-        custom_gate q1;  // undeclared gate
-        """,
-        "Unsupported / undeclared QASM operation: custom_gate",
-    ),
-    "parameter_mismatch": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        gate custom_gate(a,b) p, q{
-            rx(a) p;
-            ry(b) q;
-        }
-
-        qubit[2] q1;
-        custom_gate(0.5) q1;  // parameter count mismatch
-        """,
-        "Parameter count mismatch for gate custom_gate: expected 2 arguments, but got 1 instead.",
-    ),
-    "qubit_mismatch": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        gate custom_gate(a,b) p, q{
-            rx(a) p;
-            ry(b) q;
-        }
-
-        qubit[3] q1;
-        custom_gate(0.5, 0.5) q1;  // qubit count mismatch
-        """,
-        "Qubit count mismatch for gate custom_gate: expected 2 qubits, but got 3 instead.",
-    ),
-    "indexing_not_supported": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        gate custom_gate(a,b) p, q{
-            rx(a) p;
-            ry(b) q[0];
-        }
-
-        qubit[2] q1;
-        custom_gate(0.5, 0.5) q1;  // indexing not supported
-        """,
-        "Indexing .* not supported in gate definition",
-    ),
-    "recursive_definition": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        gate custom_gate(a,b) p, q{
-            custom_gate(a,b) p, q;
-        }
-
-        qubit[2] q1;
-        custom_gate(0.5, 0.5) q1;  // recursive definition
-        """,
-        "Recursive definitions not allowed .*",
-    ),
-    "duplicate_definition": (
-        """
-        OPENQASM 3;
-        include "stdgates.inc";
-
-        gate custom_gate(a,b) p, q{
-            rx(a) p;
-            ry(b) q;
-        }
-
-        gate custom_gate(a,b) p, q{
-            rx(a) p;
-            ry(b) q;
-        }
-
-        qubit[2] q1;
-        custom_gate(0.5, 0.5) q1;  // duplicate definition
-        """,
-        "Duplicate gate definition for custom_gate",
-    ),
-}
