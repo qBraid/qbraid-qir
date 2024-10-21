@@ -56,7 +56,6 @@ def _process_qasm(qasm: str) -> str:
     qasm = add_stdgates_include(qasm)
     qasm = insert_gate_def(qasm, "iswap")
     qasm = insert_gate_def(qasm, "sxdg")
-    print(qasm)
     return qasm
 
 
@@ -90,7 +89,7 @@ def one_qubit_gates():
     ins.z(0)
     ins.v(0)
     ins.vi(0)
-    # return ins.measure() # Refernce : https://github.com/qBraid/pyqasm/issues/15
+    # return ins.measure() # Reference : https://github.com/qBraid/pyqasm/issues/15
 
 
 @aq.main(num_qubits=1)
