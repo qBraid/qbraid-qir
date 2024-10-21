@@ -54,7 +54,6 @@ def qasm3_to_qir(
 
     qasm3_module = pyqasm.unroll(program)
 
-    print(qasm3_module.unrolled_qasm)
     if name is None:
         name = generate_module_id()
     llvm_module = qir_module(Context(), name)
