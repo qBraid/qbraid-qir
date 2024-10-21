@@ -14,11 +14,14 @@
 Module defining Qasm3 Converter elements.
 
 """
+from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
-from pyqasm.elements import Qasm3Module
-from pyqir import Module as qirModule
+if TYPE_CHECKING:
+    import pyqasm.elements
+    import pyqir
 
 
 def generate_module_id() -> str:
@@ -44,8 +47,8 @@ class QasmQIRModule:
     def __init__(
         self,
         name: str,
-        qasm_module: Qasm3Module,
-        llvm_module: qirModule,
+        qasm_module: pyqasm.elements.Qasm3Module,
+        llvm_module: pyqir.Module,
     ):
         self._name = name
         self._llvm_module = llvm_module
@@ -57,12 +60,12 @@ class QasmQIRModule:
         return self._name
 
     @property
-    def llvm_module(self) -> qirModule:
+    def llvm_module(self) -> pyqir.Module:
         """Returns the QIR Module instance."""
         return self._llvm_module
 
     @property
-    def qasm_program(self) -> Qasm3Module:
+    def qasm_program(self) -> pyqasm.elements.Qasm3Module:
         """Returns the QASM3 program."""
         return self._qasm_program
 
