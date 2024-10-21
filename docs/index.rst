@@ -92,7 +92,7 @@ Resources
 ----------
 
 - `User Guide <https://docs.qbraid.com/qir/user-guide>`_
-- `Example Notebooks <https://github.com/qBraid/qbraid-qir/tree/main/examples>`_
+- `Example Notebooks <https://github.com/qBraid/qbraid-lab-demo/tree/main/qbraid_qir>`_
 - `API Reference <https://sdk.qbraid.com/projects/qir/en/stable/api/qbraid_qir.html>`_
 - `Source Code <https://github.com/qBraid/qbraid-qir>`_
 

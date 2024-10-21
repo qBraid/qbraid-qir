@@ -89,8 +89,8 @@ qbraid_qir.__version__
 
 - [User Guide](https://docs.qbraid.com/qir/user-guide)
 - [API Reference](https://sdk.qbraid.com/projects/qir/en/stable/api/qbraid_qir.html)
-- [Example Notebooks](examples)
-- [Test Containers](test-containers)
+- [Example Notebooks](https://github.com/qBraid/qbraid-lab-demo/tree/main/qbraid_qir)
+- [Docker Containers](docker)
 
 ## Usage examples
 
