@@ -74,7 +74,7 @@ by ``qbraid``.
 Installation
 -------------
 
-qBraid-QIR requires Python 3.9 or greater. The base package can be installed with pip as follows:
+qBraid-QIR requires Python 3.10 or greater. The base package can be installed with pip as follows:
 
 .. code-block:: bash
 

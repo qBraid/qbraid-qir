@@ -16,11 +16,8 @@
   <a href="https://pypi.org/project/qbraid-qir/">
     <img src="https://img.shields.io/pypi/pyversions/qbraid-qir.svg?color=blue" alt="PyPI version"/>
   </a>
-<!--   <a href="https://pepy.tech/project/qbraid-qir">
-    <img src="https://static.pepy.tech/badge/qbraid-qir" alt="Downloads"/>
-  </a> -->
   <a href='https://www.gnu.org/licenses/gpl-3.0.html'>
-    <img src='https://img.shields.io/github/license/qBraid/qbraid.svg' alt='License'/>
+    <img src='https://img.shields.io/github/license/qBraid/qbraid-qir.svg' alt='License'/>
   </a>
   <a href='https://discord.gg/TPBU2sa8Et'>
     <img src="https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white" alt="Discord"/>
@@ -39,7 +36,7 @@ This project aims to make [QIR](https://www.qir-alliance.org/) representations a
 
 ## Installation
 
-qBraid-QIR requires Python 3.9 or greater, and can be installed with pip as follows:
+qBraid-QIR requires Python 3.10 or greater, and can be installed with pip as follows:
 
 ```shell
 pip install qbraid-qir
@@ -83,9 +80,9 @@ pip install '.[qasm3,cirq]'
 You can view the version of qbraid-qir you have installed within a Python shell as follows:
 
 ```python
-In [1]: import qbraid_qir
+import qbraid_qir
 
-In [2]: qbraid_qir.__version__
+qbraid_qir.__version__
 ```
 
 ## Resources
@@ -100,7 +97,7 @@ In [2]: qbraid_qir.__version__
 ### OpenQASM 3 conversions
 
 ```python
-from qbraid_qir.qasm3 import qasm3_to_qir
+from qbraid_qir import qasm3_to_qir
 
 program = """
 OPENQASM 3;
@@ -125,7 +122,7 @@ ir = str(module)
 
 ```python
 import cirq
-from qbraid_qir.cirq import cirq_to_qir
+from qbraid_qir import cirq_to_qir
 
 q0, q1 = cirq.LineQubit.range(2)
 

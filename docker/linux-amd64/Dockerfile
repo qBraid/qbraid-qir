@@ -1,17 +1,22 @@
 # Copyright (C) 2024 qBraid Development Team.
 # Distributed under terms of the GNU General Public License v3.
-FROM jupyter/base-notebook:python-3.11
+
+FROM ubuntu:24.04
 
 LABEL maintainer="qBraid Development Team <contact@qbraid.com>"
-LABEL description="Flexible environment with Jupyter, Rust, LLVM, and qir-runner"
+LABEL licenses="GNU General Public License v3.0"
+LABEL title="qBraid-QIR x QIR bytecode runner"
+LABEL description="Flexible environment with qBraid-QIR and the QIR-Runner (built from source)."
 LABEL version="1.0"
 
-USER root
+ENV USER=qbraid
+
+ENV HOME=/home/$USER
 
 RUN apt-get update --yes && \
     apt-get install --yes --no-install-recommends \
     # Basic utilities
-    vim git curl jq pkg-config lsb-release wget software-properties-common gnupg \
+    sudo vim git curl jq pkg-config lsb-release wget software-properties-common gnupg \
     # SSL related dependencies
     openssl libssl-dev \
     # Build dependencies
@@ -23,11 +28,17 @@ RUN apt-get update --yes && \
     # LLVM dependencies
     clang-format clang-tidy clang-tools clang clangd libc++-dev libc++1 libc++abi-dev \
     libc++abi1 libclang-dev libclang1 liblldb-dev libllvm-ocaml-dev libomp-dev \
-    libomp5 lld lldb llvm-dev llvm-runtime llvm python3-clang && \
+    libomp5 lld lldb llvm-dev llvm-runtime llvm python3-clang \
+    libpolly-18-dev libzstd-dev \
+    # Python interpreter and package managers 
+    cargo python3 python3-pip python3-venv && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-USER $NB_UID
+RUN useradd -ms /bin/bash $USER && \
+    echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+USER $USER
 
 # Install Rustup: https://www.rust-lang.org/tools/install
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -39,11 +50,9 @@ USER root
 RUN bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 
 RUN git clone https://github.com/qir-alliance/qir-runner.git /opt/qir-runner && \
-    chown -R $NB_UID:$NB_GID /opt/qir-runner && \
-    mkdir -p $(pip cache dir) && \
-    fix-permissions $(pip cache dir)
+    chown -R $USER:$USER /opt/qir-runner
 
-USER $NB_UID
+USER $USER
 
 WORKDIR /opt/qir-runner
 
@@ -52,9 +61,11 @@ RUN cargo install llvmenv && \
 
 ENV PATH="/opt/qir-runner/target/release:${PATH}"
 
-RUN pip install qbraid qbraid-qir[cirq,qasm3] qbraid-core[runner] && \
-    rm -rf $(pip cache dir)/*
+WORKDIR /work
 
-USER root
+RUN python3 -m venv venv && \
+    venv/bin/python3 -m pip install --upgrade pip && \
+    venv/bin/python3 -m pip install qbraid qbraid-qir[cirq,qasm3] qbraid-core[runner] && \
+    rm -rf $(venv/bin/python3 -m pip cache dir)
 
-WORKDIR $HOME
+COPY --chown=USER:USER ./examples examples
