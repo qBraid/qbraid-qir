@@ -16,12 +16,18 @@ Types of changes:
 
 ### ➕  New Features 
 
-### 🌟  Improvements 
+### 🌟  Improvements
+- Update QIR-Runner docker container to `ubuntu:24.04` as base image ([#173](https://github.com/qBraid/qbraid-qir/pull/173))
+- Changed examples notebook to sub-module linked to [qbraid-lab-demo](https://github.com/qBraid/qbraid-lab-demo) repo. ([#178](https://github.com/qBraid/qbraid-qir/pull/178))
+- Improved typing in `qbraid_qir.qasm3.linalg` ([#178](https://github.com/qBraid/qbraid-qir/pull/178))
+- Updated project metadata and README in anticipation of release v0.3 ([#178](https://github.com/qBraid/qbraid-qir/pull/178))
 
-### 📜  Documentation 
+### 📜  Documentation
+- Updated sphinx docs pages with PyQASM API reference links ([#174](https://github.com/qBraid/qbraid-qir/pull/174))
 
 ### 🐛  Bug Fixes
 
 ### ⬇️  Dependency Updates 
+- Added `pyqasm` as project dependency ([#173](https://github.com/qBraid/qbraid-qir/pull/173))
 
 ### 👋  Deprecations
