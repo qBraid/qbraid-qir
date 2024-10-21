@@ -44,7 +44,7 @@ lint = ["black[jupyter]", "isort", "pylint", "qbraid-cli>=0.8.7"]
 docs = ["sphinx>=7.3.7,<=8.3.0", "sphinx-autodoc-typehints>=1.24,<2.6", "sphinx-rtd-theme>=2.0,<3.1", "docutils<0.22", "sphinx-copybutton"]
 
 [tool.setuptools]
-packages = {find = {where = ["qbraid-qir"], exclude = ["docker"]}}
+packages = ["qbraid_qir", "qbraid_qir.cirq", "qbraid_qir.qasm3"]
 
 [tool.setuptools.dynamic]
 version = {attr = "qbraid_qir.__version__"}
