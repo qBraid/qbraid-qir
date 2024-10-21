@@ -3,3 +3,5 @@ recursive-include docs *.rst *.py *.png *.ico *.txt
 recursive-include qbraid_qir *.py
 include qbraid_qir/py.typed
 prune docs/build/
+prune examples
+prune docker
