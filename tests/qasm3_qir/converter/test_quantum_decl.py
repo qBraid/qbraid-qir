@@ -40,7 +40,7 @@ def test_clbit_declarations():
     qasm3_string = """
     OPENQASM 3;
     include "stdgates.inc";
-    bit c1;
+    bit[1] c1;
     bit[2] c2;
     creg c3[3];
     bit[1] c4;
@@ -65,7 +65,7 @@ def test_qubit_clbit_declarations():
     qubit[1] q4;
 
     // clbit declarations
-    bit c1;
+    bit[1] c1;
     bit[2] c2;
     creg c3[3];
     bit[1] c4;
