@@ -29,7 +29,7 @@ def test_barrier():
     qubit q3;
 
     bit[2] c;
-    bit c2;
+    bit[1] c2;
 
 
     // Only full barrier supported in QIR

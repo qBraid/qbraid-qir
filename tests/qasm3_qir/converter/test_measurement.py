@@ -27,7 +27,7 @@ def test_measure():
     qubit q3;
 
     bit[2] c1;
-    bit c2;
+    bit[1] c2;
 
     // supported
     c1 = measure q1;
