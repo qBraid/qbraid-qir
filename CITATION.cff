@@ -30,7 +30,7 @@ keywords:
   - qir
   - llvm
   - cirq
-  - openasm
+  - openqasm
 license: GPL-3.0
 version: 0.2.3
 date-released: '2024-09-27'
