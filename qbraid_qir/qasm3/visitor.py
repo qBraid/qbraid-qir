@@ -44,6 +44,7 @@ class QasmQIRVisitor:
         self,
         initialize_runtime: bool = True,
         record_output: bool = True,
+        external_gates: list[str] | None = None
     ):
         self._llvm_module: pyqir.Module
         self._builder: pyqir.Builder
@@ -56,6 +57,10 @@ class QasmQIRVisitor:
         self._barrier_qubits: set[pyqir.Constant] = set()
         self._initialize_runtime: bool = initialize_runtime
         self._record_output: bool = record_output
+
+        if external_gates is None:
+            external_gates = []
+        self._external_gates_map: map[str, pyqir.Function | None] = {external_gate: None for external_gate in external_gates}
 
     def visit_qasm3_module(self, module: QasmQIRModule) -> None:
         """
@@ -319,6 +324,49 @@ class QasmQIRVisitor:
             else:
                 qir_func(self._builder, *qubit_subset)
 
+    def _visit_external_gate_operation(self, operation: qasm3_ast.QuantumGate) -> None:
+        """Visit an external gate operation element.
+
+        Args:
+            operation (qasm3_ast.QuantumGate): The gate operation to visit.
+
+
+        Returns:
+            None
+
+        Raises:
+            Qasm3ConversionError: If the number of qubits is invalid.
+
+        """
+        logger.debug("Visiting external gate operation '%s'", str(operation))
+        op_name: str = operation.name.name
+        op_qubits = self._get_op_bits(operation)
+        op_qubit_count = len(op_qubits)
+
+        context = self._llvm_module.context
+        if self._external_gates_map[op_name] is None:
+            # First time seeing this external gate -> define new function
+            qir_function_arguments = [pyqir.Type.double(context)]*len(operation.arguments) +  [pyqir.qubit_type(context)]*op_qubit_count
+            qir_function = pyqir.Function(pyqir.FunctionType(pyqir.Type.void(context), 
+                                                             qir_function_arguments), 
+                                                             pyqir.Linkage.EXTERNAL, 
+                                                             f"__quantum__qis__{op_name}__body", 
+                                                             self._llvm_module)
+            self._external_gates_map[op_name] = qir_function
+        else:
+            qir_function = self._external_gates_map[op_name]
+            
+        op_parameters = None
+        if len(operation.arguments) > 0:  # parametric gate
+            op_parameters = self._get_op_parameters(operation)
+
+
+        if op_parameters is not None:
+            #qir_func(self._builder, *op_parameters, *op_qubits)
+            self._builder.call(qir_function, [*op_parameters, *op_qubits])
+        else:
+            self._builder.call(qir_function, op_qubits)
+
     def _visit_generic_gate_operation(self, operation: qasm3_ast.QuantumGate) -> None:
         """Visit a gate operation element.
 
@@ -328,8 +376,10 @@ class QasmQIRVisitor:
         Returns:
             None
         """
-        # TODO: maybe needs to be extended for custom gates
-        self._visit_basic_gate_operation(operation)
+        if operation.name.name in self._external_gates_map:
+            self._visit_external_gate_operation(operation)
+        else:
+            self._visit_basic_gate_operation(operation)
 
     def _get_branch_params(self, condition: Any) -> tuple[str, int, bool]:
         """
