@@ -343,10 +343,16 @@ class QasmQIRVisitor:
         op_qubits = self._get_op_bits(operation)
         op_qubit_count = len(op_qubits)
 
+        if len(operation.modifiers) > 0:
+            raise_qasm3_error(
+                "Modifiers on externally linked gates are not supported in pyqir",
+                err_type=NotImplementedError,
+            )
+
         context = self._llvm_module.context
         if self._external_gates_map[op_name] is None:
             # First time seeing this external gate -> define new function
-            qir_function_arguments = [pyqir.Type.double(context)]*len(operation.arguments) +  [pyqir.qubit_type(context)]*op_qubit_count
+            qir_function_arguments = [pyqir.Type.double(context)]*len(operation.arguments) + [pyqir.qubit_type(context)]*op_qubit_count
             qir_function = pyqir.Function(pyqir.FunctionType(pyqir.Type.void(context), 
                                                              qir_function_arguments), 
                                                              pyqir.Linkage.EXTERNAL, 
