@@ -38,16 +38,16 @@ class QasmQIRVisitor:
     Args:
         initialize_runtime (bool): If True, quantum runtime will be initialized. Defaults to True.
         record_output (bool): If True, output of the circuit will be recorded. Defaults to True.
-        external_gates (list[str]): List of custom gates that should not be unrolled into their definition. 
-                                    Instead, these gates are marked for external linkage, as qir-functions
-                                    with the name "__quantum__qis__<GateName>__body(...)"
+        external_gates (list[str]): List of custom gates that should not be unrolled.
+                                    Instead, these gates are marked for external linkage, as
+                                    qir-functions with the name "__quantum__qis__<GateName>__body"
     """
 
     def __init__(
         self,
         initialize_runtime: bool = True,
         record_output: bool = True,
-        external_gates: list[str] | None = None
+        external_gates: list[str] | None = None,
     ):
         self._llvm_module: pyqir.Module
         self._builder: pyqir.Builder
@@ -63,7 +63,9 @@ class QasmQIRVisitor:
 
         if external_gates is None:
             external_gates = []
-        self._external_gates_map: map[str, pyqir.Function | None] = {external_gate: None for external_gate in external_gates}
+        self._external_gates_map: dict[str, pyqir.Function | None] = {
+            external_gate: None for external_gate in external_gates
+        }
 
     def visit_qasm3_module(self, module: QasmQIRModule) -> None:
         """
@@ -355,23 +357,25 @@ class QasmQIRVisitor:
         context = self._llvm_module.context
         if self._external_gates_map[op_name] is None:
             # First time seeing this external gate -> define new function
-            qir_function_arguments = [pyqir.Type.double(context)]*len(operation.arguments) + [pyqir.qubit_type(context)]*op_qubit_count
-            qir_function = pyqir.Function(pyqir.FunctionType(pyqir.Type.void(context), 
-                                                             qir_function_arguments), 
-                                                             pyqir.Linkage.EXTERNAL, 
-                                                             f"__quantum__qis__{op_name}__body", 
-                                                             self._llvm_module)
+            qir_function_arguments = [pyqir.Type.double(context)] * len(operation.arguments)
+            qir_function_arguments += [pyqir.qubit_type(context)] * op_qubit_count
+
+            qir_function = pyqir.Function(
+                pyqir.FunctionType(pyqir.Type.void(context), qir_function_arguments),
+                pyqir.Linkage.EXTERNAL,
+                f"__quantum__qis__{op_name}__body",
+                self._llvm_module,
+            )
             self._external_gates_map[op_name] = qir_function
         else:
             qir_function = self._external_gates_map[op_name]
-            
+
         op_parameters = None
         if len(operation.arguments) > 0:  # parametric gate
             op_parameters = self._get_op_parameters(operation)
 
-
         if op_parameters is not None:
-            #qir_func(self._builder, *op_parameters, *op_qubits)
+            # qir_func(self._builder, *op_parameters, *op_qubits)
             self._builder.call(qir_function, [*op_parameters, *op_qubits])
         else:
             self._builder.call(qir_function, op_qubits)
