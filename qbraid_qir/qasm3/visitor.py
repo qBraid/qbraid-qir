@@ -38,6 +38,9 @@ class QasmQIRVisitor:
     Args:
         initialize_runtime (bool): If True, quantum runtime will be initialized. Defaults to True.
         record_output (bool): If True, output of the circuit will be recorded. Defaults to True.
+        external_gates (list[str]): List of custom gates that should not be unrolled into their definition. 
+                                    Instead, these gates are marked for external linkage, as qir-functions
+                                    with the name "__quantum__qis__<GateName>__body(...)"
     """
 
     def __init__(
