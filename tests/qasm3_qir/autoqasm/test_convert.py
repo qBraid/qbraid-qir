@@ -20,7 +20,7 @@ import autoqasm.instructions as ins
 import numpy as np
 import pytest
 from pyqir import Module
-from qbraid.passes.qasm3.compat import add_stdgates_include, insert_gate_def
+from qbraid.passes.qasm.compat import add_stdgates_include, insert_gate_def
 
 from qbraid_qir.qasm3 import qasm3_to_qir
 
