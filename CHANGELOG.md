@@ -29,5 +29,6 @@ Types of changes:
 
 ### ⬇️  Dependency Updates 
 - Added `pyqasm` as project dependency ([#173](https://github.com/qBraid/qbraid-qir/pull/173))
+- Updated `pyqasm` and `qbraid` dependencies ([#183](https://github.com/qBraid/qbraid-qir/pull/183))
 
 ### 👋  Deprecations
