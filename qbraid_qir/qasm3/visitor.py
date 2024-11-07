@@ -355,7 +355,8 @@ class QasmQIRVisitor:
             )
 
         context = self._llvm_module.context
-        if self._external_gates_map[op_name] is None:
+        qir_function = self._external_gates_map[op_name]
+        if qir_function is None:
             # First time seeing this external gate -> define new function
             qir_function_arguments = [pyqir.Type.double(context)] * len(operation.arguments)
             qir_function_arguments += [pyqir.qubit_type(context)] * op_qubit_count
@@ -367,8 +368,6 @@ class QasmQIRVisitor:
                 self._llvm_module,
             )
             self._external_gates_map[op_name] = qir_function
-        else:
-            qir_function = self._external_gates_map[op_name]
 
         op_parameters = None
         if len(operation.arguments) > 0:  # parametric gate
