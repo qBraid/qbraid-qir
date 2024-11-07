@@ -463,7 +463,6 @@ def check_custom_qasm_gate_op_with_external_gates(qir: list[str], test_type: str
         )
     elif test_type == "complex":
         # Only custom1 is external, custom2 and custom3 should be unrolled
-        print(qir)
         check_generic_gate_op(qir, 1, [0], [], "custom1")
         check_generic_gate_op(qir, 1, [0], ["1.000000e-01"], "ry")
         check_generic_gate_op(qir, 1, [0], ["2.000000e-01"], "rz")
