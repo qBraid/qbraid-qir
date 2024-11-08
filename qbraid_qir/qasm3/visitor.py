@@ -374,7 +374,6 @@ class QasmQIRVisitor:
             op_parameters = self._get_op_parameters(operation)
 
         if op_parameters is not None:
-           
             self._builder.call(qir_function, [*op_parameters, *op_qubits])
         else:
             self._builder.call(qir_function, op_qubits)
