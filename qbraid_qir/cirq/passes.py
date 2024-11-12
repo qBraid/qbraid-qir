@@ -45,58 +45,55 @@ def _decompose_gate_op(operation: cirq.Operation) -> Iterable[cirq.OP_TREE]:
         raise CirqConversionError("Couldn't convert circuit to QIR gate set.")
     return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
 
-
-# PYQIR_OP_MAP: dict[str, Callable] = {
-#     # Identity Gate
-#     "I": i,
-#     "S**-1": pyqir._native.s_adj,
-#     "T**-1": pyqir._native.t_adj,
-#     # Two-Qubit Gates
-#     "SWAP": pyqir._native.swap,
-#     "CNOT": pyqir._native.cx,
-#     "CZ": pyqir._native.cz,
-#     # Three-Qubit Gates
-#     "TOFFOLI": pyqir._native.ccx,
-#     # Classical Gates/Operations
-#     "measure_z": pyqir._native.mz,
-#     "measure_x": measure_x,
-#     "measure_y": measure_y,
-#     "reset": pyqir._native.reset,
-# }
-
 class QIRGateset(cirq.TwoQubitCompilationTargetGateset):
     def __init__(
         self,
         *,
         atol: float = 1e-8,
-        allow_partial_czs: bool = False,
-        preserve_moment_structure: bool = True,
     ) -> None:
-        super().__init__(
-            cirq.ops.MeasurementGate,
+        # print(type(cirq.ops.H),)
+        self.ops = (
+            # cirq.ops.MeasurementGate,
             cirq.ops.H,
-            cirq.ops.X, cirq.ops.Rx,
-            cirq.ops.Y, cirq.ops.Ry,
-            cirq.ops.Z, cirq.ops.Rz,
+            cirq.ops.X,
+            cirq.ops.Y,
+            cirq.ops.Z,
             cirq.ops.S, cirq.ops.T,
-            cirq.ops.SWAP, cirq.ops.CNOT, cirq.ops.CZ,
-            name='QIRGateset',
-            preserve_moment_structure=preserve_moment_structure,
+            cirq.ops.SWAP, cirq.ops.CNOT, cirq.ops.CZ
         )
         
+        super().__init__(
+            *self.ops,
+            name='QIRGateset',
+            preserve_moment_structure=True,
+        )
         self.atol = atol
-        self.allow_partial_czs = allow_partial_czs
 
     def _decompose_two_qubit_operation(self, op: 'cirq.Operation', _) -> 'cirq.OP_TREE':
         if not cirq.protocols.has_unitary(op):
             return NotImplemented
-        return two_qubit_to_cz.two_qubit_matrix_to_cz_operations(
+        
+        circ = two_qubit_to_cz.two_qubit_matrix_to_cz_operations(
             op.qubits[0],
             op.qubits[1],
             cirq.protocols.unitary(op),
-            allow_partial_czs=self.allow_partial_czs,
+            allow_partial_czs=False,
             atol=self.atol,
         )
+        
+        ops = []
+        for op in circ:
+            gate = op.gate
+            if isinstance(gate, cirq.ops.PhasedXPowGate):
+                ops.extend([
+                    cirq.ops.ZPowGate(exponent=-gate.phase_exponent)(op.qubits[0]), 
+                    cirq.ops.XPowGate(exponent=gate.exponent)(op.qubits[0]), 
+                    cirq.ops.ZPowGate(exponent=gate.phase_exponent)(op.qubits[0])
+                ])
+            else:
+                ops.append(op)
+
+        return []
 
     def _value_equality_values_(self) -> Any:
         return self.atol, self.allow_partial_czs, frozenset(self.additional_gates)
@@ -124,22 +121,7 @@ def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
     Returns:
         cirq.Circuit: A new circuit with unsupported gates decomposed.
     """
-    return cirq.optimize_for_target_gateset(circuit, gateset=cirq.CZTargetGateset)
-    new_circuit = cirq.Circuit()
-    for moment in circuit:
-        new_ops = []
-        for operation in moment:
-            if isinstance(operation, cirq.GateOperation):
-                decomposed_ops = list(_decompose_gate_op(operation))
-                new_ops.extend(decomposed_ops)
-            elif isinstance(operation, cirq.ClassicallyControlledOperation):
-                new_ops.append(operation)
-            else:
-                new_ops.append(operation)
-
-        new_circuit.append(new_ops)
-    return new_circuit
-
+    return cirq.optimize_for_target_gateset(circuit, gateset=QIRGateset(), ignore_failures=True, max_num_passes=1)
 
 def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     """
