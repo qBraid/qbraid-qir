@@ -117,5 +117,16 @@ pylint qbraid_qir tests
 Add licensing headers to all files:
 
 ```shell
-python3 tools/verify_headers.py --fix
+qbraid admin headers --type=gpl --fix
+```
+
+### Updating Examples Submodule
+
+```bash
+git submodule sync
+git submodule init
+git submodule update --remote --recursive
+git submodule update --remote --merge
+git add examples
+git commit -m "update examples submodule"
 ```
