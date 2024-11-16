@@ -143,7 +143,7 @@ def test_triple_qubit_gates(circuit_name, request):
     check_attributes(generated_qir, 3, 3)
     func = get_entry_point_body(generated_qir)
     assert func[0] == initialize_call_string()
-    assert func[1] == generic_op_call_string(qir_op, [0, 1, 2])
+    assert func[1] == generic_op_call_string(qir_op, [], [0, 1, 2])
     assert func[5] == return_string()
     assert len(func) == 6
 

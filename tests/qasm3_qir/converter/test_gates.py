@@ -25,6 +25,8 @@ from tests.qasm3_qir.fixtures.gates import (
 from tests.qir_utils import (
     check_attributes,
     check_custom_qasm_gate_op,
+    check_custom_qasm_gate_op_with_external_gates,
+    check_generic_gate_op,
     check_single_qubit_gate_op,
     check_single_qubit_rotation_op,
     check_three_qubit_gate_op,
@@ -144,6 +146,20 @@ def test_qasm_u3_gates():
     check_single_qubit_rotation_op(generated_qir, 1, [0], [0.5, 0.5, 0.5], "u3")
 
 
+def test_qasm_u3_gates_external():
+    qasm3_string = """
+    OPENQASM 3;
+    include "stdgates.inc";
+
+    qubit[2] q1;
+    u3(0.5, 0.5, 0.5) q1[0];
+    """
+    result = qasm3_to_qir(qasm3_string, external_gates=["u3"])
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 2, 0)
+    check_generic_gate_op(generated_qir, 1, [0], ["5.000000e-01"] * 3, "u3")
+
+
 def test_qasm_u2_gates():
     qasm3_string = """
     OPENQASM 3;
@@ -169,6 +185,19 @@ def test_custom_ops(test_name, request):
 
     # Check for custom gate definition
     check_custom_qasm_gate_op(generated_qir, gate_type)
+
+
+@pytest.mark.parametrize("test_name", custom_op_tests)
+def test_custom_ops_with_external_gates(test_name, request):
+    qasm3_string = request.getfixturevalue(test_name)
+    gate_type = test_name.removeprefix("Fixture_")
+    result = qasm3_to_qir(qasm3_string, external_gates=["custom", "custom1"])
+
+    generated_qir = str(result).splitlines()
+    check_attributes(generated_qir, 2, 0)
+
+    # Check for custom gate definition
+    check_custom_qasm_gate_op_with_external_gates(generated_qir, gate_type)
 
 
 def test_pow_gate_modifier():

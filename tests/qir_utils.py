@@ -103,9 +103,11 @@ def reset_call_string(qb: int) -> str:
     return f"call void @__quantum__qis__reset__body({_qubit_string(qb)})"
 
 
-def generic_op_call_string(name: str, qbs: list[int]) -> str:
-    args = ", ".join(_qubit_string(qb) for qb in qbs)
-    return f"call void @__quantum__qis__{name}__body({args})"
+def generic_op_call_string(name: str, angles: list[str], qubits: list[int]) -> str:
+    angles = ["double " + angle for angle in angles]
+    qubits = [_qubit_string(q) for q in qubits]
+    parameters = ", ".join(angles + qubits)
+    return f"call void @__quantum__qis__{name}__body({parameters})"
 
 
 def return_string() -> str:
@@ -235,6 +237,31 @@ def check_single_qubit_gate_op(
         ), f"Incorrect single qubit gate count: {expected_ops} expected, {op_count} actual"
 
 
+def check_generic_gate_op(
+    qir: list[str], expected_ops: int, qubit_list: list[int], param_list: list[str], gate_name: str
+):
+    entry_body = get_entry_point_body(qir)
+    op_count = 0
+
+    for line in entry_body:
+        gate_call_id = (
+            f"qis__{gate_name}" if "dg" not in gate_name else f"qis__{gate_name.removesuffix('dg')}"
+        )
+        if line.strip().startswith("call") and gate_call_id in line:
+            expected_line = generic_op_call_string(gate_name, param_list, qubit_list)
+            assert line.strip() == expected_line, (
+                "Incorrect single qubit gate call in qir"
+                + f"Expected {expected_line}, found {line.strip()}"
+            )
+            op_count += 1
+
+        if op_count == expected_ops:
+            break
+
+    if op_count != expected_ops:
+        assert False, f"Incorrect gate count: {expected_ops} expected, {op_count} actual"
+
+
 def check_two_qubit_gate_op(
     qir: list[str], expected_ops: int, qubit_lists: list[int], gate_name: str
 ):
@@ -346,7 +373,7 @@ def check_three_qubit_gate_op(
     for line in entry_body:
         if line.strip().startswith("call") and f"qis__{gate_name}" in line:
             assert line.strip() == generic_op_call_string(
-                gate_name, qubit_lists[q_id]
+                gate_name, [], qubit_lists[q_id]
             ), f"Incorrect three qubit gate call in qir - {line}"
             op_count += 1
             q_id += 1
@@ -423,6 +450,23 @@ def check_custom_qasm_gate_op(qir: list[str], test_type: str):
         _validate_nested_custom_op(entry_body)
     elif test_type == "complex":
         _validate_complex_custom_op(entry_body)
+    else:
+        assert False, f"Unknown test type {test_type} for custom ops"
+
+
+def check_custom_qasm_gate_op_with_external_gates(qir: list[str], test_type: str):
+    if test_type == "simple":
+        check_generic_gate_op(qir, 1, [0, 1], ["1.100000e+00"], "custom")
+    elif test_type == "nested":
+        check_generic_gate_op(
+            qir, 1, [0, 1], ["4.800000e+00", "1.000000e-01", "3.000000e-01"], "custom"
+        )
+    elif test_type == "complex":
+        # Only custom1 is external, custom2 and custom3 should be unrolled
+        check_generic_gate_op(qir, 1, [0], [], "custom1")
+        check_generic_gate_op(qir, 1, [0], ["1.000000e-01"], "ry")
+        check_generic_gate_op(qir, 1, [0], ["2.000000e-01"], "rz")
+        check_generic_gate_op(qir, 1, [0, 1], [], "cnot")
     else:
         assert False, f"Unknown test type {test_type} for custom ops"
 
