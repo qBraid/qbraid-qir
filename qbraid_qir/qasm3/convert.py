@@ -54,7 +54,7 @@ def qasm3_to_qir(
 
     external_gates: list[str] = kwargs.get("external_gates", [])
 
-    qasm3_module = pyqasm.load(program)
+    qasm3_module = pyqasm.loads(program)
     qasm3_module.unroll(external_gates=external_gates)
     if name is None:
         name = generate_module_id()
