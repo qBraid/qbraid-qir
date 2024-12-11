@@ -35,3 +35,4 @@ Types of changes:
 - Updated `pyqasm` and `qbraid` dependencies ([#183](https://github.com/qBraid/qbraid-qir/pull/183))
 
 ### 👋  Deprecations
+- Removed `qbraid_qir.qasm3.linag` module in favor of `pyqasm.linalg` ([#190](https://github.com/qBraid/qbraid-qir/pull/190))

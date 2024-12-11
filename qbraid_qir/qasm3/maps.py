@@ -12,13 +12,13 @@
 Module mapping supported QASM gates/operations to pyqir functions.
 
 """
-from typing import Union
+from typing import Callable, Union
 
 import numpy as np
 import pyqir
+from pyqasm.linalg import kak_decomposition_angles
 
 from .exceptions import Qasm3ConversionError
-from .linalg import kak_decomposition_angles
 
 
 def id_gate(builder, qubits):
@@ -462,7 +462,7 @@ PYQIR_THREE_QUBIT_OP_MAP = {
 }
 
 
-def map_qasm_op_to_pyqir_callable(op_name: str):
+def map_qasm_op_to_pyqir_callable(op_name: str) -> tuple[Callable, int]:
     """
     Map a QASM operation to a PyQIR callable.
 
@@ -471,23 +471,22 @@ def map_qasm_op_to_pyqir_callable(op_name: str):
 
     Returns:
         tuple: A tuple containing the PyQIR callable and the number of qubits the operation acts on.
+
+    Raises:
+        Qasm3ConversionError: If the QASM operation is unsupported or undeclared.
     """
-    try:
-        return PYQIR_ONE_QUBIT_OP_MAP[op_name], 1
-    except KeyError:
-        pass
-    try:
-        return PYQIR_ONE_QUBIT_ROTATION_MAP[op_name], 1
-    except KeyError:
-        pass
-    try:
-        return PYQIR_TWO_QUBIT_OP_MAP[op_name], 2
-    except KeyError:
-        pass
-    try:
-        return PYQIR_THREE_QUBIT_OP_MAP[op_name], 3
-    except KeyError as exc:
-        raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}") from exc
+    qasm_op_mappings: list[tuple[dict, int]] = [
+        (PYQIR_ONE_QUBIT_OP_MAP, 1),
+        (PYQIR_ONE_QUBIT_ROTATION_MAP, 1),
+        (PYQIR_TWO_QUBIT_OP_MAP, 2),
+        (PYQIR_THREE_QUBIT_OP_MAP, 3),
+    ]
+
+    for mapping, qubits in qasm_op_mappings:
+        if op_name in mapping:
+            return mapping[op_name], qubits
+
+    raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
 
 
 CONSTANTS_MAP = {
