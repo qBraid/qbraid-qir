@@ -103,19 +103,31 @@ and [black](https://github.com/psf/black). Specific configurations for these too
 Install linters:
 
 ```shell
-pip install 'black[jupyter]' isort pylint
+pip install black isort pylint mypy qbraid
 ```
 
 Run the following and make changes as needed to satisfy format checks:
 
 ```shell
-black qbraid_qir tests examples
+black qbraid_qir tests
 isort qbraid_qir tests
 pylint qbraid_qir tests
+mypy qbraid_qir
 ```
 
 Add licensing headers to all files:
 
 ```shell
-python3 tools/verify_headers.py --fix
+qbraid admin headers tests bin qbraid_qir docker --type=gpl -p qbraid-qir --fix
+```
+
+### Updating Examples Submodule
+
+```bash
+git submodule sync
+git submodule init
+git submodule update --remote --recursive
+git submodule update --remote --merge
+git add examples
+git commit -m "update examples submodule"
 ```

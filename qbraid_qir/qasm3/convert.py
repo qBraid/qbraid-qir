@@ -26,6 +26,7 @@ from .visitor import QasmQIRVisitor
 def qasm3_to_qir(
     program: Union[openqasm3.ast.Program, str],
     name: Optional[str] = None,
+    external_gates: Optional[list[str]] = None,
     **kwargs,
 ) -> Module:
     """Converts an OpenQASM 3 program to a PyQIR module.
@@ -33,11 +34,13 @@ def qasm3_to_qir(
     Args:
         program (openqasm3.ast.Program or str): The OpenQASM 3 program to convert.
         name (str, optional): Identifier for created QIR module. Auto-generated if not provided.
+        external_gates (list[str], optional): A list of custom gate names that are not natively
+            recognized by pyqasm but should be treated as valid during program unrolling.
 
     Keyword Args:
         initialize_runtime (bool): Whether to perform quantum runtime environment initialization,
-                                   default `True`.
-        record_output (bool): Whether to record output calls for registers, default `True`
+            defaults to `True`.
+        record_output (bool): Whether to record output calls for registers, defaults to `True`.
 
     Returns:
         The QIR ``pyqir.Module`` representation of the input OpenQASM 3 program.
@@ -52,16 +55,15 @@ def qasm3_to_qir(
     elif not isinstance(program, str):
         raise TypeError("Input quantum program must be of type openqasm3.ast.Program or str.")
 
-    qasm3_module = pyqasm.load(program)
-    qasm3_module.unroll()
-
+    qasm3_module = pyqasm.loads(program)
+    qasm3_module.unroll(external_gates=external_gates)
     if name is None:
         name = generate_module_id()
     llvm_module = qir_module(Context(), name)
 
     final_module = QasmQIRModule(name, qasm3_module, llvm_module)
 
-    visitor = QasmQIRVisitor(**kwargs)
+    visitor = QasmQIRVisitor(external_gates=external_gates, **kwargs)
     final_module.accept(visitor)
 
     err = llvm_module.verify()

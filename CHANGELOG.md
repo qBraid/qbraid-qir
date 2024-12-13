@@ -24,6 +24,9 @@ Types of changes:
 
 ### 📜  Documentation
 - Updated sphinx docs pages with PyQASM API reference links ([#174](https://github.com/qBraid/qbraid-qir/pull/174))
+- Updated custom CSS so that stable/latest drop-down is visible for navigation. Before blended in white with background ([#185](https://github.com/qBraid/qbraid-qir/pull/185))
+- Updated examples sub-module links, and added note in `CONTRIBUTING.md` about how to so ([#185](https://github.com/qBraid/qbraid-qir/pull/185))
+- Updated `CONTRIBUTING.md` with latest linters commands instructions ([#185](https://github.com/qBraid/qbraid-qir/pull/185))
 
 ### 🐛  Bug Fixes
 
@@ -32,3 +35,4 @@ Types of changes:
 - Updated `pyqasm` and `qbraid` dependencies ([#183](https://github.com/qBraid/qbraid-qir/pull/183))
 
 ### 👋  Deprecations
+- Removed `qbraid_qir.qasm3.linag` module in favor of `pyqasm.linalg` ([#190](https://github.com/qBraid/qbraid-qir/pull/190))
