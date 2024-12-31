@@ -32,5 +32,5 @@ keywords:
   - cirq
   - openasm
 license: GPL-3.0
-version: 0.2.3
+version: 0.3.0
 date-released: '2024-09-27'
