@@ -21,6 +21,61 @@ from qbraid_qir.cirq.passes import preprocess_circuit
 
 # pylint: disable=redefined-outer-name
 
+def _match_global_phase(a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Matches the global phase of two numpy arrays.
+
+    This function aligns the global phases of two matrices by applying a phase shift based
+    on the position of the largest entry in one matrix. It computes and adjusts for the
+    phase difference at this position, resulting in two phase-aligned matrices. The output,
+    (a', b'), indicates that a' == b' is equivalent to a == b * exp(i * t) for some phase t.
+
+    Args:
+        a (np.ndarray): The first input matrix.
+        b (np.ndarray): The second input matrix.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: A tuple of the two matrices `(a', b')`, adjusted for
+                                       global phase. If shapes of `a` and `b` do not match or
+                                       either is empty, returns copies of the original matrices.
+    """
+    if a.shape != b.shape or a.size == 0:
+        return np.copy(a), np.copy(b)
+
+    k = max(np.ndindex(*a.shape), key=lambda t: abs(b[t]))
+
+    def dephase(v):
+        r = np.real(v)
+        i = np.imag(v)
+
+        if i == 0:
+            return -1 if r < 0 else 1
+        if r == 0:
+            return 1j if i < 0 else -1j
+
+        return np.exp(-1j * np.arctan2(i, r))
+
+    return a * dephase(a[k]), b * dephase(b[k])
+
+
+def _assert_allclose_up_to_global_phase(a: np.ndarray, b: np.ndarray, atol: float, **kwargs) -> None:
+    """
+    Checks if two numpy arrays are equal up to a global phase, within
+    a specified tolerance, i.e. if a ~= b * exp(i t) for some t.
+
+    Args:
+        a (np.ndarray): The first input array.
+        b (np.ndarray): The second input array.
+        atol (float): The absolute error tolerance.
+        **kwargs: Additional keyword arguments to pass to `np.testing.assert_allclose`.
+
+    Raises:
+        AssertionError: The matrices aren't nearly equal up to global phase.
+
+    """
+    a, b = _match_global_phase(a, b)
+    np.testing.assert_allclose(actual=a, desired=b, atol=atol, **kwargs)
+
 
 @pytest.fixture
 def gridqubit_circuit():
@@ -40,8 +95,8 @@ def test_convert_gridqubits_to_linequbits(gridqubit_circuit):
     linequbit_circuit = preprocess_circuit(gridqubit_circuit)
     for qubit in linequbit_circuit.all_qubits():
         assert isinstance(qubit, cirq.LineQubit), "Qubit is not a LineQubit"
-    assert np.allclose(
-        linequbit_circuit.unitary(), gridqubit_circuit.unitary()
+    _assert_allclose_up_to_global_phase(
+        linequbit_circuit.unitary(), gridqubit_circuit.unitary(), atol=1e-6
     ), "Circuits are not equal"
 
 
@@ -49,8 +104,8 @@ def test_convert_namedqubits_to_linequbits(namedqubit_circuit):
     linequbit_circuit = preprocess_circuit(namedqubit_circuit)
     for qubit in linequbit_circuit.all_qubits():
         assert isinstance(qubit, cirq.LineQubit), "Qubit is not a LineQubit"
-    assert np.allclose(
-        linequbit_circuit.unitary(), namedqubit_circuit.unitary()
+    _assert_allclose_up_to_global_phase(
+        linequbit_circuit.unitary(), namedqubit_circuit.unitary(), atol=1e-6
     ), "Circuits are not equal"
 
 

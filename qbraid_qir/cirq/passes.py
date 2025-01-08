@@ -90,11 +90,10 @@ def _decompose_gate_op(operation: cirq.Operation) -> Iterable[cirq.OP_TREE]:
         _ = map_cirq_op_to_pyqir_callable(operation)
         return [operation]
     except CirqConversionError:
-        pass
-    new_ops = cirq.decompose_once(operation, flatten=True, default=[operation])
-    if len(new_ops) == 1 and new_ops[0] == operation:
-        raise CirqConversionError("Couldn't convert circuit to QIR gate set.")
-    return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
+        new_ops = cirq.decompose_once(operation, flatten=True, default=[operation])
+        if len(new_ops) == 1 and new_ops[0] == operation:
+            raise CirqConversionError("Couldn't convert circuit to QIR gate set.")
+        return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
 
 def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
     """
@@ -106,21 +105,24 @@ def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
     Returns:
         cirq.Circuit: A new circuit with unsupported gates decomposed.
     """
-    # new_circuit = cirq.Circuit()
-    # for moment in circuit:
-    #     new_ops = []
-    #     for operation in moment:
-    #         if isinstance(operation, cirq.GateOperation):
-    #             decomposed_ops = list(_decompose_gate_op(operation))
-    #             new_ops.extend(decomposed_ops)
-    #         elif isinstance(operation, cirq.ClassicallyControlledOperation):
-    #             new_ops.append(operation)
-    #         else:
-    #             new_ops.append(operation)
+    
+    circuit = cirq.optimize_for_target_gateset(circuit, gateset=QirTargetGateSet())
+    
+    new_circuit = cirq.Circuit()
+    for moment in circuit:
+        new_ops = []
+        for operation in moment:
+            if isinstance(operation, cirq.GateOperation):
+                decomposed_ops = list(_decompose_gate_op(operation))
+                new_ops.extend(decomposed_ops)
+            elif isinstance(operation, cirq.ClassicallyControlledOperation):
+                new_ops.append(operation)
+            else:
+                new_ops.append(operation)
 
-    #     new_circuit.append(new_ops)
-    # return new_circuit
-    return cirq.optimize_for_target_gateset(circuit, gateset=QirTargetGateSet())
+        new_circuit.append(new_ops)
+
+    return new_circuit
 
 def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     """

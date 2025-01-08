@@ -15,6 +15,7 @@ Module defining CirqVisitor.
 import logging
 from abc import ABCMeta, abstractmethod
 
+import numpy as np
 import cirq
 import pyqir
 import pyqir._native
@@ -108,6 +109,13 @@ class BasicCirqVisitor(CircuitElementVisitor):
             for qubit, result in zip(qubits, results):
                 self._measured_qubits[pyqir.qubit_id(qubit)] = True
                 pyqir_func(self._builder, qubit, result)
+                
+        def get_rot_gate_angle(operation: cirq.Operation):
+            if isinstance(operation.gate, (cirq.ops.XPowGate, cirq.ops.YPowGate, cirq.ops.ZPowGate)):
+                angle = operation.gate.exponent * np.pi
+            else:
+                angle = operation.gate._rads
+            return angle
 
         # dealing with conditional gates
         if isinstance(operation, cirq.ClassicallyControlledOperation):
@@ -121,9 +129,10 @@ class BasicCirqVisitor(CircuitElementVisitor):
 
             # pylint: disable=unnecessary-lambda-assignment
             if op_str in ["Rx", "Ry", "Rz"]:
+                angle = get_rot_gate_angle(operation._sub_operation)
                 pyqir_func = lambda: temp_pyqir_func(
                     self._builder,
-                    operation._sub_operation.gate._rads,  # type: ignore[union-attr]
+                    angle,  # type: ignore[union-attr]
                     *qubits,
                 )
             else:
@@ -144,11 +153,11 @@ class BasicCirqVisitor(CircuitElementVisitor):
             _branch(conditions, pyqir_func)
         else:
             pyqir_func, op_str = map_cirq_op_to_pyqir_callable(operation)
-
             if op_str.startswith("measure"):
                 handle_measurement(pyqir_func)
-            elif op_str in ["Rx", "Ry", "Rz"]:
-                pyqir_func(self._builder, operation.gate._rads, *qubits)  # type: ignore[union-attr]
+            elif op_str in ["Rx", "Ry", "Rz"]:                    
+                angle = get_rot_gate_angle(operation)
+                pyqir_func(self._builder, angle, *qubits)  # type: ignore[union-attr]
             else:
                 pyqir_func(self._builder, *qubits)
 
