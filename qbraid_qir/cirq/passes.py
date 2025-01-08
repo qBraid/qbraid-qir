@@ -106,23 +106,9 @@ def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
         cirq.Circuit: A new circuit with unsupported gates decomposed.
     """
     
-    circuit = cirq.optimize_for_target_gateset(circuit, gateset=QirTargetGateSet())
-    
-    new_circuit = cirq.Circuit()
-    for moment in circuit:
-        new_ops = []
-        for operation in moment:
-            if isinstance(operation, cirq.GateOperation):
-                decomposed_ops = list(_decompose_gate_op(operation))
-                new_ops.extend(decomposed_ops)
-            elif isinstance(operation, cirq.ClassicallyControlledOperation):
-                new_ops.append(operation)
-            else:
-                new_ops.append(operation)
+    circuit = cirq.optimize_for_target_gateset(circuit, gateset=QirTargetGateSet(), ignore_failures=True, max_num_passes=1)
 
-        new_circuit.append(new_ops)
-
-    return new_circuit
+    return circuit
 
 def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     """
