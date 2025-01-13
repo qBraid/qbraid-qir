@@ -44,6 +44,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             cirq.CZ,
             cirq.TOFFOLI,
             cirq.ResetChannel,
+            cirq.MeasurementGate,
             *additional_gates,
             name="QirTargetGateset",
             preserve_moment_structure=preserve_moment_structure,
@@ -105,7 +106,7 @@ def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
     Returns:
         cirq.Circuit: A new circuit with unsupported gates decomposed.
     """
-    
+    print(circuit)
     circuit = cirq.optimize_for_target_gateset(circuit, gateset=QirTargetGateSet(), ignore_failures=True, max_num_passes=1)
 
     return circuit
