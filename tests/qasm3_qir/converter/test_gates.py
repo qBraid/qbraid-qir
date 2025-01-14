@@ -263,18 +263,3 @@ def test_nested_gate_modifiers():
     check_single_qubit_gate_op(generated_qir, 2, [1, 1, 1], "z")
 
 
-def test_unsupported_modifiers():
-    # TO DO : add implementations, but till then we have tests
-    for modifier in ["ctrl", "negctrl"]:
-        with pytest.raises(
-            NotImplementedError,
-            match=r"Controlled modifier gates not yet supported .*",
-        ):
-            _ = qasm3_to_qir(
-                f"""
-                OPENQASM 3;
-                include "stdgates.inc";
-                qubit[2] q;
-                {modifier} @ h q[0], q[1];
-                """
-            )

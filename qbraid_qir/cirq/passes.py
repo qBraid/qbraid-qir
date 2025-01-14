@@ -44,6 +44,8 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             cirq.CZ,
             cirq.TOFFOLI,
             cirq.ResetChannel,
+            cirq.MeasurementGate,
+            cirq.PauliMeasurementGate,
             *additional_gates,
             name="QirTargetGateset",
             preserve_moment_structure=preserve_moment_structure,
