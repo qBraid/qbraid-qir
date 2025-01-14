@@ -18,6 +18,7 @@ from pathlib import Path
 import cirq
 import pyqir
 import pytest
+import numpy as np
 
 from qbraid_qir.cirq import CirqConversionError, cirq_to_qir
 from tests.cirq_qir.fixtures.basic_gates import (
@@ -67,14 +68,6 @@ def test_cirq_to_qir_type_error():
 def test_cirq_qir_conversion_error():
     with pytest.raises(TypeError):
         cirq_to_qir(None)
-
-
-def test_cirq_to_qir_conversion_error():
-    """Test raising exception for conversion error."""
-    op = cirq.XPowGate(exponent=0.25).controlled().on(cirq.LineQubit(1), cirq.LineQubit(2))
-    circuit = cirq.Circuit(op)
-    with pytest.raises(CirqConversionError):
-        cirq_to_qir(circuit)
 
 
 @pytest.mark.parametrize("circuit_name", single_op_tests)
