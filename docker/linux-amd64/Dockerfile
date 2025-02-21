@@ -3,11 +3,11 @@
 
 FROM ubuntu:24.04
 
-LABEL maintainer="qBraid Development Team <contact@qbraid.com>"
-LABEL licenses="GNU General Public License v3.0"
-LABEL title="qBraid-QIR x QIR bytecode runner"
-LABEL description="Flexible environment with qBraid-QIR and the QIR-Runner (built from source)."
-LABEL version="1.0"
+LABEL maintainer="qBraid Development Team <contact@qbraid.com>" \
+      licenses="Apache-2.0" \
+      title="qBraid-QIR x QIR bytecode runner" \
+      description="Flexible environment with qBraid-QIR and the QIR-Runner (built from source)." \
+      version="2.0"
 
 ENV USER=qbraid
 
@@ -31,7 +31,7 @@ RUN apt-get update --yes && \
     libomp5 lld lldb llvm-dev llvm-runtime llvm python3-clang \
     libpolly-18-dev libzstd-dev \
     # Python interpreter and package managers 
-    cargo python3 python3-pip python3-venv && \
+    python3 python3-pip python3-venv && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -41,13 +41,14 @@ RUN useradd -ms /bin/bash $USER && \
 USER $USER
 
 # Install Rustup: https://www.rust-lang.org/tools/install
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 ENV PATH="$HOME/.cargo/bin:${PATH}"
 
 USER root
 
-RUN bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+# Ensure we have the latest stable toolchain (≥ 1.81)
+RUN rustup update stable && rustup default stable
 
 RUN git clone https://github.com/qir-alliance/qir-runner.git /opt/qir-runner && \
     chown -R $USER:$USER /opt/qir-runner
