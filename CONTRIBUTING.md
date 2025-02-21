@@ -30,7 +30,7 @@ For code changes, please ensure that:
 3. All integration tests, including docs and linters, are passing.
 4. New functions and classes are annotated with Python type hints to support `py.typed`.
 
-Once PR has been validated by the maintainers, please ensure to update the [`CHANGELOG.md`](https://github.com/qBraid/qbraid-qir/blob/main/CHANGELOG.md) with a description of the PR and its link. You can refer to the [past release changelogs](https://github.com/qBraid/qbraid-qir/releases/tag/v0.2.2) as an example. Please make sure to correctly classify your work under one of the available contribution types.
+Once PR has been validated by the maintainers, please ensure to update the [`CHANGELOG.md`](https://github.com/qBraid/qbraid-qir/blob/main/CHANGELOG.md) with a description of the PR and its link. You can refer to the [past release changelogs](https://github.com/qBraid/qbraid-qir/releases) as an example. Please make sure to correctly classify your work under one of the available contribution types.
 
 ### Run tests
 
@@ -118,7 +118,7 @@ mypy qbraid_qir
 Add licensing headers to all files:
 
 ```shell
-qbraid admin headers tests bin qbraid_qir docker --type=gpl -p qbraid-qir --fix
+qbraid admin headers tests bin qbraid_qir docker --type=apache --fix
 ```
 
 ### Updating Examples Submodule
