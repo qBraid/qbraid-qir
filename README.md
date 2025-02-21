@@ -182,4 +182,4 @@ This project was conceived in cooperation with the Quantum Open Source Foundatio
 
 ## License
 
-[GNU General Public License v3.0](LICENSE)
+[Apache-2.0 License](LICENSE)
