@@ -358,26 +358,35 @@ class QasmQIRVisitor:
                 err_type=NotImplementedError,
             )
 
+        op_parameters = []
+        if len(operation.arguments) > 0:  # parametric gate
+            op_parameters = self._get_op_parameters(operation)
+
         context = self._llvm_module.context
         qir_function = self._external_gates_map[op_name]
+        qir_function_arg_types: list[pyqir.Type] = []
         if qir_function is None:
             # First time seeing this external gate -> define new function
-            qir_function_arguments = [pyqir.Type.double(context)] * len(operation.arguments)
-            qir_function_arguments += [pyqir.qubit_type(context)] * op_qubit_count
+
+            # add classical arg types
+            for classical_arg in op_parameters:
+                if isinstance(classical_arg, int):
+                    qir_function_arg_types.append(pyqir._native.IntType(context, 64))
+                else:
+                    qir_function_arg_types.append(pyqir.Type.double(context))
+
+            # add quantum arg types
+            qir_function_arg_types += [pyqir.qubit_type(context)] * op_qubit_count
 
             qir_function = pyqir.Function(
-                pyqir.FunctionType(pyqir.Type.void(context), qir_function_arguments),
+                pyqir.FunctionType(pyqir.Type.void(context), qir_function_arg_types),
                 pyqir.Linkage.EXTERNAL,
                 f"__quantum__qis__{op_name}__body",
                 self._llvm_module,
             )
             self._external_gates_map[op_name] = qir_function
 
-        op_parameters = None
-        if len(operation.arguments) > 0:  # parametric gate
-            op_parameters = self._get_op_parameters(operation)
-            op_parameters = list(map(float, op_parameters))
-        if op_parameters is not None:
+        if op_parameters:
             self._builder.call(qir_function, [*op_parameters, *op_qubits])
         else:
             self._builder.call(qir_function, op_qubits)

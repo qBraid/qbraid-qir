@@ -83,12 +83,13 @@ def double_op_call_string(name: str, qb1: int, qb2: int) -> str:
     return f"call void @__quantum__qis__{name}__body({_qubit_string(qb1)}, {_qubit_string(qb2)})"
 
 
-def rotation_call_string(name: str, theta: Union[float, str], qb: int) -> str:
-    if isinstance(theta, str):
+def rotation_call_string(name: str, theta: Union[float, str], qb: int, param_type="double") -> str:
+    if isinstance(theta, str) or param_type == "i64":
         # for hex matching
-        theta = theta.replace("X", "x")
-        return f"call void @__quantum__qis__{name}__body(double {theta}, {_qubit_string(qb)})"
-    return f"call void @__quantum__qis__{name}__body(double {theta:#e}, {_qubit_string(qb)})"
+        if isinstance(theta, str):
+            theta = theta.replace("X", "x")
+        return f"call void @__quantum__qis__{name}__body({param_type} {theta}, {_qubit_string(qb)})"
+    return f"call void @__quantum__qis__{name}__body({param_type} {theta:#e}, {_qubit_string(qb)})"
 
 
 def measure_call_string(name: str, res: str, qb: int) -> str:
@@ -354,8 +355,9 @@ def check_single_qubit_rotation_op(
         return
     for line in entry_body:
         if line.strip().startswith("call") and f"qis__{gate_name}" in line:
+            param_type = "double" if "double" in line else "i64"
             assert line.strip() == rotation_call_string(
-                gate_name, param_list[q_id], qubit_list[q_id]
+                gate_name, param_list[q_id], qubit_list[q_id], param_type
             ), f"Incorrect rotation gate call in qir - {line}"
             op_count += 1
             q_id += 1

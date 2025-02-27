@@ -163,7 +163,7 @@ def test_qasm_u3_gates_external():
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 2, 0)
     check_generic_gate_op(generated_qir, 1, [0], ["5.000000e-01"] * 3, "u3")
-    check_single_qubit_rotation_op(generated_qir, 1, [1], [1.0], "rz")
+    check_single_qubit_rotation_op(generated_qir, 1, [1], [1], "rz")
 
 
 def test_qasm_u2_gates():
