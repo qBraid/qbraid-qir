@@ -22,6 +22,7 @@ Types of changes:
 - Changed project from GPL to Apache 2.0 license ([#198](https://github.com/qBraid/qbraid-qir/pull/198))
 
 ### 🐛  Bug Fixes
+- Fix type error for integer in external gate call argument ([#202](https://github.com/qBraid/qbraid-qir/pull/202))
 
 ### ⬇️  Dependency Updates 
 
