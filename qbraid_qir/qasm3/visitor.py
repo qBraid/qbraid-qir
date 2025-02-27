@@ -376,7 +376,7 @@ class QasmQIRVisitor:
         op_parameters = None
         if len(operation.arguments) > 0:  # parametric gate
             op_parameters = self._get_op_parameters(operation)
-
+            op_parameters = list(map(float, op_parameters))
         if op_parameters is not None:
             self._builder.call(qir_function, [*op_parameters, *op_qubits])
         else:
