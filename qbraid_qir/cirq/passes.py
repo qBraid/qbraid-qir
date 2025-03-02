@@ -17,12 +17,68 @@ Module for processing Cirq circuits before conversion to QIR.
 
 """
 import itertools
-from typing import Iterable
+from typing import Iterable, List, Sequence, Type, Union
 
 import cirq
+from cirq.protocols.decompose_protocol import DecomposeResult
 
 from .exceptions import CirqConversionError
 from .opsets import map_cirq_op_to_pyqir_callable
+
+
+class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
+    def __init__(
+        self,
+        *,
+        atol: float = 1e-8,
+        allow_partial_czs: bool = False,
+        additional_gates: Sequence[
+            Union[Type["cirq.Gate"], "cirq.Gate", "cirq.GateFamily"]
+        ] = (),
+        preserve_moment_structure: bool = True,
+    ) -> None:
+        super().__init__(
+            cirq.IdentityGate,
+            cirq.HPowGate,
+            cirq.XPowGate,
+            cirq.YPowGate,
+            cirq.ZPowGate,
+            cirq.SWAP,
+            cirq.CNOT,
+            cirq.CZ,
+            cirq.TOFFOLI,
+            cirq.ResetChannel,
+            cirq.MeasurementGate,
+            cirq.PauliMeasurementGate,
+            *additional_gates,
+            name="QirTargetGateset",
+            preserve_moment_structure=preserve_moment_structure,
+        )
+        self.allow_partial_czs = allow_partial_czs
+        self.atol = atol
+
+    @property
+    def postprocess_transformers(self) -> List["cirq.TRANSFORMER"]:
+        return []
+
+    def _decompose_single_qubit_operation(
+        self, op: "cirq.Operation", moment_idx: int
+    ) -> DecomposeResult:
+        qubit = op.qubits[0]
+        mat = cirq.unitary(op)
+        for gate in cirq.single_qubit_matrix_to_gates(mat, self.atol):
+            yield gate(qubit)
+
+    def _decompose_two_qubit_operation(self, op: "cirq.Operation", _) -> "cirq.OP_TREE":
+        if not cirq.has_unitary(op):
+            return NotImplemented
+        return cirq.two_qubit_matrix_to_cz_operations(
+            op.qubits[0],
+            op.qubits[1],
+            cirq.unitary(op),
+            allow_partial_czs=self.allow_partial_czs,
+            atol=self.atol,
+        )
 
 
 def _decompose_gate_op(operation: cirq.Operation) -> Iterable[cirq.OP_TREE]:
@@ -40,12 +96,10 @@ def _decompose_gate_op(operation: cirq.Operation) -> Iterable[cirq.OP_TREE]:
         _ = map_cirq_op_to_pyqir_callable(operation)
         return [operation]
     except CirqConversionError:
-        pass
-    new_ops = cirq.decompose_once(operation, flatten=True, default=[operation])
-    if len(new_ops) == 1 and new_ops[0] == operation:
-        raise CirqConversionError("Couldn't convert circuit to QIR gate set.")
-    return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
-
+        new_ops = cirq.decompose_once(operation, flatten=True, default=[operation])
+        if len(new_ops) == 1 and new_ops[0] == operation:
+            raise CirqConversionError("Couldn't convert circuit to QIR gate set.")
+        return list(itertools.chain.from_iterable(map(_decompose_gate_op, new_ops)))
 
 def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
     """
@@ -57,21 +111,9 @@ def _decompose_unsupported_gates(circuit: cirq.Circuit) -> cirq.Circuit:
     Returns:
         cirq.Circuit: A new circuit with unsupported gates decomposed.
     """
-    new_circuit = cirq.Circuit()
-    for moment in circuit:
-        new_ops = []
-        for operation in moment:
-            if isinstance(operation, cirq.GateOperation):
-                decomposed_ops = list(_decompose_gate_op(operation))
-                new_ops.extend(decomposed_ops)
-            elif isinstance(operation, cirq.ClassicallyControlledOperation):
-                new_ops.append(operation)
-            else:
-                new_ops.append(operation)
+    circuit = cirq.optimize_for_target_gateset(circuit, gateset=QirTargetGateSet(), ignore_failures=True, max_num_passes=1)
 
-        new_circuit.append(new_ops)
-    return new_circuit
-
+    return circuit
 
 def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     """
