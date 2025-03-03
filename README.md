@@ -163,14 +163,14 @@ The BibTeX entry below is aligned with the latest stable release. For the most u
 citation details, please refer to [CITATION.cff](CITATION.cff).
 
 ```bibtex
-@software{Gupta_qBraid-QIR_Python_package_2024,
+@software{Gupta_qBraid-QIR_Python_package_2025,
   author = {Gupta, Harshit and Jain, Rohan and Kushnir, Samuel and Parakh, Priyansh and Hill, Ryan James},
-  license = {GPL-3.0},
+  license = {Apache-2.0},
   month = aug,
   title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
   url = {https://github.com/qBraid/qbraid-qir},
-  version = {0.3.0},
-  year = {2024}
+  version = {0.3.1},
+  year = {2025}
 }
 ```
 
