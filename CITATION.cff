@@ -22,8 +22,8 @@ authors:
     family-names: Hill
     affiliation: qBraid Co.
 repository-code: 'https://github.com/qBraid/qbraid-qir'
-url: 'https://sdk.qbraid.com/projects/qir/en/v0.3.0/'
-repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.3.0'
+url: 'https://sdk.qbraid.com/projects/qir/en/v0.3.1/'
+repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.3.1'
 keywords:
   - python
   - quantum-computing
@@ -32,5 +32,5 @@ keywords:
   - cirq
   - openasm
 license: Apache-2.0
-version: 0.3.0
-date-released: '2024-09-27'
+version: 0.3.1
+date-released: '2025-03-03'
