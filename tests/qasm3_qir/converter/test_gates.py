@@ -271,7 +271,7 @@ def test_nested_gate_modifiers():
 
 def test_ctrl_modifiers():
     ctrl_modifiers = qasm3_to_qir(
-        f"""
+        """
         OPENQASM 3;
         include "stdgates.inc";
         qubit[2] q;
@@ -280,4 +280,4 @@ def test_ctrl_modifiers():
     )
     generated_qir = str(ctrl_modifiers).splitlines()
     check_attributes(generated_qir, 2, 0)
-    check_two_qubit_gate_op(generated_qir, 1, [[0, 1]], f"cx")
+    check_two_qubit_gate_op(generated_qir, 1, [[0, 1]], "cx")
