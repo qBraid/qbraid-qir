@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "qBraid-SDK extension providing support for QIR conversions."
 readme = "README.md"
 authors = [{name = "qBraid Development Team"}, {email = "contact@qbraid.com"}]
-license = {text = "GNU General Public License v3.0"}
+license = {text = "Apache 2.0"}
 keywords = ["qbraid", "quantum", "qir", "llvm", "cirq", "openqasm"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
