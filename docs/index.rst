@@ -93,22 +93,21 @@ Resources
 
 - `User Guide <https://docs.qbraid.com/qir/user-guide>`_
 - `Example Notebooks <https://github.com/qBraid/qbraid-lab-demo/tree/main/qbraid_qir>`_
-- `API Reference <https://sdk.qbraid.com/projects/qir/en/stable/api/qbraid_qir.html>`_
+- `API Reference <https://qbraid.github.io/qbraid-qir/api/qbraid_qir.html>`_
 - `Source Code <https://github.com/qBraid/qbraid-qir>`_
-
 
 .. toctree::
    :maxdepth: 1
    :caption: SDK API Reference
    :hidden:
 
-   qbraid <https://sdk.qbraid.com/en/stable/api/qbraid.html>
-   qbraid.programs <https://sdk.qbraid.com/en/stable/api/qbraid.programs.html>
-   qbraid.interface <https://sdk.qbraid.com/en/stable/api/qbraid.interface.html>
-   qbraid.transpiler <https://sdk.qbraid.com/en/stable/api/qbraid.transpiler.html>
-   qbraid.passes <https://sdk.qbraid.com/en/stable/api/qbraid.passes.html>
-   qbraid.runtime <https://sdk.qbraid.com/en/stable/api/qbraid.runtime.html>
-   qbraid.visualization <https://sdk.qbraid.com/en/stable/api/qbraid.visualization.html>
+   qbraid <https://qbraid.github.io/qBraid/api/qbraid.html>
+   qbraid.programs <https://qbraid.github.io/qBraid/api/qbraid.programs.html>
+   qbraid.interface <https://qbraid.github.io/qBraid/api/qbraid.interface.html>
+   qbraid.transpiler <https://qbraid.github.io/qBraid/api/qbraid.transpiler.html>
+   qbraid.passes <https://qbraid.github.io/qBraid/api/qbraid.passes.html>
+   qbraid.runtime <https://qbraid.github.io/qBraid/api/qbraid.runtime.html>
+   qbraid.visualization <https://qbraid.github.io/qBraid/api/qbraid.visualization.html>
 
 .. toctree::
    :maxdepth: 1
@@ -123,11 +122,11 @@ Resources
    :caption: CORE API Reference
    :hidden:
 
-   qbraid_core <https://sdk.qbraid.com/projects/core/en/stable/api/qbraid_core.html>
-   qbraid_core.services <https://sdk.qbraid.com/projects/core/en/stable/api/qbraid_core.services.html>
+   qbraid_core <https://qbraid.github.io/qbraid-core/api/qbraid_core.html>
+   qbraid_core.services <https://qbraid.github.io/qbraid-core/api/qbraid_core.services.html>
 
 .. toctree::
    :caption: PYQASM API Reference
    :hidden:
 
-   pyqasm <https://sdk.qbraid.com/projects/pyqasm/en/stable/api/pyqasm.html>
+   pyqasm <https://qbraid.github.io/pyqasm/api/pyqasm.html>
