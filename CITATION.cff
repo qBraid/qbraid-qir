@@ -1,36 +1,33 @@
 cff-version: 1.2.0
-title: >-
-  qBraid-QIR: Python package for QIR conversions, integrations, and utilities.
-message: >-
-  If you use this software, please cite it using the
-  metadata from this file.
+title: 'qBraid-QIR: Python package for QIR conversions, integrations, and utilities.'
+message: If you use this software, please cite it using the metadata from this file.
 type: software
 authors:
-  - given-names: Harshit
-    family-names: Gupta
-    affiliation: qBraid Co.
-  - given-names: Rohan
-    family-names: Jain
-    affiliation: Carnegie Mellon University
-  - given-names: Samuel
-    family-names: Kushnir
-    affiliation: University of Maryland
-  - given-names: Priyansh
-    family-names: Parakh
-    affiliation: University of Toronto
-  - given-names: Ryan James
-    family-names: Hill
-    affiliation: qBraid Co.
-repository-code: 'https://github.com/qBraid/qbraid-qir'
-url: 'https://sdk.qbraid.com/projects/qir/en/v0.3.1/'
-repository-artifact: 'https://github.com/qBraid/qbraid-qir/releases/tag/v0.3.1'
+- given-names: Harshit
+  family-names: Gupta
+  affiliation: qBraid Co.
+- given-names: Rohan
+  family-names: Jain
+  affiliation: Carnegie Mellon University
+- given-names: Samuel
+  family-names: Kushnir
+  affiliation: University of Maryland
+- given-names: Priyansh
+  family-names: Parakh
+  affiliation: University of Toronto
+- given-names: Ryan James
+  family-names: Hill
+  affiliation: qBraid Co.
+repository-code: https://github.com/qBraid/qbraid-qir
+url: https://qbraid.github.io/qbraid-qir
+repository-artifact: https://github.com/qBraid/qbraid-qir/releases/tag/v0.3.1
 keywords:
-  - python
-  - quantum-computing
-  - qir
-  - llvm
-  - cirq
-  - openasm
+- python
+- quantum-computing
+- qir
+- llvm
+- cirq
+- openasm
 license: Apache-2.0
 version: 0.3.1
 date-released: '2025-03-03'
