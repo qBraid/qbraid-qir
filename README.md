@@ -4,8 +4,8 @@
   <a href='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml'>
       <img src='https://github.com/qBraid/qbraid-qir/actions/workflows/main.yml/badge.svg' alt='CI'>
   </a>
-  <a href='https://sdk.qbraid.com/projects/qir/en/latest/?badge=latest'>
-    <img src='https://readthedocs.com/projects/qbraid-qbraid-qir/badge/?version=latest&token=7656ee72b7a66dec6d78dda911ce808676dca55c3e86702d5e97191badfdf19c' alt='Documentation Status'/>
+  <a href='https://sdk.qbraid.com/qbraid-qir/'>
+    <img src='https://img.shields.io/github/actions/workflow/status/qBraid/qbraid-qir/gh-pages.yml?label=docs' alt='GitHub Pages'/>
   </a>
   <a href="https://codecov.io/gh/qBraid/qbraid-qir">
     <img src="https://codecov.io/gh/qBraid/qbraid-qir/graph/badge.svg?token=GUQ3EN8DGI"/>
@@ -23,8 +23,6 @@
     <img src="https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white" alt="Discord"/>
   </a>
 </p>
-
-qBraid-SDK extension providing support for QIR conversions.
 
 [<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com?gitHubUrl=https://github.com/qBraid/qbraid-qir.git)
 
