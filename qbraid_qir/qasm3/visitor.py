@@ -110,7 +110,7 @@ class QasmQIRVisitor:
         if self._record_output is False:
             return
         i8p = pyqir.PointerType(pyqir.IntType(self._llvm_module.context, 8))
-        for i in range(module.qasm_program.num_qubits):
+        for i in range(module.qasm_program.num_clbits):         
             result_ref = pyqir.result(self._llvm_module.context, i)
             pyqir.rt.result_record_output(self._builder, result_ref, pyqir.Constant.null(i8p))
 
