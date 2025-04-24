@@ -23,6 +23,7 @@ Types of changes:
 
 ### 🐛  Bug Fixes
 
-### ⬇️  Dependency Updates 
+### ⬇️  Dependency Updates
+- Pin `pyqasm` version to 0.3.0 due to bugs in release 0.3.1 ([#219](https://github.com/qBraid/qbraid-qir/pull/219))
 
 ### 👋  Deprecations
