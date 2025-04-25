@@ -166,10 +166,10 @@ citation details, please refer to [CITATION.cff](CITATION.cff).
 @software{Gupta_qBraid-QIR_Python_package_2025,
   author = {Gupta, Harshit and Jain, Rohan and Kushnir, Samuel and Parakh, Priyansh and Hill, Ryan James},
   license = {Apache-2.0},
-  month = aug,
+  month = apr,
   title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
   url = {https://github.com/qBraid/qbraid-qir},
-  version = {0.3.1},
+  version = {0.3.2},
   year = {2025}
 }
 ```

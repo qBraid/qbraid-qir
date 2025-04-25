@@ -19,11 +19,9 @@ Types of changes:
 ### 🌟  Improvements
 
 ### 📜  Documentation
-- Add deploy to github pages and version bump workflows (including automation to update citation file) ([#208](https://github.com/qBraid/qbraid-qir/pull/208))
 
 ### 🐛  Bug Fixes
 
 ### ⬇️  Dependency Updates 
-- Update pyqasm version to `>=0.3.2, <0.4.0` ([#220](https://github.com/qBraid/qbraid-qir/pull/220))
 
 ### 👋  Deprecations
