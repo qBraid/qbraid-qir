@@ -25,12 +25,14 @@ from pyqir import Context, Module, qir_module
 from .elements import QasmQIRModule, generate_module_id
 from .exceptions import Qasm3ConversionError
 from .visitor import QasmQIRVisitor
+from .adaptive_support import QasmQIRAdaptiveVisitor
 
 
 def qasm3_to_qir(
     program: Union[openqasm3.ast.Program, str],
     name: Optional[str] = None,
     external_gates: Optional[list[str]] = None,
+    profile: str = "base",
     **kwargs,
 ) -> Module:
     """Converts an OpenQASM 3 program to a PyQIR module.
@@ -59,15 +61,22 @@ def qasm3_to_qir(
     elif not isinstance(program, str):
         raise TypeError("Input quantum program must be of type openqasm3.ast.Program or str.")
 
-    qasm3_module = pyqasm.loads(program)
-    qasm3_module.unroll(external_gates=external_gates)
+    qasm3_module = pyqasm.load(program)
+    qasm3_module.unroll()
     if name is None:
         name = generate_module_id()
     llvm_module = qir_module(Context(), name)
 
     final_module = QasmQIRModule(name, qasm3_module, llvm_module)
 
-    visitor = QasmQIRVisitor(external_gates=external_gates, **kwargs)
+    profile = profile.lower()
+    if profile == "adaptive":
+        visitor = QasmQIRAdaptiveVisitor(external_gates=external_gates, **kwargs)
+    elif profile == "base":
+        visitor = QasmQIRVisitor(external_gates=external_gates, **kwargs)
+    else:
+        raise ValueError(f"Invalid profile: {profile}")
+
     final_module.accept(visitor)
 
     err = llvm_module.verify()
