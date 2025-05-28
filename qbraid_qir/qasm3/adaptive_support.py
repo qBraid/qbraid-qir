@@ -118,7 +118,7 @@ class QasmQIRAdaptiveVisitor:
 
     def finalize(self) -> None:
         self._check_and_apply_barrier()  # to check if we have an incomplete barrier at program end
-        self._builder.ret(pyqir.const(pyqir.IntType(self._llvm_module.context, 64), 0))
+        self._builder.ret(None)
 
     def record_output(self, module: QasmQIRModule) -> None:
         """Record output using adaptive profile output recording."""
