@@ -16,16 +16,16 @@
 Module containing OpenQASM to QIR conversion functions
 
 """
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 import openqasm3
 import pyqasm
 from pyqir import Context, Module, qir_module
 
+from .adaptive_support import QasmQIRAdaptiveVisitor
 from .elements import QasmQIRModule, generate_module_id
 from .exceptions import Qasm3ConversionError
 from .visitor import QasmQIRVisitor
-from .adaptive_support import QasmQIRAdaptiveVisitor
 
 
 def qasm3_to_qir(
@@ -70,6 +70,7 @@ def qasm3_to_qir(
     final_module = QasmQIRModule(name, qasm3_module, llvm_module)
 
     profile = profile.lower()
+    visitor: Any
     if profile == "adaptive":
         visitor = QasmQIRAdaptiveVisitor(external_gates=external_gates, **kwargs)
     elif profile == "base":
