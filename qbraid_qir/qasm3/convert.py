@@ -61,8 +61,8 @@ def qasm3_to_qir(
     elif not isinstance(program, str):
         raise TypeError("Input quantum program must be of type openqasm3.ast.Program or str.")
 
-    qasm3_module = pyqasm.load(program)
-    qasm3_module.unroll()
+    qasm3_module = pyqasm.loads(program)
+    qasm3_module.unroll(external_gates=external_gates)
     if name is None:
         name = generate_module_id()
     llvm_module = qir_module(Context(), name)
