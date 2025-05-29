@@ -70,7 +70,6 @@ class QasmQIRAdaptiveVisitor:
         self._initialize_runtime: bool = initialize_runtime
         self._record_output: bool = record_output
         self._emit_barrier_calls: bool = emit_barrier_calls
-
         # Adaptive profile specific attributes
         self._measured_qubits: dict[int, bool] = {}  # Track which qubits have been measured
         self._profile: str = "AdaptiveExecution"
@@ -98,11 +97,9 @@ class QasmQIRAdaptiveVisitor:
         entry = pyqir.entry_point(
             self._llvm_module, module.name, qasm3_module.num_qubits, qasm3_module.num_clbits
         )
-
         self._entry_point = entry.name
         self._builder = pyqir.Builder(context)
         self._builder.insert_at_end(pyqir.BasicBlock(context, "entry", entry))
-
         if self._initialize_runtime is True:
             i8p = pyqir.PointerType(pyqir.IntType(context, 8))
             nullptr = pyqir.Constant.null(i8p)
@@ -124,9 +121,7 @@ class QasmQIRAdaptiveVisitor:
         """Record output using adaptive profile output recording."""
         if self._record_output is False:
             return
-
         i8p = pyqir.PointerType(pyqir.IntType(self._llvm_module.context, 8))
-
         # For adaptive profile, we record output in a more sophisticated way
         # that respects register groupings
         recorded_ids = set()
@@ -137,7 +132,6 @@ class QasmQIRAdaptiveVisitor:
                 pyqir.const(pyqir.IntType(self._llvm_module.context, 64), reg_size),
                 pyqir.Constant.null(i8p),
             )
-
             # Record individual results within the register
             for i in range(reg_size - 1, -1, -1):
                 bit_id = self._clbit_labels[f"{reg_name}_{i}"]
@@ -161,7 +155,6 @@ class QasmQIRAdaptiveVisitor:
         """
         logger.debug("Visiting register '%s'", str(register))
         is_qubit = isinstance(register, qasm3_ast.QubitDeclaration)
-
         current_size = len(self._qubit_labels) if is_qubit else len(self._clbit_labels)
         if is_qubit:
             register_size = (
@@ -178,14 +171,11 @@ class QasmQIRAdaptiveVisitor:
             if is_qubit
             else register.identifier.name  # type: ignore[union-attr]
         )
-
         size_map = self._global_qreg_size_map if is_qubit else self._global_creg_size_map
         label_map = self._qubit_labels if is_qubit else self._clbit_labels
-
         for i in range(register_size):
             size_map[f"{register_name}"] = register_size
             label_map[f"{register_name}_{i}"] = current_size + i
-
         logger.debug("Added labels for register '%s'", str(register))
 
     def _get_op_bits(self, operation: Any, qubits: bool = True) -> list[pyqir.Constant]:
@@ -207,21 +197,17 @@ class QasmQIRAdaptiveVisitor:
             bit_list = (
                 operation.qubits if isinstance(operation.qubits, list) else [operation.qubits]
             )
-
         for bit in bit_list:
             # as we have unrolled qasm3, we can assume that the bit is an IndexedIdentifier
             assert isinstance(bit, qasm3_ast.IndexedIdentifier)
             reg_name = bit.name.name
-
             assert isinstance(bit.indices, list) and len(bit.indices) == 1
             assert isinstance(bit.indices[0], list) and len(bit.indices[0]) == 1
             assert isinstance(bit.indices[0][0], qasm3_ast.IntegerLiteral)
             bit_id = bit.indices[0][0].value
             bit_ids = [bit_id]
-
             label_map = self._qubit_labels if qubits else self._clbit_labels
             reg_ids = [label_map[f"{reg_name}_{bit_id}"] for bit_id in bit_ids]
-
             qir_bits.extend(
                 [
                     (
@@ -250,19 +236,16 @@ class QasmQIRAdaptiveVisitor:
             None
         """
         logger.debug("Visiting measurement statement '%s'", str(statement))
-
         source = statement.measure.qubit
         target = statement.target
         assert source and target
         source_ids = self._get_op_bits(statement, qubits=True)
         target_ids = self._get_op_bits(statement, qubits=False)
-
         for src_id, tgt_id in zip(source_ids, target_ids):
             # Mark qubit as measured for adaptive profile tracking
             qubit_id_result = pyqir.qubit_id(src_id)
             if qubit_id_result is not None:
                 self._measured_qubits[qubit_id_result] = True
-
             # Use qis.mz instead of pyqir._native.mz for better adaptive profile support
             qis.mz(self._builder, src_id, tgt_id)
 
@@ -277,14 +260,12 @@ class QasmQIRAdaptiveVisitor:
         """
         logger.debug("Visiting reset statement '%s'", str(statement))
         qubit_ids = self._get_op_bits(statement, True)
-
         # In adaptive profile, we can reset qubits even after measurement
         for qid in qubit_ids:
             # Reset the measurement tracking for this qubit
             qubit_id_result = pyqir.qubit_id(qid)
             if qubit_id_result is not None:
                 self._measured_qubits[qubit_id_result] = False
-
             # Use qis.reset for better adaptive profile support
             qis.reset(self._builder, qid)
 
@@ -305,7 +286,6 @@ class QasmQIRAdaptiveVisitor:
         """
         if len(self._barrier_qubits) == 0:
             return
-
         if self._barrier_applicable():
             if self._emit_barrier_calls:
                 qis.barrier(self._builder)
@@ -327,7 +307,6 @@ class QasmQIRAdaptiveVisitor:
         """
         barrier_qubit = self._get_op_bits(barrier, qubits=True)
         self._barrier_qubits.update(barrier_qubit)
-
         # try to apply barrier in case all qubits are covered here itself
         if self._barrier_applicable():
             if self._emit_barrier_calls:
@@ -365,10 +344,8 @@ class QasmQIRAdaptiveVisitor:
         logger.debug("Visiting basic gate operation '%s'", str(operation))
         op_name: str = operation.name.name
         op_qubits = self._get_op_bits(operation)
-
         # In adaptive profile, we allow qubit use after measurement
         self._check_qubit_use_after_measurement(op_qubits)
-
         # Map OpenQASM gate names to PyQIR QIS functions
         gate_map = {
             "h": qis.h,
@@ -388,10 +365,8 @@ class QasmQIRAdaptiveVisitor:
             "ry": qis.ry,
             "rz": qis.rz,
         }
-
         if op_name in gate_map:
             qir_func = gate_map[op_name]
-
             # Handle parametric gates
             if op_name in ["rx", "ry", "rz"]:
                 op_parameters = self._get_op_parameters(operation)
@@ -410,29 +385,24 @@ class QasmQIRAdaptiveVisitor:
          # Use the mapping system to get the function and expected qubit count
             try:
                 qir_func, expected_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
-                
                 # Validate that we have the correct number of qubits
                 if len(op_qubits) != expected_qubit_count:
                     raise_qasm3_error(
                         f"Gate {op_name} expects {expected_qubit_count} qubits, "
                         f"got {len(op_qubits)}"
                     )
-                
                 # Check if this gate requires parameters
-                op_parameters = self._get_op_parameters(operation)
-                
+                op_parameters = self._get_op_parameters(operation)     
                 # Determine if this is a parametric gate by checking the mapping dictionaries
                 is_parametric = (
                     op_name in PYQIR_ONE_QUBIT_ROTATION_MAP or
                     op_name in ["xx", "xy", "yy", "zz", "pswap", "cp", "cphaseshift", 
                             "cp00", "cphaseshift00", "cp01", "cphaseshift01", 
                             "cp10", "cphaseshift10", "ms", "prx"]
-                )
-                
+                )         
                 if is_parametric:
                     if not op_parameters:
                         raise_qasm3_error(f"Parametric gate {op_name} requires parameters")
-                    
                     # Handle special cases for gates with multiple parameters
                     if op_name == "ms":
                         # Molmer-Sorenson gate expects (phi0, phi1, theta, qubit0, qubit1)
@@ -490,23 +460,19 @@ class QasmQIRAdaptiveVisitor:
         op_name: str = operation.name.name
         op_qubits = self._get_op_bits(operation)
         op_qubit_count = len(op_qubits)
-
         # In adaptive profile, we allow qubit use after measurement
         self._check_qubit_use_after_measurement(op_qubits)
-
         if len(operation.modifiers) > 0:
             raise_qasm3_error(
                 "Modifiers on externally linked gates are not supported in pyqir",
                 err_type=NotImplementedError,
             )
-
         context = self._llvm_module.context
         qir_function = self._external_gates_map[op_name]
         if qir_function is None:
             # First time seeing this external gate -> define new function
             qir_function_arguments = [pyqir.Type.double(context)] * len(operation.arguments)
             qir_function_arguments += [pyqir.qubit_type(context)] * op_qubit_count
-
             qir_function = pyqir.Function(
                 pyqir.FunctionType(pyqir.Type.void(context), qir_function_arguments),
                 pyqir.Linkage.EXTERNAL,
@@ -514,7 +480,6 @@ class QasmQIRAdaptiveVisitor:
                 self._llvm_module,
             )
             self._external_gates_map[op_name] = qir_function
-
         op_parameters = None
         if len(operation.arguments) > 0:  # parametric gate
             op_parameters = self._get_op_parameters(operation)
@@ -554,7 +519,6 @@ class QasmQIRAdaptiveVisitor:
             assert isinstance(expression.collection, qasm3_ast.Identifier)
             assert isinstance(expression.index, list) and len(expression.index) == 1
             assert isinstance(expression.index[0], qasm3_ast.IntegerLiteral)
-
         if isinstance(condition, qasm3_ast.UnaryExpression):
             validate_index_expression(condition.expression)
             return (
@@ -588,12 +552,10 @@ class QasmQIRAdaptiveVisitor:
             None
         """
         logger.debug("Visiting branching statement with adaptive profile")
-
         condition = statement.condition
         if_block = statement.if_block
         else_block = statement.else_block
         reg_name, reg_id, positive_branch = self._get_branch_params(condition)
-
         if not positive_branch:
             if_block, else_block = else_block, if_block
 
@@ -622,7 +584,6 @@ class QasmQIRAdaptiveVisitor:
             None
         """
         logger.debug("Visiting statement '%s'", str(statement))
-
         visit_map = {
             qasm3_ast.Include: lambda x: None,  # No operation
             qasm3_ast.QubitDeclaration: self._visit_register,
@@ -634,12 +595,9 @@ class QasmQIRAdaptiveVisitor:
             qasm3_ast.BranchingStatement: self._visit_branching_statement,
             qasm3_ast.QuantumPhase: lambda x: None,  # No operation
         }
-
         visitor_function = visit_map.get(type(statement))
-
         if not isinstance(statement, qasm3_ast.QuantumBarrier):
             self._check_and_apply_barrier()
-
         if visitor_function:
             visitor_function(statement)  # type: ignore[operator]
         else:
