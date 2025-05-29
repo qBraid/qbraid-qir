@@ -18,6 +18,8 @@ Module containing OpenQASM to QIR conversion functions
 """
 from typing import Optional, Union, Any
 
+from enum import Enum
+
 import openqasm3
 import pyqasm
 from pyqir import Context, Module, qir_module
@@ -27,12 +29,20 @@ from .elements import QasmQIRModule, generate_module_id
 from .exceptions import Qasm3ConversionError
 from .visitor import QasmQIRVisitor
 
+class Profile(Enum):
+    """QIR Profile enumeration."""
+    BASE = "base"
+    ADAPTIVE = "adaptive"
+
+# Export the enum values directly for convenience
+BASE = Profile.BASE
+ADAPTIVE = Profile.ADAPTIVE
 
 def qasm3_to_qir(
     program: Union[openqasm3.ast.Program, str],
     name: Optional[str] = None,
     external_gates: Optional[list[str]] = None,
-    profile: str = "base",
+    profile: Union[Profile, str] = Profile.BASE,
     **kwargs,
 ) -> Module:
     """Converts an OpenQASM 3 program to a PyQIR module.
@@ -42,6 +52,8 @@ def qasm3_to_qir(
         name (str, optional): Identifier for created QIR module. Auto-generated if not provided.
         external_gates (list[str], optional): A list of custom gate names that are not natively
             recognized by pyqasm but should be treated as valid during program unrolling.
+        profile (Profile or str): The specific QIR profile to use for the conversion. 
+            Can be Profile.BASE, Profile.ADAPTIVE, or equivalent strings. Defaults to Profile.BASE.
 
     Keyword Args:
         initialize_runtime (bool): Whether to perform quantum runtime environment initialization,
@@ -69,14 +81,23 @@ def qasm3_to_qir(
 
     final_module = QasmQIRModule(name, qasm3_module, llvm_module)
 
-    profile = profile.lower()
+    # Convert enum to string if needed, then normalize and validate
+    if isinstance(profile, Profile):
+        profile_str = profile.value.lower()
+    else:
+        profile_str = profile.lower()
+        # Validate that the string corresponds to a valid profile
+        valid_profiles = [p.value for p in Profile]
+        if profile_str not in valid_profiles:
+            raise ValueError(f"Invalid profile: {profile}. Valid profiles are: {valid_profiles}")
+
     visitor: Any
-    if profile == "adaptive":
+    if profile_str == "adaptive":
         visitor = QasmQIRAdaptiveVisitor(external_gates=external_gates, **kwargs)
-    elif profile == "base":
+    elif profile_str == "base":
         visitor = QasmQIRVisitor(external_gates=external_gates, **kwargs)
     else:
-        raise ValueError(f"Invalid profile: {profile}")
+        raise ValueError(f"Invalid profile: {profile_str}")
 
     final_module.accept(visitor)
 
