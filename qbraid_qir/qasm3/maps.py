@@ -492,7 +492,6 @@ def map_qasm_op_to_pyqir_callable(op_name: str) -> tuple[Callable, int]:
 
     raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")
 
-
 CONSTANTS_MAP = {
     "π": 3.141592653589793,
     "pi": 3.141592653589793,
@@ -501,3 +500,4 @@ CONSTANTS_MAP = {
     "τ": 6.283185307179586,
     "tau": 6.283185307179586,
 }
+
