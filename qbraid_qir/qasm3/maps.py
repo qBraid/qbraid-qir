@@ -42,42 +42,46 @@ def map_qasm_op_to_pyqir_callable(op_name: str) -> tuple[Callable, int]:
         tuple: (callable, number of qubits required)
 
     Raises:
+        TypeError: If op_name is not a string.
         Qasm3ConversionError: If the operation is not supported.
     """
+    if not isinstance(op_name, str):
+        raise TypeError(f"Operation name must be a string, got {type(op_name)}")
+
     # Native single-qubit gates
     if op_name == "id":
         return id_gate, 1
-    elif op_name == "x":
+    if op_name == "x":
         return pyqir._native.x, 1
-    elif op_name == "y":
+    if op_name == "y":
         return pyqir._native.y, 1
-    elif op_name == "z":
+    if op_name == "z":
         return pyqir._native.z, 1
-    elif op_name == "h":
+    if op_name == "h":
         return pyqir._native.h, 1
-    elif op_name == "s":
+    if op_name == "s":
         return pyqir._native.s, 1
-    elif op_name == "sdg":
+    if op_name == "sdg":
         return pyqir._native.s_adj, 1
-    elif op_name == "t":
+    if op_name == "t":
         return pyqir._native.t, 1
-    elif op_name == "tdg":
+    if op_name == "tdg":
         return pyqir._native.t_adj, 1
     
     # Native two-qubit gates
-    elif op_name == "cx":
+    if op_name == "cx":
         return pyqir._native.cx, 2
-    elif op_name == "cz":
+    if op_name == "cz":
         return pyqir._native.cz, 2
-    elif op_name == "swap":
+    if op_name == "swap":
         return pyqir._native.swap, 2
 
     # Native rotation gates
-    elif op_name == "rx":
+    if op_name == "rx":
         return pyqir._native.rx, 1
-    elif op_name == "ry":
+    if op_name == "ry":
         return pyqir._native.ry, 1
-    elif op_name == "rz":
+    if op_name == "rz":
         return pyqir._native.rz, 1
 
     raise Qasm3ConversionError(f"Operation {op_name} is not supported")
