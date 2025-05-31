@@ -1,0 +1,323 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QIR Adaptive Profile Template",
+    "description": "Schema template for defining QIR Adaptive Profiles for quantum circuits",
+    "type": "object",
+    "required": [
+      "profile_name",
+      "version", 
+      "description",
+      "capabilities",
+      "required_functions",
+      "restrictions",
+      "validation_rules",
+      "compliance_checks",
+      "profile_metadata"
+    ],
+    "properties": {
+      "profile_name": {
+        "type": "string",
+        "description": "Unique identifier for the profile",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "version": {
+        "type": "string",
+        "description": "Semantic version of the profile",
+        "pattern": "^\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.-]+)?$"
+      },
+      "description": {
+        "type": "string",
+        "description": "Human-readable description of the profile's purpose and capabilities",
+        "minLength": 10,
+        "maxLength": 500
+      },
+      "capabilities": {
+        "type": "object",
+        "description": "Quantum execution capabilities supported by this profile",
+        "properties": {
+          "forward_branching": {
+            "type": "object",
+            "properties": {
+              "enabled": {"type": "boolean"},
+              "description": {"type": "string"}
+            },
+            "required": ["enabled", "description"]
+          },
+          "conditional_execution": {
+            "type": "object",
+            "properties": {
+              "enabled": {"type": "boolean"},
+              "description": {"type": "string"},
+              "supported_conditions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "i1_from_result",
+                    "negation", 
+                    "binary_expression_on_result",
+                    "complex_boolean_logic"
+                  ]
+                }
+              }
+            },
+            "required": ["enabled", "description"]
+          },
+          "qubit_reuse": {
+            "type": "object",
+            "properties": {
+              "enabled": {"type": "boolean"},
+              "description": {"type": "string"},
+              "reset_after_measurement": {"type": "boolean"}
+            },
+            "required": ["enabled", "description"]
+          },
+          "measurement_tracking": {
+            "type": "object",
+            "properties": {
+              "enabled": {"type": "boolean"},
+              "description": {"type": "string"},
+              "per_qubit_state": {"type": "boolean"}
+            },
+            "required": ["enabled", "description"]
+          },
+          "output_recording": {
+            "type": "object",
+            "properties": {
+              "grouped_by_register": {"type": "boolean"},
+              "preserves_register_structure": {"type": "boolean"},
+              "inverted_bit_order": {"type": "boolean"}
+            },
+            "required": ["grouped_by_register"]
+          }
+        },
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "description": {"type": "string"}
+          },
+          "required": ["enabled", "description"]
+        }
+      },
+      "required_functions": {
+        "type": "object",
+        "description": "Functions that must be available for this profile",
+        "properties": {
+          "quantum_intrinsics": {
+            "type": "array",
+            "description": "Required quantum gate and measurement functions",
+            "items": {
+              "type": "string",
+              "pattern": "^qis\\.[a-z_]+$"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "runtime_functions": {
+            "type": "array", 
+            "description": "Required runtime and output functions",
+            "items": {
+              "type": "string",
+              "pattern": "^pyqir\\.(rt|_native)\\.[a-z_]+$"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": ["quantum_intrinsics"],
+        "additionalProperties": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        }
+      },
+      "restrictions": {
+        "type": "object",
+        "description": "Limitations and constraints for this profile",
+        "properties": {
+          "barrier_operations": {
+            "type": "object",
+            "properties": {
+              "subset_barriers_allowed": {"type": "boolean"},
+              "must_cover_all_qubits": {"type": "boolean"},
+              "emit_calls_configurable": {"type": "boolean"}
+            }
+          },
+          "external_gates": {
+            "type": "object",
+            "properties": {
+              "modifiers_supported": {"type": "boolean"},
+              "parameter_support": {
+                "type": "string",
+                "enum": ["none", "constants_only", "runtime_parameters", "full"]
+              },
+              "linkage_type": {
+                "type": "string",
+                "enum": ["INTERNAL", "EXTERNAL", "BOTH"]
+              },
+              "no_qubit_aliasing": {"type": "boolean"}
+            }
+          }
+        },
+        "additionalProperties": {
+          "type": "object"
+        }
+      },
+      "validation_rules": {
+        "type": "object",
+        "description": "Rules for validating code against this profile",
+        "properties": {
+          "function_structure": {
+            "type": "object",
+            "properties": {
+              "single_return_point": {"type": "boolean"},
+              "calls_to_output_functions_must_precede_return": {"type": "boolean"}
+            }
+          },
+          "barrier_validation": {
+            "type": "object",
+            "properties": {
+              "allow_partial_barriers": {"type": "boolean"},
+              "require_full_qubit_coverage": {"type": "boolean"}
+            }
+          },
+          "qubit_usage": {
+            "type": "object",
+            "properties": {
+              "allow_post_measurement_operations": {"type": "boolean"},
+              "track_measurement_state": {"type": "boolean"},
+              "reset_clears_measurement_state": {"type": "boolean"}
+            }
+          },
+          "classical_control": {
+            "type": "object",
+            "properties": {
+              "require_if_result_function": {"type": "boolean"},
+              "support_nested_conditionals": {"type": "boolean"},
+              "boolean_condition_support": {"type": "boolean"}
+            }
+          },
+          "output_format": {
+            "type": "object",
+            "properties": {
+              "register_grouped_output": {"type": "boolean"},
+              "individual_bit_recording": {"type": "boolean"},
+              "preserve_register_order": {"type": "boolean"}
+            }
+          },
+          "function_usage": {
+            "type": "object",
+            "properties": {
+              "prefer_qis_over_native": {"type": "boolean"},
+              "required_adaptive_functions": {
+                "type": "array",
+                "items": {"type": "string"},
+                "uniqueItems": true
+              }
+            }
+          }
+        },
+        "additionalProperties": {
+          "type": "object"
+        }
+      },
+      "compliance_checks": {
+        "type": "array",
+        "description": "List of compliance rules and checks",
+        "items": {
+          "type": "object",
+          "properties": {
+            "rule_id": {
+              "type": "string",
+              "pattern": "^[A-Z_]+_\\d{3}$",
+              "description": "Unique identifier for the rule"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 10,
+              "description": "Human-readable description of the rule"
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["error", "warning", "info"],
+              "description": "Severity level of rule violations"
+            },
+            "check_type": {
+              "type": "string",
+              "enum": [
+                "function_usage",
+                "state_tracking", 
+                "output_format",
+                "barrier_handling",
+                "function_structure",
+                "control_flow",
+                "qubit_management",
+                "classical_logic"
+              ],
+              "description": "Category of the compliance check"
+            }
+          },
+          "required": ["rule_id", "description", "severity", "check_type"],
+          "additionalProperties": false
+        },
+        "minItems": 1
+      },
+      "profile_metadata": {
+        "type": "object",
+        "description": "Metadata about the profile and its requirements",
+        "properties": {
+          "target_platforms": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Target quantum computing platforms"
+          },
+          "quantum_runtime_version": {
+            "type": "string",
+            "pattern": "^>=?\\d+\\.\\d+\\.\\d+$",
+            "description": "Minimum required quantum runtime version"
+          },
+          "pyqir_version": {
+            "type": "string", 
+            "pattern": "^>=?\\d+\\.\\d+\\.\\d+$",
+            "description": "Minimum required PyQIR version"
+          },
+          "supported_gate_sets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["universal", "parameterized", "clifford", "pauli", "custom"]
+            },
+            "uniqueItems": true
+          },
+          "max_qubits": {
+            "oneOf": [
+              {"type": "integer", "minimum": 1},
+              {"type": "string", "enum": ["unspecified", "unlimited"]}
+            ]
+          },
+          "max_classical_bits": {
+            "oneOf": [
+              {"type": "integer", "minimum": 1},
+              {"type": "string", "enum": ["unspecified", "unlimited"]}
+            ]
+          },
+          "required_llvm_instructions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "call", "br", "ret", "inttoptr", "getelementptr",
+                "load", "store", "icmp", "select", "phi", "switch"
+              ]
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": ["target_platforms"],
+        "additionalProperties": true
+      }
+    },
+    "additionalProperties": false
+  }
