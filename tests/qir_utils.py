@@ -29,8 +29,6 @@ from pyqir import (
     required_num_results,
 )
 
-from qbraid_qir.qasm3.maps import CONSTANTS_MAP
-
 
 def double_to_hex(f):
     return hex(struct.unpack("<Q", struct.pack("<d", f))[0])
@@ -72,11 +70,21 @@ def initialize_call_string() -> str:
 
 
 def single_op_call_string(name: str, qb: int) -> str:
-    if "dg" in name:  # stands for dagger representation
-        name = name.removesuffix("dg") + "__adj"
-        return f"call void @__quantum__qis__{name}({_qubit_string(qb)})"
-
-    return f"call void @__quantum__qis__{name}__body({_qubit_string(qb)})"
+    """Generate the QIR string for a single qubit operation.
+    
+    Args:
+        name: Name of the operation
+        qb: Qubit index
+        
+    Returns:
+        QIR string for the operation
+    """
+    # Split into base name and suffix (if any)
+    parts = name.split("__")
+    base_name = parts[0]
+    suffix = parts[1] if len(parts) > 1 else "body"
+    
+    return f"call void @__quantum__qis__{base_name}__{suffix}({_qubit_string(qb)})"
 
 
 def double_op_call_string(name: str, qb1: int, qb2: int) -> str:
@@ -217,20 +225,30 @@ def check_measure_op(qir: list[str], expected_ops: int, qubit_list: list[int], b
 def check_single_qubit_gate_op(
     qir: list[str], expected_ops: int, qubit_list: list[int], gate_name: str
 ):
+    """Check if the QIR contains the expected single qubit gate operations.
+    
+    Args:
+        qir: List of QIR lines
+        expected_ops: Number of expected operations
+        qubit_list: List of qubit indices
+        gate_name: Name of the gate to check for
+    """
     entry_body = get_entry_point_body(qir)
     op_count = 0
     q_id = 0
 
+    # Extract base gate name and whether it's an adjoint
+    base_name = gate_name.split("__")[0]
+    is_adj = "__adj" in gate_name
+
     for line in entry_body:
-        gate_call_id = (
-            f"qis__{gate_name}" if "dg" not in gate_name else f"qis__{gate_name.removesuffix('dg')}"
-        )
-        if line.strip().startswith("call") and gate_call_id in line:
-            assert line.strip() == single_op_call_string(
-                gate_name, qubit_list[q_id]
-            ), f"Incorrect single qubit gate call in qir - {line}"
-            op_count += 1
-            q_id += 1
+        if line.strip().startswith("call") and f"qis__{base_name}" in line:
+            if (is_adj and "__adj" in line) or (not is_adj and "__body" in line):
+                assert line.strip() == single_op_call_string(
+                    gate_name, qubit_list[q_id]
+                ), f"Incorrect single qubit gate call in qir - {line}"
+                op_count += 1
+                q_id += 1
 
         if op_count == expected_ops:
             break
@@ -298,7 +316,7 @@ def check_single_qubit_u3_op(
     theta, phi, lam = param_list
     op_count = 0
     q_id = 0
-    pi = CONSTANTS_MAP["pi"]
+    pi = 3.141592653589793
     u3_param_list = [lam, pi / 2, theta + pi, pi / 2, phi + pi]
     u3_gate_list = ["rz", "rx", "rz", "rx", "rz"]
     u3_gates_id = 0
@@ -349,7 +367,7 @@ def check_single_qubit_rotation_op(
         check_single_qubit_u3_op(entry_body, expected_ops, qubit_list, param_list)
         return
     if gate_name == "u2":
-        param_list = [CONSTANTS_MAP["pi"] / 2, param_list[0], param_list[1]]
+        param_list = [3.141592653589793 / 2, param_list[0], param_list[1]]
         check_single_qubit_u3_op(entry_body, expected_ops, qubit_list, param_list)
         return
     for line in entry_body:
