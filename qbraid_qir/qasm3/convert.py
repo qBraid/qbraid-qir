@@ -35,6 +35,37 @@ class Profile(Enum):
     BASE = "Base"
     ADAPTIVE = "AdaptiveExecution"
 
+    @classmethod
+    def from_input(cls, profile: Union["Profile", str]) -> "Profile":
+
+        """Convert string or Profile enum to Profile enum.
+        
+        Args:
+            profile: Either a Profile enum instance or a string representation
+            
+        Returns:
+            Profile enum instance
+            
+        Raises:
+            NotImplementedError: If string doesn't match any valid profile
+            TypeError: If input is neither Profile nor string
+        """
+
+        if isinstance(profile, cls):
+            return profile
+        elif isinstance(profile, str):
+            try:
+                normalized = profile.strip().lower()
+                profile_map = {
+                    "base": cls.BASE,
+                    "adaptive": cls.ADAPTIVE,
+                }
+                return profile_map[normalized]
+            except KeyError:
+                valid = [p.value for p in cls]
+                raise NotImplementedError(f"Invalid profile: {profile}. Valid profiles are: {valid}")
+        else:
+            raise TypeError(f"Profile must be of type Profile or str, not {type(profile).__name__}")
 
 # Export the enum values directly for convenience
 BASE = Profile.BASE
@@ -85,24 +116,11 @@ def qasm3_to_qir(
 
     final_module = QasmQIRModule(name, qasm3_module, llvm_module)
 
-    # Convert enum to string if needed, then normalize and validate
-    if isinstance(profile, Profile):
-        profile_name = profile.value
-    else:
-        # Map string inputs to the correct profile names
-        profile_map = {
-            "base": "Base",
-            "adaptive": "AdaptiveExecution",
-        }
-        profile_name = profile_map.get(profile.lower(), profile)
-
-        # Validate that the profile exists
-        valid_profiles = [p.value for p in Profile]
-        if profile_name not in valid_profiles:
-            raise ValueError(f"Invalid profile: {profile}. Valid profiles are: {valid_profiles}")
-
+    # Validate and normalize profile
+    profile_enum = Profile.from_input(profile)
+    
     # Create visitor with the specified profile
-    visitor = QasmQIRVisitor(profile_name=profile_name, external_gates=external_gates, **kwargs)
+    visitor = QasmQIRVisitor(profile_name=profile_enum.value, external_gates=external_gates, **kwargs)
 
     final_module.accept(visitor)
 
