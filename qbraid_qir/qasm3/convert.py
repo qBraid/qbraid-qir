@@ -16,21 +16,67 @@
 Module containing OpenQASM to QIR conversion functions
 
 """
-from typing import Optional, Union
+from enum import Enum
+from typing import Any, Optional, Union
 
 import openqasm3
 import pyqasm
 from pyqir import Context, Module, qir_module
 
+# from .adaptive_support import QasmQIRAdaptiveVisitor
 from .elements import QasmQIRModule, generate_module_id
 from .exceptions import Qasm3ConversionError
 from .visitor import QasmQIRVisitor
+
+
+class Profile(Enum):
+    """QIR Profile enumeration."""
+
+    BASE = "Base"
+    ADAPTIVE = "AdaptiveExecution"
+
+    @classmethod
+    def from_input(cls, profile: Union["Profile", str]) -> "Profile":
+
+        """Convert string or Profile enum to Profile enum.
+        
+        Args:
+            profile: Either a Profile enum instance or a string representation
+            
+        Returns:
+            Profile enum instance
+            
+        Raises:
+            NotImplementedError: If string doesn't match any valid profile
+            TypeError: If input is neither Profile nor string
+        """
+
+        if isinstance(profile, cls):
+            return profile
+        elif isinstance(profile, str):
+            try:
+                normalized = profile.strip().lower()
+                profile_map = {
+                    "base": cls.BASE,
+                    "adaptive": cls.ADAPTIVE,
+                }
+                return profile_map[normalized]
+            except KeyError:
+                valid = [p.value for p in cls]
+                raise NotImplementedError(f"Invalid profile: {profile}. Valid profiles are: {valid}")
+        else:
+            raise TypeError(f"Profile must be of type Profile or str, not {type(profile).__name__}")
+
+# Export the enum values directly for convenience
+BASE = Profile.BASE
+ADAPTIVE = Profile.ADAPTIVE
 
 
 def qasm3_to_qir(
     program: Union[openqasm3.ast.Program, str],
     name: Optional[str] = None,
     external_gates: Optional[list[str]] = None,
+    profile: Union[Profile, str] = Profile.BASE,
     **kwargs,
 ) -> Module:
     """Converts an OpenQASM 3 program to a PyQIR module.
@@ -40,11 +86,14 @@ def qasm3_to_qir(
         name (str, optional): Identifier for created QIR module. Auto-generated if not provided.
         external_gates (list[str], optional): A list of custom gate names that are not natively
             recognized by pyqasm but should be treated as valid during program unrolling.
+        profile (Profile or str): The specific QIR profile to use for the conversion.
+            Can be Profile.BASE, Profile.ADAPTIVE, or equivalent strings. Defaults to Profile.BASE.
 
     Keyword Args:
         initialize_runtime (bool): Whether to perform quantum runtime environment initialization,
             defaults to `True`.
         record_output (bool): Whether to record output calls for registers, defaults to `True`.
+        emit_barrier_calls (bool): Whether to emit barrier calls, defaults to `True`.
 
     Returns:
         The QIR ``pyqir.Module`` representation of the input OpenQASM 3 program.
@@ -67,7 +116,12 @@ def qasm3_to_qir(
 
     final_module = QasmQIRModule(name, qasm3_module, llvm_module)
 
-    visitor = QasmQIRVisitor(external_gates=external_gates, **kwargs)
+    # Validate and normalize profile
+    profile_enum = Profile.from_input(profile)
+    
+    # Create visitor with the specified profile
+    visitor = QasmQIRVisitor(profile_name=profile_enum.value, external_gates=external_gates, **kwargs)
+
     final_module.accept(visitor)
 
     err = llvm_module.verify()

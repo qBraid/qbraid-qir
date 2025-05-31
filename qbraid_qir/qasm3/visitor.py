@@ -15,61 +15,304 @@
 # pylint: disable=too-many-instance-attributes,too-many-lines,too-many-branches
 
 """
-Module defining Qasm3 Visitor.
+Module defining Profile-based Qasm3 Visitor for QIR generation.
+
+This refactored approach uses Profile objects to handle different QIR profiles
+without code duplication, based on JSON profile specifications.
 
 """
 import logging
-from typing import Any, Union
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import openqasm3.ast as qasm3_ast
 import pyqir
 import pyqir._native
 import pyqir.rt
 from openqasm3.ast import UnaryOperator
+from pyqir import qis
 
 from .elements import QasmQIRModule
 from .exceptions import raise_qasm3_error
-from .maps import map_qasm_op_to_pyqir_callable
+from .maps import PYQIR_ONE_QUBIT_ROTATION_MAP, map_qasm_op_to_pyqir_callable
 
 logger = logging.getLogger(__name__)
 
 
-class QasmQIRVisitor:
-    """A visitor for converting OpenQASM 3 programs to QIR.
+@dataclass
+class ProfileCapabilities:
+    """Data class representing profile capabilities."""
 
-    This class is designed to traverse and interact with statements in an OpenQASM program.
+    forward_branching: bool = False
+    conditional_execution: bool = False
+    qubit_reuse: bool = False
+    measurement_tracking: bool = False
+    grouped_output_recording: bool = False
+    preserves_register_structure: bool = False
+    inverted_bit_order: bool = False
+
+
+@dataclass
+class ProfileRestrictions:
+    """Data class representing profile restrictions."""
+
+    subset_barriers_allowed: bool = True
+    must_cover_all_qubits: bool = False
+    emit_calls_configurable: bool = True
+    modifiers_supported: bool = True
+    prefer_qis_over_native: bool = False
+
+
+class Profile(ABC):
+    """Abstract base class for QIR profiles."""
+
+    def __init__(self, name: str, version: str = "1.0.0"):
+        self.name = name
+        self.version = version
+        self.capabilities = ProfileCapabilities()
+        self.restrictions = ProfileRestrictions()
+
+    @abstractmethod
+    def get_measurement_function(self) -> Callable:
+        """Get the measurement function for this profile."""
+        pass
+
+    @abstractmethod
+    def get_reset_function(self) -> Callable:
+        """Get the reset function for this profile."""
+        pass
+
+    @abstractmethod
+    def get_barrier_function(self) -> Callable:
+        """Get the barrier function for this profile."""
+        pass
+
+    @abstractmethod
+    def get_conditional_function(self) -> Callable:
+        """Get the conditional branching function for this profile."""
+        pass
+
+    @abstractmethod
+    def should_track_qubit_measurement(self) -> bool:
+        """Whether this profile tracks qubit measurement state."""
+        pass
+
+    @abstractmethod
+    def allow_qubit_use_after_measurement(self) -> bool:
+        """Whether this profile allows qubit operations after measurement."""
+        pass
+
+    @abstractmethod
+    def record_output_method(self, visitor: "QasmQIRVisitor", module: QasmQIRModule) -> None:
+        """Profile-specific output recording method."""
+        pass
+
+
+class BaseProfile(Profile):
+    """Basic QIR profile implementation."""
+
+    def __init__(self):
+        super().__init__("Base", "1.0.0")
+        self.capabilities.forward_branching = False
+        self.capabilities.conditional_execution = True
+        self.capabilities.qubit_reuse = False
+        self.capabilities.measurement_tracking = False
+        self.capabilities.grouped_output_recording = False
+
+        self.restrictions.subset_barriers_allowed = False
+        self.restrictions.must_cover_all_qubits = True
+        self.restrictions.prefer_qis_over_native = False
+        self.restrictions.emit_calls_configurable = True
+
+    def get_measurement_function(self) -> Callable:
+        return pyqir._native.mz
+
+    def get_reset_function(self) -> Callable:
+        return pyqir._native.reset
+
+    def get_barrier_function(self) -> Callable:
+        return pyqir._native.barrier
+
+    def get_conditional_function(self) -> Callable:
+        return pyqir._native.if_result
+
+    def should_track_qubit_measurement(self) -> bool:
+        return False
+
+    def allow_qubit_use_after_measurement(self) -> bool:
+        return False
+
+    def record_output_method(self, visitor: "QasmQIRVisitor", module: QasmQIRModule) -> None:
+        """Basic output recording - simple sequential recording."""
+        if visitor._record_output is False:
+            return
+        i8p = pyqir.PointerType(pyqir.IntType(visitor._llvm_module.context, 8))
+        for i in range(module.qasm_program.num_qubits):
+            result_ref = pyqir.result(visitor._llvm_module.context, i)
+            pyqir.rt.result_record_output(visitor._builder, result_ref, pyqir.Constant.null(i8p))
+
+
+class AdaptiveProfile(Profile):
+    """Adaptive QIR profile implementation with advanced capabilities."""
+
+    def __init__(self):
+        super().__init__("AdaptiveExecution", "1.0.0")
+        self.capabilities.forward_branching = True
+        self.capabilities.conditional_execution = True
+        self.capabilities.qubit_reuse = True
+        self.capabilities.measurement_tracking = True
+        self.capabilities.grouped_output_recording = True
+        self.capabilities.preserves_register_structure = True
+        self.capabilities.inverted_bit_order = True
+
+        self.restrictions.subset_barriers_allowed = False
+        self.restrictions.must_cover_all_qubits = True
+        self.restrictions.emit_calls_configurable = True
+        self.restrictions.prefer_qis_over_native = True
+
+    def get_measurement_function(self) -> Callable:
+        return qis.mz
+
+    def get_reset_function(self) -> Callable:
+        return qis.reset
+
+    def get_barrier_function(self) -> Callable:
+        return qis.barrier
+
+    def get_conditional_function(self) -> Callable:
+        return qis.if_result
+
+    def should_track_qubit_measurement(self) -> bool:
+        return True
+
+    def allow_qubit_use_after_measurement(self) -> bool:
+        return True
+
+    def record_output_method(self, visitor: "QasmQIRVisitor", module: QasmQIRModule) -> None:
+        """Adaptive profile output recording - preserves register structure."""
+        if not visitor._record_output:
+            return
+        i8p = pyqir.PointerType(pyqir.IntType(visitor._llvm_module.context, 8))
+        null_ptr = pyqir.Constant.null(i8p)
+        recorded_ids = set()
+
+        # If we have register structure information, use it
+        if hasattr(visitor, "_global_creg_size_map") and visitor._global_creg_size_map:
+            # Record output grouped by register to preserve structure
+            for reg_name, reg_size in visitor._global_creg_size_map.items():
+                # Record array for each register
+                pyqir.rt.array_record_output(
+                    visitor._builder,
+                    pyqir.const(pyqir.IntType(visitor._llvm_module.context, 64), reg_size),
+                    null_ptr,
+                )
+                # Record individual results within the register (inverted order)
+                for i in range(reg_size - 1, -1, -1):
+                    bit_label = f"{reg_name}_{i}"
+                    if bit_label in visitor._clbit_labels:
+                        bit_id = visitor._clbit_labels[bit_label]
+                        if bit_id not in recorded_ids:
+                            result_ref = pyqir.result(visitor._llvm_module.context, bit_id)
+                            pyqir.rt.result_record_output(visitor._builder, result_ref, null_ptr)
+                            recorded_ids.add(bit_id)
+        else:
+            # Fallback to simple sequential recording
+            for i in range(module.qasm_program.num_qubits):
+                result_ref = pyqir.result(visitor._llvm_module.context, i)
+                pyqir.rt.result_record_output(visitor._builder, result_ref, null_ptr)
+
+
+class ProfileRegistry:
+    """Registry for managing QIR profiles."""
+
+    _profiles: Dict[str, Profile] = {}
+
+    @classmethod
+    def register_profile(cls, profile: Profile) -> None:
+        """Register a profile."""
+        cls._profiles[profile.name] = profile
+
+    @classmethod
+    def get_profile(cls, name: str) -> Profile:
+        """Get a profile by name."""
+        if name not in cls._profiles:
+            raise ValueError(f"Unknown profile: {name}")
+        return cls._profiles[name]
+
+    @classmethod
+    def list_profiles(cls) -> List[str]:
+        """List available profile names."""
+        return list(cls._profiles.keys())
+
+
+# Register built-in profiles
+ProfileRegistry.register_profile(BaseProfile())
+ProfileRegistry.register_profile(AdaptiveProfile())
+
+
+class QasmQIRVisitor:
+    """A profile-aware visitor for converting OpenQASM 3 programs to QIR.
+
+    This class uses Profile objects to handle different QIR profile requirements
+    without code duplication.
 
     Args:
+        profile_name (str): Name of the QIR profile to use. Defaults to "Base".
         initialize_runtime (bool): If True, quantum runtime will be initialized. Defaults to True.
         record_output (bool): If True, output of the circuit will be recorded. Defaults to True.
         external_gates (list[str]): List of custom gates that should not be unrolled.
-                                    Instead, these gates are marked for external linkage, as
-                                    qir-functions with the name "__quantum__qis__<GateName>__body"
+        emit_barrier_calls (bool): If True, barrier calls will be emitted. Defaults to True.
     """
 
     def __init__(
         self,
+        profile_name: str = "Base",
         initialize_runtime: bool = True,
         record_output: bool = True,
-        external_gates: list[str] | None = None,
+        external_gates: Optional[List[str]] = None,
+        emit_barrier_calls: bool = True,
     ):
+
+        # Get the profile
+        self._profile = ProfileRegistry.get_profile(profile_name)
+
         self._llvm_module: pyqir.Module
         self._builder: pyqir.Builder
         self._entry_point: str = ""
-        self._qubit_labels: dict[str, int] = {}
-        self._clbit_labels: dict[str, int] = {}
-        self._global_qreg_size_map: dict[str, int] = {}
-        self._global_creg_size_map: dict[str, int] = {}
-        self._custom_gates: dict[str, qasm3_ast.QuantumGateDefinition] = {}
+        self._qubit_labels: Dict[str, int] = {}
+        self._clbit_labels: Dict[str, int] = {}
+        self._global_qreg_size_map: Dict[str, int] = {}
+        self._global_creg_size_map: Dict[str, int] = {}
+        self._custom_gates: Dict[str, qasm3_ast.QuantumGateDefinition] = {}
         self._barrier_qubits: set[pyqir.Constant] = set()
+        # self._initialize_runtime: bool = initialize_runtime
+        # self._record_output: bool = record_output
+
+        # Configuration
         self._initialize_runtime: bool = initialize_runtime
         self._record_output: bool = record_output
+        self._emit_barrier_calls: bool = emit_barrier_calls
 
+        # Profile-specific attributes
+        if self._profile.should_track_qubit_measurement():
+            self._measured_qubits: Dict[int, bool] = {}
+
+        # External gates
         if external_gates is None:
             external_gates = []
-        self._external_gates_map: dict[str, pyqir.Function | None] = {
+        self._external_gates_map: Dict[str, Optional[pyqir.Function]] = {
             external_gate: None for external_gate in external_gates
         }
+
+    @property
+    def profile(self) -> Profile:
+        """Get the current profile."""
+        return self._profile
+
+    @property
+    def entry_point(self) -> str:
+        return self._entry_point
 
     def visit_qasm3_module(self, module: QasmQIRModule) -> None:
         """
@@ -82,7 +325,13 @@ class QasmQIRVisitor:
             None
         """
         qasm3_module = module.qasm_program
-        logger.debug("Visiting Qasm3 module '%s' (%d)", module.name, qasm3_module.num_qubits)
+        logger.debug(
+            "Visiting Qasm3 module '%s' (%d) with profile '%s'",
+            module.name,
+            qasm3_module.num_qubits,
+            self._profile.name,
+        )
+
         self._llvm_module = module.llvm_module
         context = self._llvm_module.context
         entry = pyqir.entry_point(
@@ -93,26 +342,18 @@ class QasmQIRVisitor:
         self._builder = pyqir.Builder(context)
         self._builder.insert_at_end(pyqir.BasicBlock(context, "entry", entry))
 
-        if self._initialize_runtime is True:
+        if self._initialize_runtime:
             i8p = pyqir.PointerType(pyqir.IntType(context, 8))
             nullptr = pyqir.Constant.null(i8p)
             pyqir.rt.initialize(self._builder, nullptr)
-
-    @property
-    def entry_point(self) -> str:
-        return self._entry_point
 
     def finalize(self) -> None:
         self._check_and_apply_barrier()  # to check if we have an incomplete barrier at program end
         self._builder.ret(None)
 
     def record_output(self, module: QasmQIRModule) -> None:
-        if self._record_output is False:
-            return
-        i8p = pyqir.PointerType(pyqir.IntType(self._llvm_module.context, 8))
-        for i in range(module.qasm_program.num_qubits):
-            result_ref = pyqir.result(self._llvm_module.context, i)
-            pyqir.rt.result_record_output(self._builder, result_ref, pyqir.Constant.null(i8p))
+        """Record output using profile-specific method."""
+        self._profile.record_output_method(self, module)
 
     def _visit_register(
         self, register: Union[qasm3_ast.QubitDeclaration, qasm3_ast.ClassicalDeclaration]
@@ -202,6 +443,13 @@ class QasmQIRVisitor:
 
         return qir_bits
 
+    def _check_qubit_use_after_measurement(self, qubit_ids: List[pyqir.Constant]) -> None:
+        """Check qubit use after measurement based on profile capabilities."""
+        if not self._profile.allow_qubit_use_after_measurement():
+            # For profiles that don't allow it, we could add validation here
+            # For now, we just pass - the profile handles the policy
+            pass
+
     def _visit_measurement(self, statement: qasm3_ast.QuantumMeasurementStatement) -> None:
         """Visit a measurement statement element.
 
@@ -218,8 +466,16 @@ class QasmQIRVisitor:
         assert source and target
         source_ids = self._get_op_bits(statement, qubits=True)
         target_ids = self._get_op_bits(statement, qubits=False)
+        measurement_func = self._profile.get_measurement_function()
+
         for src_id, tgt_id in zip(source_ids, target_ids):
-            pyqir._native.mz(self._builder, src_id, tgt_id)  # type: ignore[arg-type]
+            # Track measurement if profile supports it
+            if self._profile.should_track_qubit_measurement():
+                qubit_id_result = pyqir.qubit_id(src_id)
+                if qubit_id_result is not None:
+                    self._measured_qubits[qubit_id_result] = True
+
+            measurement_func(self._builder, src_id, tgt_id)
 
     def _visit_reset(self, statement: qasm3_ast.QuantumReset) -> None:
         """Visit a reset statement element.
@@ -232,10 +488,16 @@ class QasmQIRVisitor:
         """
         logger.debug("Visiting reset statement '%s'", str(statement))
         qubit_ids = self._get_op_bits(statement, True)
+        reset_func = self._profile.get_reset_function()
 
         for qid in qubit_ids:
-            # qid is of type Constant which is inherited from Value, so we ignore the type error
-            pyqir._native.reset(self._builder, qid)  # type: ignore[arg-type]
+            # Clear measurement tracking if profile supports it
+            if self._profile.should_track_qubit_measurement():
+                qubit_id_result = pyqir.qubit_id(qid)
+                if qubit_id_result is not None:
+                    self._measured_qubits[qubit_id_result] = False
+
+            reset_func(self._builder, qid)
 
     def _barrier_applicable(self) -> bool:
         """Check if the barrier operation is applicable.
@@ -246,6 +508,9 @@ class QasmQIRVisitor:
         Returns:
             bool: Whether the barrier operation is applicable.
         """
+        if self._profile.restrictions.subset_barriers_allowed:
+            return True
+
         total_qubit_count = sum(self._global_qreg_size_map.values())
         return len(self._barrier_qubits) == total_qubit_count
 
@@ -259,13 +524,16 @@ class QasmQIRVisitor:
             return
 
         if self._barrier_applicable():
-            pyqir._native.barrier(self._builder)
+            if self._emit_barrier_calls:
+                barrier_func = self._profile.get_barrier_function()
+                barrier_func(self._builder)
             self._barrier_qubits.clear()
         else:
-            raise_qasm3_error(
-                "Barrier operation on a qubit subset is not supported in pyqir",
-                err_type=NotImplementedError,
-            )
+            if self._emit_barrier_calls:
+                raise_qasm3_error(
+                    "Barrier operation on a qubit subset is not supported in pyqir",
+                    err_type=NotImplementedError,
+                )
 
     # pylint: disable=unused-argument
     def _visit_barrier(self, barrier: qasm3_ast.QuantumBarrier) -> None:
@@ -281,7 +549,9 @@ class QasmQIRVisitor:
 
         # try to apply barrier in case all qubits are covered here itself
         if self._barrier_applicable():
-            pyqir._native.barrier(self._builder)
+            if self._emit_barrier_calls:
+                barrier_func = self._profile.get_barrier_function()
+                barrier_func(self._builder)
             self._barrier_qubits.clear()
 
     def _get_op_parameters(self, operation: qasm3_ast.QuantumGate) -> list[float]:
@@ -319,19 +589,102 @@ class QasmQIRVisitor:
         logger.debug("Visiting basic gate operation '%s'", str(operation))
         op_name: str = operation.name.name
         op_qubits = self._get_op_bits(operation)
-        qir_func, op_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
-        op_parameters = None
 
-        if len(operation.arguments) > 0:  # parametric gate
-            op_parameters = self._get_op_parameters(operation)
+        # Profile-aware qubit usage check
+        self._check_qubit_use_after_measurement(op_qubits)
 
-        for i in range(0, len(op_qubits), op_qubit_count):
-            # we apply the gate on the qubit subset linearly
-            qubit_subset = op_qubits[i : i + op_qubit_count]
-            if op_parameters is not None:
-                qir_func(self._builder, *op_parameters, *qubit_subset)
+        # Use existing gate mapping logic but with profile awareness
+        gate_map = {
+            "h": qis.h if self._profile.restrictions.prefer_qis_over_native else qis.h,
+            "x": qis.x,
+            "y": qis.y,
+            "z": qis.z,
+            "s": qis.s,
+            "sdg": qis.s_adj,
+            "t": qis.t,
+            "tdg": qis.t_adj,
+            "cx": qis.cx,
+            "cnot": qis.cx,
+            "cz": qis.cz,
+            "ccx": qis.ccx,
+            "swap": qis.swap,
+            "rx": qis.rx,
+            "ry": qis.ry,
+            "rz": qis.rz,
+        }
+
+        if op_name in gate_map:
+            qir_func = gate_map[op_name]
+            if op_name in ["rx", "ry", "rz"]:
+                op_parameters = self._get_op_parameters(operation)
+                if op_parameters:
+                    qir_func(self._builder, *op_parameters, *op_qubits)
+                else:
+                    raise_qasm3_error(f"Parametric gate {op_name} requires parameters")
             else:
-                qir_func(self._builder, *qubit_subset)
+                qir_func(self._builder, *op_qubits)
+        elif op_name == "id":
+            # Identity gate implementation
+            qubit = op_qubits[0]
+            qis.x(self._builder, qubit)
+            qis.x(self._builder, qubit)
+        else:
+            # Use the mapping system
+            try:
+                qir_func, expected_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
+                if len(op_qubits) != expected_qubit_count:
+                    raise_qasm3_error(
+                        f"Gate {op_name} expects {expected_qubit_count} qubits, got {len(op_qubits)}"
+                    )
+
+                op_parameters = self._get_op_parameters(operation)
+                is_parametric = op_name in PYQIR_ONE_QUBIT_ROTATION_MAP or op_name in [
+                    "xx",
+                    "xy",
+                    "yy",
+                    "zz",
+                    "pswap",
+                    "cp",
+                    "cphaseshift",
+                    "cp00",
+                    "cphaseshift00",
+                    "cp01",
+                    "cphaseshift01",
+                    "cp10",
+                    "cphaseshift10",
+                    "ms",
+                    "prx",
+                ]
+
+                if is_parametric:
+                    if not op_parameters:
+                        raise_qasm3_error(f"Parametric gate {op_name} requires parameters")
+
+                    # Handle special parameter cases
+                    if op_name == "ms" and len(op_parameters) != 3:
+                        raise_qasm3_error(f"Gate {op_name} requires 3 parameters")
+                    elif op_name in ["u", "U", "u3", "U3"] and len(op_parameters) != 3:
+                        raise_qasm3_error(f"Gate {op_name} requires 3 parameters")
+                    elif op_name in ["u2", "U2"] and len(op_parameters) != 2:
+                        raise_qasm3_error(f"Gate {op_name} requires 2 parameters")
+                    elif op_name == "prx" and len(op_parameters) != 2:
+                        raise_qasm3_error(f"Gate {op_name} requires 2 parameters")
+
+                    qir_func(self._builder, *op_parameters, *op_qubits)
+                else:
+                    if op_parameters:
+                        raise_qasm3_error(
+                            f"Non-parametric gate {op_name} should not have parameters"
+                        )
+                    qir_func(self._builder, *op_qubits)
+
+            except ValueError as conversion_error:
+                if "Unsupported / undeclared QASM operation" in str(conversion_error):
+                    raise_qasm3_error(f"Unsupported gate operation: {op_name}")
+                else:
+                    raise_qasm3_error(f"Error mapping gate {op_name}: {conversion_error}")
+            except (TypeError, Exception) as e:
+                raise_qasm3_error(f"Error executing gate {op_name}: {e}")
 
     def _visit_external_gate_operation(self, operation: qasm3_ast.QuantumGate) -> None:
         """Visit an external gate operation element.
@@ -351,6 +704,8 @@ class QasmQIRVisitor:
         op_name: str = operation.name.name
         op_qubits = self._get_op_bits(operation)
         op_qubit_count = len(op_qubits)
+
+        self._check_qubit_use_after_measurement(op_qubits)
 
         if len(operation.modifiers) > 0:
             raise_qasm3_error(
@@ -445,9 +800,16 @@ class QasmQIRVisitor:
         Returns:
             None
         """
+        logger.debug("Visiting branching statement with profile '%s'", self._profile.name)
+
+        # Check if profile supports conditional execution
+        if not self._profile.capabilities.conditional_execution:
+            raise_qasm3_error(
+                f"Profile '{self._profile.name}' does not support conditional execution",
+                err_type=NotImplementedError,
+            )
 
         condition = statement.condition
-
         if_block = statement.if_block
         else_block = statement.else_block
         reg_name, reg_id, positive_branch = self._get_branch_params(condition)
@@ -456,14 +818,20 @@ class QasmQIRVisitor:
             if_block, else_block = else_block, if_block
 
         def _visit_statement_block(block):
-            for stmt in block:
-                self.visit_statement(stmt)
+            if block:
+                for stmt in block:
+                    self.visit_statement(stmt)
 
-        pyqir._native.if_result(
+        # Use profile-specific conditional function
+        conditional_func = self._profile.get_conditional_function()
+        zero_callback: Callable[[], None] = lambda: _visit_statement_block(else_block)
+        one_callback: Callable[[], None] = lambda: _visit_statement_block(if_block)
+
+        conditional_func(
             self._builder,
             pyqir.result(self._llvm_module.context, self._clbit_labels[f"{reg_name}_{reg_id}"]),
-            zero=lambda: _visit_statement_block(else_block),
-            one=lambda: _visit_statement_block(if_block),
+            zero=zero_callback,
+            one=one_callback,
         )
 
     def visit_statement(self, statement: qasm3_ast.Statement) -> None:
