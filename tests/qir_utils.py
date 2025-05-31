@@ -29,8 +29,6 @@ from pyqir import (
     required_num_results,
 )
 
-from qbraid_qir.qasm3.maps import CONSTANTS_MAP
-
 
 def double_to_hex(f):
     return hex(struct.unpack("<Q", struct.pack("<d", f))[0])
@@ -507,3 +505,6 @@ def check_complex_if(
     qir: list[str],  # pylint: disable=unused-argument
 ):
     pass
+
+
+CONSTANTS_MAP = {"pi": 3.141592653589793}
