@@ -22,6 +22,29 @@ import pyqir._native
 
 from .exceptions import Qasm3ConversionError
 
+
+def i(builder, qubit):
+    """Identity gate - does nothing"""
+    # Identity gate is a no-op
+    return qubit
+
+
+def sx(builder, qubit):
+    """Sqrt(X) gate implementation using H and S gates"""
+    pyqir._native.h(builder, qubit)
+    pyqir._native.s(builder, qubit)
+    pyqir._native.h(builder, qubit)
+    return qubit
+
+
+def sxdg(builder, qubit):
+    """Inverse of Sqrt(X) gate implementation"""
+    pyqir._native.h(builder, qubit)
+    pyqir._native.s_adj(builder, qubit)
+    pyqir._native.h(builder, qubit)
+    return qubit
+
+
 # Only keep the native PyQIR operations in the mapping dictionaries
 PYQIR_ONE_QUBIT_OP_MAP = {
     "h": pyqir._native.h,
@@ -34,6 +57,9 @@ PYQIR_ONE_QUBIT_OP_MAP = {
     "si": pyqir._native.s_adj,
     "tdg": pyqir._native.t_adj,
     "ti": pyqir._native.t_adj,
+    "id": i,
+    "sx": sx,
+    "sxdg": sxdg,
 }
 
 PYQIR_ONE_QUBIT_ROTATION_MAP = {
@@ -54,6 +80,8 @@ PYQIR_THREE_QUBIT_OP_MAP = {
     "ccx": pyqir._native.ccx,
     "ccnot": pyqir._native.ccx,
 }
+
+CONSTANTS_MAP = {"pi": 3.141592653589793}
 
 
 def map_qasm_op_to_pyqir_callable(op_name: str) -> tuple[Callable, int]:
@@ -77,7 +105,7 @@ def map_qasm_op_to_pyqir_callable(op_name: str) -> tuple[Callable, int]:
     ]
 
     for mapping, qubits in qasm_op_mappings:
-        if op_name in mapping:
-            return mapping[op_name], qubits
+        if op_name.lower() in mapping:
+            return mapping[op_name.lower()], qubits
 
     raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")

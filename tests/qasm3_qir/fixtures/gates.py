@@ -168,47 +168,56 @@ for test_name in CUSTOM_OPS:
     locals()[name] = _generate_custom_op_fixture(test_name)
 
 single_op_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_OP_MAP]
-already_tested_single_op = [gate for gate in ["id", "si", "ti", "v", "sx", "vi", "sxdg"] if _fixture_name(gate) in single_op_tests]
+already_tested_single_op = [
+    gate
+    for gate in ["id", "si", "ti", "v", "sx", "vi", "sxdg"]
+    if _fixture_name(gate) in single_op_tests
+]
 for gate in already_tested_single_op:
-    if _fixture_name(gate) in single_op_tests:
-        single_op_tests.remove(_fixture_name(gate))
+    single_op_tests.remove(_fixture_name(gate))
 
 rotation_tests = [_fixture_name(s) for s in PYQIR_ONE_QUBIT_ROTATION_MAP if "u" not in s.lower()]
-already_tested_rotation = [gate for gate in ["prx", "phaseshift", "p", "gpi", "gpi2"] if _fixture_name(gate) in rotation_tests]
+already_tested_rotation = [
+    gate
+    for gate in ["prx", "phaseshift", "p", "gpi", "gpi2"]
+    if _fixture_name(gate) in rotation_tests
+]
 for gate in already_tested_rotation:
-    if _fixture_name(gate) in rotation_tests:
-        rotation_tests.remove(_fixture_name(gate))
+    rotation_tests.remove(_fixture_name(gate))
 
 double_op_tests = [_fixture_name(s) for s in PYQIR_TWO_QUBIT_OP_MAP]
 already_tested_double_op = [
-    "cv",
-    "cy",
-    "xx",
-    "xy",
-    "yy",
-    "zz",
-    "pswap",
-    "cp",
-    "cp00",
-    "cp01",
-    "cp10",
-    "cphaseshift",
-    "cphaseshift00",
-    "cphaseshift01",
-    "cphaseshift10",
-    "ecr",
-    "ms",
+    gate
+    for gate in [
+        "cv",
+        "cy",
+        "xx",
+        "xy",
+        "yy",
+        "zz",
+        "pswap",
+        "cp",
+        "cp00",
+        "cp01",
+        "cp10",
+        "cphaseshift",
+        "cphaseshift00",
+        "cphaseshift01",
+        "cphaseshift10",
+        "ecr",
+        "ms",
+    ]
+    if _fixture_name(gate) in double_op_tests
 ]
-already_tested_double_op = [gate for gate in already_tested_double_op if _fixture_name(gate) in double_op_tests]
 for gate in already_tested_double_op:
-    if _fixture_name(gate) in double_op_tests:
-        double_op_tests.remove(_fixture_name(gate))
+    double_op_tests.remove(_fixture_name(gate))
 
 triple_op_tests = [_fixture_name(s) for s in PYQIR_THREE_QUBIT_OP_MAP]
-already_tested_triple_op = ["ccnot", "cswap"]
-already_tested_triple_op = [gate for gate in already_tested_triple_op if _fixture_name(gate) in triple_op_tests]
+# Check which gates are in the list before trying to remove them
+already_tested_triple_op = [
+    gate for gate in ["ccnot", "cswap"] if _fixture_name(gate) in triple_op_tests
+]
 for gate in already_tested_triple_op:
-    if _fixture_name(gate) in triple_op_tests:
-        triple_op_tests.remove(_fixture_name(gate))
+    triple_op_tests.remove(_fixture_name(gate))
 
 custom_op_tests = [_fixture_name(s) for s in CUSTOM_OPS]
