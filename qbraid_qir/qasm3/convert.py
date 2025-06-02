@@ -67,11 +67,6 @@ class Profile(Enum):
         else:
             raise TypeError(f"Profile must be of type Profile or str, not {type(profile).__name__}")
 
-# Export the enum values directly for convenience
-BASE = Profile.BASE
-ADAPTIVE = Profile.ADAPTIVE
-
-
 def qasm3_to_qir(
     program: Union[openqasm3.ast.Program, str],
     name: Optional[str] = None,
@@ -101,6 +96,7 @@ def qasm3_to_qir(
     Raises:
         TypeError: If the input is not a valid OpenQASM 3 program.
         Qasm3ConversionError: If the conversion fails.
+        NotImplementedError: If string doesn't match any valid profile
     """
     if isinstance(program, openqasm3.ast.Program):
         program = openqasm3.dumps(program)
