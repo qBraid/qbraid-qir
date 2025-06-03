@@ -80,7 +80,7 @@ def single_op_call_string(name: str, qb: int) -> str:
         QIR string for the operation
     """
     # Split into base name and suffix (if any)
-    parts = name.split("__")
+    parts = name.split("_")
     base_name = parts[0]
     suffix = parts[1] if len(parts) > 1 else "body"
     
@@ -238,8 +238,8 @@ def check_single_qubit_gate_op(
     q_id = 0
 
     # Extract base gate name and whether it's an adjoint
-    base_name = gate_name.split("__")[0]
-    is_adj = "__adj" in gate_name
+    base_name = gate_name.split("_")[0]
+    is_adj = "_adj" in gate_name
 
     for line in entry_body:
         if line.strip().startswith("call") and f"qis__{base_name}" in line:

@@ -39,9 +39,9 @@ def test_single_qubit_gates():
         "z": "z",
         "h": "h",
         "s": "s",
-        "sdg": "s__adj",  # Changed to match QIR implementation
+        "sdg": "s_adj",  # Changed to match actual PyQIR implementation
         "t": "t",
-        "tdg": "t__adj"  # Changed to match QIR implementation
+        "tdg": "t_adj"  # Changed to match actual PyQIR implementation
     }
     
     for gate_name, qir_name in gates.items():
