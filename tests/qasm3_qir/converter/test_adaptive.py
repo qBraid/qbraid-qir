@@ -19,22 +19,22 @@ import pytest
 
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import (
+    check_adaptive_gate_set,
+    check_adaptive_profile_compliance,
     check_attributes,
+    check_barrier,
+    check_conditional_branching,
+    check_full_barrier_coverage,
     check_measure_op,
+    check_measurement_state_tracking,
+    check_no_backward_jumps,
+    check_parameter_constants_only,
+    check_qubit_reuse_after_measurement,
+    check_read_result_calls,
+    check_resets,
+    check_return_exit_code,
     check_single_qubit_gate_op,
     check_two_qubit_gate_op,
-    check_resets,
-    check_barrier,
-    check_adaptive_profile_compliance,
-    check_conditional_branching,
-    check_qubit_reuse_after_measurement,
-    check_measurement_state_tracking,
-    check_read_result_calls,
-    check_return_exit_code,
-    check_no_backward_jumps,
-    check_full_barrier_coverage,
-    check_adaptive_gate_set,
-    check_parameter_constants_only
 )
 
 
@@ -56,10 +56,10 @@ def test_basic_adaptive_profile_compliance():
     
     c[1] = measure q[1];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_attributes(generated_qir, 2, 2)
     check_adaptive_profile_compliance(generated_qir)
     check_measure_op(generated_qir, 2, [0, 1], [0, 1])
@@ -86,10 +86,10 @@ def test_conditional_execution_with_if_result():
     c[1] = measure q[1];
     c[2] = measure q[2];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_attributes(generated_qir, 3, 3)
     check_conditional_branching(generated_qir, 2)  # if and else branches
     check_measure_op(generated_qir, 3, [0, 1, 2], [0, 1, 2])
@@ -113,10 +113,10 @@ def test_qubit_reuse_after_measurement():
     
     c[1] = measure q[0];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_attributes(generated_qir, 2, 2)
     check_qubit_reuse_after_measurement(generated_qir, [0])
     check_resets(generated_qir, 1, [0])
@@ -142,10 +142,10 @@ def test_measurement_state_tracking():
     x q[2];
     c[2] = measure q[2];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_attributes(generated_qir, 3, 3)
     check_measurement_state_tracking(generated_qir, 4)  # 3 measurements + 1 reset
     check_resets(generated_qir, 1, [0])
@@ -171,10 +171,10 @@ def test_register_grouped_output():
     c2[1] = measure q2[1];
     c2[2] = measure q2[2];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_attributes(generated_qir, 5, 5)
 
 
@@ -201,10 +201,10 @@ def test_nested_conditional_execution():
     
     c[2] = measure q[2];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_attributes(generated_qir, 3, 3)
     check_conditional_branching(generated_qir, 4)  # Multiple branches for nested ifs
     check_no_backward_jumps(generated_qir)
@@ -233,10 +233,10 @@ def test_adaptive_gate_set_compliance():
     c[2] = measure q[2];
     c[3] = measure q[3];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_adaptive_gate_set(generated_qir)
     check_single_qubit_gate_op(generated_qir, 1, [0], "h")
     check_single_qubit_gate_op(generated_qir, 1, [1], "x")
@@ -260,10 +260,10 @@ def test_parameterized_gates_constants_only():
     c[1] = measure q[1];
     c[2] = measure q[2];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_parameter_constants_only(generated_qir)
     check_measure_op(generated_qir, 3, [0, 1, 2], [0, 1, 2])
 
@@ -286,10 +286,10 @@ def test_full_barrier_coverage():
     c[1] = measure q[1];
     c[2] = measure q[2];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_full_barrier_coverage(generated_qir, 3)
     check_barrier(generated_qir, 2)
 
@@ -307,10 +307,10 @@ def test_return_exit_code():
     c[0] = measure q[0];
     c[1] = measure q[1];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_return_exit_code(generated_qir)
 
 
@@ -354,10 +354,10 @@ def test_complex_adaptive_circuit():
     // Barrier before final operations
     barrier q;
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     # Comprehensive checks
     check_attributes(generated_qir, 4, 4)
     check_adaptive_profile_compliance(generated_qir)
@@ -382,10 +382,10 @@ def test_measurement_based_loops_forbidden():
     c[0] = measure q[0];
     c[1] = measure q[1];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     # Should not contain backward jumps
     check_no_backward_jumps(generated_qir)
 
@@ -409,8 +409,8 @@ def test_read_result_functionality():
     
     c[1] = measure q[1];
     """
-    
+
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
-    
+
     check_read_result_calls(generated_qir, 1, [0])

@@ -37,15 +37,14 @@ class Profile(Enum):
 
     @classmethod
     def from_input(cls, profile: Union["Profile", str]) -> "Profile":
-
         """Convert string or Profile enum to Profile enum.
-        
+
         Args:
             profile: Either a Profile enum instance or a string representation
-            
+
         Returns:
             Profile enum instance
-            
+
         Raises:
             NotImplementedError: If string doesn't match any valid profile
             TypeError: If input is neither Profile nor string
@@ -63,9 +62,12 @@ class Profile(Enum):
                 return profile_map[normalized]
             except KeyError:
                 valid = [p.value for p in cls]
-                raise NotImplementedError(f"Invalid profile: {profile}. Valid profiles are: {valid}")
+                raise NotImplementedError(
+                    f"Invalid profile: {profile}. Valid profiles are: {valid}"
+                )
         else:
             raise TypeError(f"Profile must be of type Profile or str, not {type(profile).__name__}")
+
 
 def qasm3_to_qir(
     program: Union[openqasm3.ast.Program, str],
@@ -114,9 +116,11 @@ def qasm3_to_qir(
 
     # Validate and normalize profile
     profile_enum = Profile.from_input(profile)
-    
+
     # Create visitor with the specified profile
-    visitor = QasmQIRVisitor(profile_name=profile_enum.value, external_gates=external_gates, **kwargs)
+    visitor = QasmQIRVisitor(
+        profile_name=profile_enum.value, external_gates=external_gates, **kwargs
+    )
 
     final_module.accept(visitor)
 

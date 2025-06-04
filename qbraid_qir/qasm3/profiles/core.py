@@ -20,7 +20,7 @@ Module containing core profile classes for QIR generation.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List
 
 import pyqir
 from pyqir import qis
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from ..visitor import QasmQIRVisitor
 
 from ..elements import QasmQIRModule
+
 
 @dataclass
 class ProfileCapabilities:

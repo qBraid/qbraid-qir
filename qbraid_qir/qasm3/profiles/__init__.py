@@ -15,12 +15,12 @@
 
 # profile/__init__.py
 from .core import (
-    ProfileCapabilities,
-    ProfileRestrictions,
-    Profile,
-    BaseProfile,
     AdaptiveProfile,
+    BaseProfile,
+    Profile,
+    ProfileCapabilities,
     ProfileRegistry,
+    ProfileRestrictions,
 )
 
 __all__ = [

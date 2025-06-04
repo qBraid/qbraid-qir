@@ -34,7 +34,6 @@ from pyqir import qis
 from .elements import QasmQIRModule
 from .exceptions import raise_qasm3_error
 from .maps import PYQIR_ONE_QUBIT_ROTATION_MAP, map_qasm_op_to_pyqir_callable
-
 from .profiles import Profile, ProfileRegistry
 
 logger = logging.getLogger(__name__)
@@ -122,13 +121,13 @@ class QasmQIRVisitor:
         context = self._llvm_module.context
         # Set qir_profiles based on the profile being used
         qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "custom"
-        
+
         entry = pyqir.entry_point(
-            self._llvm_module, 
-            module.name, 
-            qasm3_module.num_qubits, 
+            self._llvm_module,
+            module.name,
+            qasm3_module.num_qubits,
             qasm3_module.num_clbits,
-            qir_profiles=qir_profiles
+            qir_profiles=qir_profiles,
         )
 
         self._entry_point = entry.name
