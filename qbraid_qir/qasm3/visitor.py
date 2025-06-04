@@ -237,10 +237,17 @@ class QasmQIRVisitor:
 
         return qir_bits
 
-    def _check_qubit_use_after_measurement(
-        self, qubit_ids: List[pyqir.Constant]
-    ) -> None:  # pylint: disable=unused-argument
-        """Check qubit use after measurement based on profile capabilities."""
+    # pylint: disable=unused-argument
+    def _check_qubit_use_after_measurement(self, qubit_ids: List[pyqir.Constant]) -> None:
+        """
+        Check qubit use after measurement based on profile capabilities.
+
+        Args:
+            qubit_ids (List[pyqir.Constant]): The qubit ids to check.
+
+        Returns:
+            None
+        """
         if not self._profile.allow_qubit_use_after_measurement():
             # For profiles that don't allow it, we could add validation here
             # For now, we just pass - the profile handles the policy
@@ -414,11 +421,11 @@ class QasmQIRVisitor:
             if op_name in ["rx", "ry", "rz"]:
                 op_parameters = self._get_op_parameters(operation)
                 if op_parameters:
-                    qir_func(self._builder, *op_parameters, *op_qubits)
+                    qir_func(self._builder, *op_parameters, *op_qubits)  # type: ignore
                 else:
                     raise_qasm3_error(f"Parametric gate {op_name} requires parameters")
             else:
-                qir_func(self._builder, *op_qubits)
+                qir_func(self._builder, *op_qubits)  # type: ignore
         elif op_name == "id":
             # Identity gate implementation
             qubit = op_qubits[0]
