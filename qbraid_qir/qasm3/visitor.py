@@ -42,7 +42,8 @@ logger = logging.getLogger(__name__)
 class QasmQIRVisitor:
     """A profile-aware visitor for converting OpenQASM 3 programs to QIR.
 
-    This class is designed to traverse and interact with statements in an OpenQASM program. It uses Profile objects to handle different QIR profile requirements
+    This class is designed to traverse and interact with statements in an OpenQASM program.
+        It uses Profile objects to handle different QIR profile requirements.
 
     Args:
         profile_name (str): Name of the QIR profile to use. Defaults to "Base".
@@ -52,6 +53,7 @@ class QasmQIRVisitor:
         emit_barrier_calls (bool): If True, barrier calls will be emitted. Defaults to True.
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         profile_name: str = "Base",
@@ -235,7 +237,9 @@ class QasmQIRVisitor:
 
         return qir_bits
 
-    def _check_qubit_use_after_measurement(self, qubit_ids: List[pyqir.Constant]) -> None:
+    def _check_qubit_use_after_measurement(
+        self, qubit_ids: List[pyqir.Constant]
+    ) -> None:  # pylint: disable=unused-argument
         """Check qubit use after measurement based on profile capabilities."""
         if not self._profile.allow_qubit_use_after_measurement():
             # For profiles that don't allow it, we could add validation here
@@ -426,7 +430,7 @@ class QasmQIRVisitor:
                 qir_func, expected_qubit_count = map_qasm_op_to_pyqir_callable(op_name)
                 if len(op_qubits) != expected_qubit_count:
                     raise_qasm3_error(
-                        f"Gate {op_name} expects {expected_qubit_count} qubits, got {len(op_qubits)}"
+                        f"Gate {op_name} expects {expected_qubit_count} qubits,got {len(op_qubits)}"
                     )
 
                 op_parameters = self._get_op_parameters(operation)
@@ -464,7 +468,7 @@ class QasmQIRVisitor:
                     raise_qasm3_error(f"Unsupported gate operation: {op_name}")
                 else:
                     raise_qasm3_error(f"Error mapping gate {op_name}: {conversion_error}")
-            except (TypeError, Exception) as e:
+            except (TypeError, Exception) as e:  # pylint: disable=broad-exception-caught
                 raise_qasm3_error(f"Error executing gate {op_name}: {e}")
 
     def _visit_external_gate_operation(self, operation: qasm3_ast.QuantumGate) -> None:

@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Profile module for defining and registering QIR translation profiles.
+
+This package exposes base and adaptive profiles, along with shared interfaces
+and registry mechanisms to manage profile capabilities and restrictions.
+"""
+
 
 # profile/__init__.py
 from .core import (

@@ -17,6 +17,7 @@ Module for containing QIR code utils functions used for unit tests.
 
 """
 
+import re
 import struct
 from typing import Union
 
@@ -516,11 +517,6 @@ def check_adaptive_profile_compliance(qir: list[str]) -> None:
     """Verify QIR code complies with adaptive profile requirements."""
     entry_body = get_entry_point_body(qir)
 
-    # Check for required adaptive functions
-    has_qis_mz = any("qis__mz" in line for line in entry_body)
-    has_qis_reset = any("qis__reset" in line for line in entry_body)
-    has_qis_if_result = any("qis__if_result" in line for line in entry_body)
-
     # ADAPTIVE_001: Must use qis.mz instead of pyqir._native.mz
     assert not any(
         "_native" in line and "mz" in line for line in entry_body
@@ -589,7 +585,6 @@ def check_register_grouped_output(qir: list[str], register_sizes: list[int]) -> 
     for line in entry_body:
         if "array_record_output" in line:
             # Extract the number from the call
-            import re
 
             match = re.search(r"i64 (\d+)", line)
             if match:
@@ -673,8 +668,6 @@ def check_no_backward_jumps(qir: list[str]) -> None:
 
         # Check branch targets
         elif line.startswith("br"):
-            import re
-
             # Extract label references
             labels_in_branch = re.findall(r"label %(\w+)", line)
             for label in labels_in_branch:
@@ -683,7 +676,7 @@ def check_no_backward_jumps(qir: list[str]) -> None:
                 ), f"ADAPTIVE_008: Backward jump detected to label {label}"
 
 
-def check_full_barrier_coverage(qir: list[str], total_qubits: int) -> None:
+def check_full_barrier_coverage(qir: list[str]) -> None:
     """Verify barriers cover all qubits (not partial barriers)."""
     entry_body = get_entry_point_body(qir)
 
@@ -711,7 +704,7 @@ def read_result_call_string(result_id: int) -> str:
 def conditional_gate_call_string(gate_name: str, condition_result: int, qubits: list[int]) -> str:
     """Generate conditional gate call string."""
     qubit_params = ", ".join([_qubit_string(q) for q in qubits])
-    return f"call void @__quantum__qis__{gate_name}__ctl({_result_string(condition_result)}, {qubit_params})"
+    return f"call void @__quantum__qis__{gate_name}__ctl({_result_string(condition_result)}, {qubit_params})"  # pylint: disable=line-too-long
 
 
 def check_adaptive_gate_set(qir: list[str]) -> None:
@@ -742,7 +735,6 @@ def check_adaptive_gate_set(qir: list[str]) -> None:
     for line in entry_body:
         if "qis__" in line and "__body" in line:
             # Extract gate name
-            import re
 
             match = re.search(r"qis__(\w+)__", line)
             if match:
@@ -771,7 +763,6 @@ def check_parameter_constants_only(qir: list[str]) -> None:
     for line in entry_body:
         if any(gate in line for gate in ["rx", "ry", "rz"]) and "double" in line:
             # Parameters should be constants (hex values or scientific notation)
-            import re
 
             # Look for variable references like %1, %2, etc.
             if re.search(r"double %\w+", line):

@@ -15,7 +15,6 @@
 """
 Module containing unit tests for adaptive profile QIR validation and compliance.
 """
-import pytest
 
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import (
@@ -290,7 +289,7 @@ def test_full_barrier_coverage():
     result = qasm3_to_qir(qasm3_string, profile="adaptive")
     generated_qir = str(result).splitlines()
 
-    check_full_barrier_coverage(generated_qir, 3)
+    check_full_barrier_coverage(generated_qir)
     check_barrier(generated_qir, 2)
 
 
@@ -366,7 +365,7 @@ def test_complex_adaptive_circuit():
     check_measurement_state_tracking(generated_qir, 5)  # 4 measurements + 1 reset
     check_no_backward_jumps(generated_qir)
     check_return_exit_code(generated_qir)
-    check_full_barrier_coverage(generated_qir, 4)
+    check_full_barrier_coverage(generated_qir)
 
 
 def test_measurement_based_loops_forbidden():

@@ -25,11 +25,11 @@ from typing import TYPE_CHECKING, Callable, List
 import pyqir
 from pyqir import qis
 
+from ..elements import QasmQIRModule
+
 # Only import types needed for type checking to avoid circular imports
 if TYPE_CHECKING:
     from ..visitor import QasmQIRVisitor
-
-from ..elements import QasmQIRModule
 
 
 @dataclass
@@ -68,37 +68,37 @@ class Profile(ABC):
     @abstractmethod
     def get_measurement_function(self) -> Callable:
         """Get the measurement function for this profile."""
-        pass
+        # pass
 
     @abstractmethod
     def get_reset_function(self) -> Callable:
         """Get the reset function for this profile."""
-        pass
+        # pass
 
     @abstractmethod
     def get_barrier_function(self) -> Callable:
         """Get the barrier function for this profile."""
-        pass
+        # pass
 
     @abstractmethod
     def get_conditional_function(self) -> Callable:
         """Get the conditional branching function for this profile."""
-        pass
+        # pass
 
     @abstractmethod
     def should_track_qubit_measurement(self) -> bool:
         """Whether this profile tracks qubit measurement state."""
-        pass
+        # pass
 
     @abstractmethod
     def allow_qubit_use_after_measurement(self) -> bool:
         """Whether this profile allows qubit operations after measurement."""
-        pass
+        # pass
 
     @abstractmethod
     def record_output_method(self, visitor: "QasmQIRVisitor", module: QasmQIRModule) -> None:
         """Profile-specific output recording method."""
-        pass
+        # pass
 
 
 class BaseProfile(Profile):

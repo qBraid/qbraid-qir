@@ -17,7 +17,7 @@ Module containing OpenQASM to QIR conversion functions
 
 """
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import openqasm3
 import pyqasm
@@ -52,7 +52,7 @@ class Profile(Enum):
 
         if isinstance(profile, cls):
             return profile
-        elif isinstance(profile, str):
+        if isinstance(profile, str):
             try:
                 normalized = profile.strip().lower()
                 profile_map = {
@@ -60,11 +60,11 @@ class Profile(Enum):
                     "adaptive": cls.ADAPTIVE,
                 }
                 return profile_map[normalized]
-            except KeyError:
+            except KeyError as exc:
                 valid = [p.value for p in cls]
                 raise NotImplementedError(
                     f"Invalid profile: {profile}. Valid profiles are: {valid}"
-                )
+                ) from exc
         else:
             raise TypeError(f"Profile must be of type Profile or str, not {type(profile).__name__}")
 
