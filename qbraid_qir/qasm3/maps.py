@@ -23,7 +23,7 @@ import pyqir._native
 from .exceptions import Qasm3ConversionError
 
 
-def i(builder, qubit):
+def i(_builder, qubit):
     """Identity gate - does nothing"""
     # Identity gate is a no-op
     return qubit
