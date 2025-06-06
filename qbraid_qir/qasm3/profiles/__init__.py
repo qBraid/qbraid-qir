@@ -19,8 +19,6 @@ This package exposes base and adaptive profiles, along with shared interfaces
 and registry mechanisms to manage profile capabilities and restrictions.
 """
 
-
-# profile/__init__.py
 from .core import (
     AdaptiveProfile,
     BaseProfile,

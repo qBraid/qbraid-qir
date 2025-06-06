@@ -59,7 +59,7 @@ class QasmQIRVisitor:
         profile_name: str = "Base",
         initialize_runtime: bool = True,
         record_output: bool = True,
-        external_gates: Optional[List[str]] = None,
+        external_gates: Optional[list[str]] = None,
         emit_barrier_calls: bool = True,
     ):
 

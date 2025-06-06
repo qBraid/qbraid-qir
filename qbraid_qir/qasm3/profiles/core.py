@@ -20,7 +20,7 @@ Module containing core profile classes for QIR generation.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, List
+from typing import TYPE_CHECKING, Callable
 
 import pyqir
 from pyqir import qis
@@ -233,7 +233,7 @@ class ProfileRegistry:
         return cls._profiles[name]
 
     @classmethod
-    def list_profiles(cls) -> List[str]:
+    def list_profiles(cls) -> list[str]:
         """List available profile names."""
         return list(cls._profiles.keys())
 
