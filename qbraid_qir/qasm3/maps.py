@@ -26,7 +26,7 @@ from .exceptions import Qasm3ConversionError
 def i(_builder, qubit):
     """Identity gate - does nothing"""
     # Identity gate is a no-op
-    return qubit
+    return None
 
 
 def sx(builder, qubit):
@@ -34,7 +34,7 @@ def sx(builder, qubit):
     pyqir._native.h(builder, qubit)
     pyqir._native.s(builder, qubit)
     pyqir._native.h(builder, qubit)
-    return qubit
+    return None
 
 
 def sxdg(builder, qubit):
@@ -42,7 +42,7 @@ def sxdg(builder, qubit):
     pyqir._native.h(builder, qubit)
     pyqir._native.s_adj(builder, qubit)
     pyqir._native.h(builder, qubit)
-    return qubit
+    return None
 
 
 # Only keep the native PyQIR operations in the mapping dictionaries
