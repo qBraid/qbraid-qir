@@ -23,10 +23,9 @@ import pyqir._native
 from .exceptions import Qasm3ConversionError
 
 
-def i(_builder, qubit):
+def i(_builder, _qubit):
     """Identity gate - does nothing"""
     # Identity gate is a no-op
-    return None
 
 
 def sx(builder, qubit):
@@ -34,7 +33,6 @@ def sx(builder, qubit):
     pyqir._native.h(builder, qubit)
     pyqir._native.s(builder, qubit)
     pyqir._native.h(builder, qubit)
-    return None
 
 
 def sxdg(builder, qubit):
@@ -42,7 +40,6 @@ def sxdg(builder, qubit):
     pyqir._native.h(builder, qubit)
     pyqir._native.s_adj(builder, qubit)
     pyqir._native.h(builder, qubit)
-    return None
 
 
 # Only keep the native PyQIR operations in the mapping dictionaries
@@ -105,7 +102,8 @@ def map_qasm_op_to_pyqir_callable(op_name: str) -> tuple[Callable, int]:
     ]
 
     for mapping, qubits in qasm_op_mappings:
-        if op_name.lower() in mapping:
-            return mapping[op_name.lower()], qubits
+        op_name_lower = op_name.lower()
+        if op_name_lower in mapping:
+            return mapping[op_name_lower], qubits
 
     raise Qasm3ConversionError(f"Unsupported / undeclared QASM operation: {op_name}")

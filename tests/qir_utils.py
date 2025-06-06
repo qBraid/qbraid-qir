@@ -31,6 +31,7 @@ from pyqir import (
 
 from qbraid_qir.qasm3.maps import CONSTANTS_MAP
 
+
 def double_to_hex(f):
     return hex(struct.unpack("<Q", struct.pack("<d", f))[0])
 
