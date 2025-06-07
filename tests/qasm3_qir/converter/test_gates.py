@@ -125,15 +125,16 @@ def test_id_gate():
     qasm3_string = """
     OPENQASM 3;
     include "stdgates.inc";
-
-    qubit q;
+    
+    qubit[2] q;
+    x q;
     id q;
     """
     result = qasm3_to_qir(qasm3_string)
     generated_qir = str(result).splitlines()
-    check_attributes(generated_qir, 1, 0)
+    check_attributes(generated_qir, 2, 0)
     # we have 2 X gates for id
-    check_single_qubit_gate_op(generated_qir, 2, [0, 0], "x")
+    check_single_qubit_gate_op(generated_qir, 2, [0, 1], "x")
 
 
 def test_qasm_u3_gates():
