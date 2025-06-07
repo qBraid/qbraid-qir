@@ -23,9 +23,11 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
+from ..profiles.abstract import QIRModule
+
 if TYPE_CHECKING:
-    import pyqasm.elements
     import pyqir
+    from pyqasm.modules import QasmModule
 
 
 def generate_module_id() -> str:
@@ -38,7 +40,7 @@ def generate_module_id() -> str:
     return f"program-{generated_id}"
 
 
-class QasmQIRModule:
+class QasmQIRModule(QIRModule):
     """
     A module representing an openqasm3 quantum program using QIR.
 
@@ -51,9 +53,10 @@ class QasmQIRModule:
     def __init__(
         self,
         name: str,
-        qasm_module: pyqasm.elements.Qasm3Module,
+        qasm_module: "QasmModule",
         llvm_module: pyqir.Module,
     ):
+        super().__init__(program=qasm_module)
         self._name = name
         self._llvm_module = llvm_module
         self._qasm_program = qasm_module
@@ -69,9 +72,17 @@ class QasmQIRModule:
         return self._llvm_module
 
     @property
-    def qasm_program(self) -> pyqasm.elements.Qasm3Module:
+    def qasm_program(self) -> "QasmModule":
         """Returns the QASM3 program."""
         return self._qasm_program
+
+    @property
+    def num_qubits(self) -> int:
+        return self.qasm_program.num_qubits
+
+    @property
+    def num_clbits(self) -> int:
+        return self.qasm_program.num_clbits
 
     def accept(self, visitor):
         visitor.visit_qasm3_module(self)
