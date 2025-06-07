@@ -19,6 +19,7 @@ This package exposes base and adaptive profiles, along with shared interfaces
 and registry mechanisms to manage profile capabilities and restrictions.
 """
 
+from .abstract import QIRModule, QIRVisitor
 from .core import (
     AdaptiveProfile,
     BaseProfile,
@@ -29,6 +30,8 @@ from .core import (
 )
 
 __all__ = [
+    "QIRVisitor",
+    "QIRModule",
     "ProfileCapabilities",
     "ProfileRestrictions",
     "Profile",

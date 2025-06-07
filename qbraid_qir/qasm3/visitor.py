@@ -31,15 +31,16 @@ import pyqir.rt
 from openqasm3.ast import UnaryOperator
 from pyqir import qis
 
+from ..profiles import Profile, ProfileRegistry
+from ..profiles.abstract import QIRVisitor
 from .elements import QasmQIRModule
 from .exceptions import raise_qasm3_error
 from .maps import PYQIR_ONE_QUBIT_ROTATION_MAP, map_qasm_op_to_pyqir_callable
-from .profiles import Profile, ProfileRegistry
 
 logger = logging.getLogger(__name__)
 
 
-class QasmQIRVisitor:
+class QasmQIRVisitor(QIRVisitor):
     """A profile-aware visitor for converting OpenQASM 3 programs to QIR.
 
     This class is designed to traverse and interact with statements in an OpenQASM program.
@@ -62,6 +63,9 @@ class QasmQIRVisitor:
         external_gates: Optional[list[str]] = None,
         emit_barrier_calls: bool = True,
     ):
+
+        # Call parent class constructor
+        super().__init__()
 
         # Get the profile
         self._profile = ProfileRegistry.get_profile(profile_name)

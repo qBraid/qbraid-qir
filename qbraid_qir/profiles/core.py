@@ -20,16 +20,12 @@ Module containing core profile classes for QIR generation.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 import pyqir
 from pyqir import qis
 
-from ..elements import QasmQIRModule
-
-# Only import types needed for type checking to avoid circular imports
-if TYPE_CHECKING:
-    from ..visitor import QasmQIRVisitor
+from .abstract import QIRModule, QIRVisitor
 
 
 @dataclass
@@ -96,7 +92,7 @@ class Profile(ABC):
         # pass
 
     @abstractmethod
-    def record_output_method(self, visitor: "QasmQIRVisitor", module: QasmQIRModule) -> None:
+    def record_output_method(self, visitor: QIRVisitor, module: QIRModule) -> None:
         """Profile-specific output recording method."""
         # pass
 
@@ -135,12 +131,14 @@ class BaseProfile(Profile):
     def allow_qubit_use_after_measurement(self) -> bool:
         return False
 
-    def record_output_method(self, visitor: "QasmQIRVisitor", module: QasmQIRModule) -> None:
+    def record_output_method(self, visitor: QIRVisitor, module: QIRModule) -> None:
         """Basic output recording - simple sequential recording."""
         if visitor._record_output is False:
             return
+        assert visitor._llvm_module is not None
+        assert visitor._builder is not None
         i8p = pyqir.PointerType(pyqir.IntType(visitor._llvm_module.context, 8))
-        for i in range(module.qasm_program.num_qubits):
+        for i in range(module.num_qubits):
             result_ref = pyqir.result(visitor._llvm_module.context, i)
             pyqir.rt.result_record_output(visitor._builder, result_ref, pyqir.Constant.null(i8p))
 
@@ -181,10 +179,12 @@ class AdaptiveProfile(Profile):
     def allow_qubit_use_after_measurement(self) -> bool:
         return True
 
-    def record_output_method(self, visitor: "QasmQIRVisitor", module: QasmQIRModule) -> None:
+    def record_output_method(self, visitor: QIRVisitor, module: QIRModule) -> None:
         """Adaptive profile output recording - preserves register structure."""
         if not visitor._record_output:
             return
+        assert visitor._llvm_module is not None
+        assert visitor._builder is not None
         i8p = pyqir.PointerType(pyqir.IntType(visitor._llvm_module.context, 8))
         null_ptr = pyqir.Constant.null(i8p)
         recorded_ids = set()
@@ -210,7 +210,7 @@ class AdaptiveProfile(Profile):
                             recorded_ids.add(bit_id)
         else:
             # Fallback to simple sequential recording
-            for i in range(module.qasm_program.num_qubits):
+            for i in range(module.num_qubits):
                 result_ref = pyqir.result(visitor._llvm_module.context, i)
                 pyqir.rt.result_record_output(visitor._builder, result_ref, null_ptr)
 
