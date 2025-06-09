@@ -25,7 +25,7 @@ from typing import Callable
 import pyqir
 from pyqir import qis
 
-from .abstract import QIRModule, QIRVisitor
+from ..profile import QIRModule, QIRVisitor
 
 
 @dataclass
