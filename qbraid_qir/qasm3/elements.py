@@ -23,7 +23,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from ..profiles.abstract import QIRModule
+from ..profile import QIRModule
 
 if TYPE_CHECKING:
     import pyqir
