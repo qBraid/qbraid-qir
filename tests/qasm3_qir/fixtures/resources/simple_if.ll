@@ -1,5 +1,5 @@
-; ModuleID = 'my-circuit'
-source_filename = "my-circuit"
+; ModuleID = 'program-fe043bae-4572-11f0-be85-773714bb7840'
+source_filename = "program-fe043bae-4572-11f0-be85-773714bb7840"
 
 %Qubit = type opaque
 %Result = type opaque
@@ -15,6 +15,9 @@ entry:
   call void @__quantum__qis__mz__body(%Qubit* inttoptr (i64 1 to %Qubit*), %Result* inttoptr (i64 1 to %Result*))
   call void @__quantum__qis__mz__body(%Qubit* inttoptr (i64 2 to %Qubit*), %Result* inttoptr (i64 2 to %Result*))
   call void @__quantum__qis__mz__body(%Qubit* inttoptr (i64 3 to %Qubit*), %Result* inttoptr (i64 3 to %Result*))
+  call void @__quantum__qis__reset__body(%Qubit* null)
+  call void @__quantum__qis__reset__body(%Qubit* inttoptr (i64 1 to %Qubit*))
+  call void @__quantum__qis__reset__body(%Qubit* inttoptr (i64 2 to %Qubit*))
   %0 = call i1 @__quantum__qis__read_result__body(%Result* null)
   br i1 %0, label %then, label %else
 
@@ -61,6 +64,8 @@ declare void @__quantum__rt__initialize(i8*)
 declare void @__quantum__qis__h__body(%Qubit*)
 
 declare void @__quantum__qis__mz__body(%Qubit*, %Result* writeonly) #1
+
+declare void @__quantum__qis__reset__body(%Qubit*)
 
 declare i1 @__quantum__qis__read_result__body(%Result*)
 

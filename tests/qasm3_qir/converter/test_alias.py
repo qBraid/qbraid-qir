@@ -152,8 +152,8 @@ def test_alias_in_scope_1():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 4, 4)
-    # simple_file = resources_file("simple_if.ll")
-    # compare_reference_ir(result.bitcode, simple_file)
+    simple_file = resources_file("simple_if.ll")
+    compare_reference_ir(result.bitcode, simple_file)
     # SINCE WE RESET THE QUBITS, WE CANNOT COMPARE THE IR AS IT IS DIFFERENT
 
 
