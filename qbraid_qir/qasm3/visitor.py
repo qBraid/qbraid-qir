@@ -125,7 +125,7 @@ class QasmQIRVisitor(QIRVisitor):
         self._llvm_module = module.llvm_module
         context = self._llvm_module.context
         # Set qir_profiles based on the profile being used
-        qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "base"
+        qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "custom"
 
         entry = pyqir.entry_point(
             self._llvm_module,
