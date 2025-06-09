@@ -126,7 +126,7 @@ class BaseProfile(Profile):
         return pyqir._native.if_result
 
     def should_track_qubit_measurement(self) -> bool:
-        return False
+        return True
 
     def allow_qubit_use_after_measurement(self) -> bool:
         return False

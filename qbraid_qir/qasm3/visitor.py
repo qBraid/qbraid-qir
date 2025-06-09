@@ -31,8 +31,7 @@ import pyqir.rt
 from openqasm3.ast import UnaryOperator
 from pyqir import qis
 
-from ..profiles import Profile, ProfileRegistry
-from ..profiles.abstract import QIRVisitor
+from ..profiles import Profile, ProfileRegistry, QIRVisitor
 from .elements import QasmQIRModule
 from .exceptions import raise_qasm3_error
 from .maps import PYQIR_ONE_QUBIT_ROTATION_MAP, map_qasm_op_to_pyqir_callable
@@ -126,7 +125,7 @@ class QasmQIRVisitor(QIRVisitor):
         self._llvm_module = module.llvm_module
         context = self._llvm_module.context
         # Set qir_profiles based on the profile being used
-        qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "custom"
+        qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "base"
 
         entry = pyqir.entry_point(
             self._llvm_module,
@@ -254,8 +253,14 @@ class QasmQIRVisitor(QIRVisitor):
         """
         if not self._profile.allow_qubit_use_after_measurement():
             # For profiles that don't allow it, we could add validation here
-            # For now, we just pass - the profile handles the policy
-            pass
+            for qubit_id in qubit_ids:
+                qubit_id_result = pyqir.qubit_id(qubit_id)
+                if qubit_id_result is not None and self._measured_qubits.get(
+                    qubit_id_result, False
+                ):
+                    raise_qasm3_error(
+                        f"Base Profile violation: Cannot use qubit {qubit_id_result} after measurement"  # pylint: disable=line-too-long
+                    )
 
     def _visit_measurement(self, statement: qasm3_ast.QuantumMeasurementStatement) -> None:
         """Visit a measurement statement element.

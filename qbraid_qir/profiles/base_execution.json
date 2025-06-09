@@ -1,0 +1,156 @@
+{
+    "profile_name": "Base",
+    "version": "1.0.0",
+    "description": "Basic QIR Profile for standard quantum circuits without advanced features",
+    "capabilities": {
+      "forward_branching": {
+        "enabled": false,
+        "description": "Does not support arbitrary forward branching"
+      },
+      "conditional_execution": {
+        "enabled": true,
+        "description": "Support for basic if/else statements based on measurement results",
+        "supported_conditions": [
+          "i1_from_result", 
+          "negation", 
+          "binary_expression_on_result"
+        ]
+      },
+      "qubit_reuse": {
+        "enabled": false,
+        "description": "Does not allow quantum operations on qubits after measurement",
+        "reset_after_measurement": false
+      },
+      "measurement_tracking": {
+        "enabled": false,
+        "description": "Does not track measurement state of individual qubits",
+        "per_qubit_state": false
+      },
+      "output_recording": {
+        "grouped_by_register": false,
+        "preserves_register_structure": false,
+        "inverted_bit_order": false
+      }
+    },
+    "required_functions": {
+      "quantum_intrinsics": [
+        "pyqir._native.mz",
+        "pyqir._native.reset", 
+        "pyqir._native.if_result",
+        "pyqir._native.barrier",
+        "qis.h", "qis.x", "qis.y", "qis.z",
+        "qis.s", "qis.s_adj", "qis.t", "qis.t_adj",
+        "qis.cx", "qis.cz", "qis.ccx", "qis.swap",
+        "qis.rx", "qis.ry", "qis.rz"
+      ],
+      "runtime_functions": [
+        "pyqir.rt.initialize",
+        "pyqir.rt.result_record_output"
+      ]
+    },
+    "restrictions": {
+      "barrier_operations": {
+        "subset_barriers_allowed": false,
+        "must_cover_all_qubits": true,
+        "emit_calls_configurable": true
+      },
+      "external_gates": {
+        "modifiers_supported": true,
+        "parameter_support": "constants_only",
+        "linkage_type": "EXTERNAL",
+        "no_qubit_aliasing": true
+      }
+    },
+    "validation_rules": {
+      "function_structure": {
+        "single_return_point": true,
+        "calls_to_output_functions_must_precede_return": true
+      },
+      "barrier_validation": {
+        "allow_partial_barriers": false,
+        "require_full_qubit_coverage": true
+      },
+      "qubit_usage": {
+        "allow_post_measurement_operations": false,
+        "track_measurement_state": true,
+        "reset_clears_measurement_state": false
+      },
+      "classical_control": {
+        "require_if_result_function": true,
+        "support_nested_conditionals": true,
+        "boolean_condition_support": true
+      },
+      "output_format": {
+        "register_grouped_output": false,
+        "individual_bit_recording": true,
+        "preserve_register_order": false
+      },
+      "function_usage": {
+        "prefer_qis_over_native": false,
+        "required_base_functions": [
+          "pyqir._native.if_result",
+          "pyqir._native.mz",
+          "pyqir._native.reset"
+        ]
+      }
+    },
+    "compliance_checks": [
+      {
+        "rule_id": "BASE_001",
+        "description": "Must use pyqir._native.mz for measurements",
+        "severity": "error",
+        "check_type": "function_usage"
+      },
+      {
+        "rule_id": "BASE_002", 
+        "description": "Must use pyqir._native.reset for qubit reset operations",
+        "severity": "error",
+        "check_type": "function_usage"
+      },
+      {
+        "rule_id": "BASE_003",
+        "description": "Must use pyqir._native.if_result for conditional branching",
+        "severity": "error", 
+        "check_type": "function_usage"
+      },
+      {
+        "rule_id": "BASE_004",
+        "description": "Must not use qubits after measurement without reset",
+        "severity": "error",
+        "check_type": "state_tracking"
+      },
+      {
+        "rule_id": "BASE_005",
+        "description": "Output recording must use simple sequential format",
+        "severity": "error",
+        "check_type": "output_format"
+      },
+      {
+        "rule_id": "BASE_006",
+        "description": "Barrier operations must cover all qubits or be configurable via emit_barrier_calls parameter",
+        "severity": "warning",
+        "check_type": "barrier_handling"
+      },
+      {
+        "rule_id": "BASE_007",
+        "description": "Return instruction must return an i64 zero exit code",
+        "severity": "error",
+        "check_type": "function_structure"
+      },
+      {
+        "rule_id": "BASE_008",
+        "description": "Forward branching is not supported in base profile",
+        "severity": "error",
+        "check_type": "control_flow"
+      }
+    ],
+    "profile_metadata": {
+      "target_platforms": ["basic_quantum_processors"],
+      "quantum_runtime_version": ">=0.28.0",
+      "pyqir_version": ">=0.10.0",
+      "supported_gate_sets": ["universal", "parameterized"],
+      "max_qubits": "unspecified",
+      "max_classical_bits": "unspecified",
+      "required_llvm_instructions": ["call", "ret", "inttoptr", "getelementptr"]
+    }
+  }
