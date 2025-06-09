@@ -31,9 +31,10 @@ import pyqir.rt
 from openqasm3.ast import UnaryOperator
 from pyqir import qis
 
+
 from ..profile import QIRVisitor
 from ..profiles import Profile, ProfileRegistry
-from .elements import QasmQIRModule
+
 from .exceptions import raise_qasm3_error
 from .maps import PYQIR_ONE_QUBIT_ROTATION_MAP, map_qasm_op_to_pyqir_callable
 
