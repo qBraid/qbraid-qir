@@ -16,6 +16,8 @@ Types of changes:
 
 ### ➕  New Features 
 
+- Added Adaptive Profile Support as defined by the QIR Specification for QASM conversions ([#225](https://github.com/qBraid/qbraid-qir/pull/225))
+
 ### 🌟  Improvements
 - Improved coverage for `qbraid_qir` with additional tests for the gate maps for QASM 3 conversions. ( [#227](https://github.com/qBraid/qbraid-qir/pull/227) )
 

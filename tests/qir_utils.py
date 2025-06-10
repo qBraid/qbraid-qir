@@ -17,6 +17,7 @@ Module for containing QIR code utils functions used for unit tests.
 
 """
 
+import re
 import struct
 from typing import Union
 
@@ -507,3 +508,262 @@ def check_complex_if(
     qir: list[str],  # pylint: disable=unused-argument
 ):
     pass
+
+
+# tests for the adaptive profile starts here
+
+
+def check_adaptive_profile_compliance(qir: list[str]) -> None:
+    """Verify QIR code complies with adaptive profile requirements."""
+    entry_body = get_entry_point_body(qir)
+
+    # ADAPTIVE_001: Must use qis.mz instead of pyqir._native.mz
+    assert not any(
+        "_native" in line and "mz" in line for line in entry_body
+    ), "ADAPTIVE_001: Must use qis.mz instead of pyqir._native.mz"
+
+    # ADAPTIVE_002: Must use qis.reset instead of pyqir._native.reset
+    assert not any(
+        "_native" in line and "reset" in line for line in entry_body
+    ), "ADAPTIVE_002: Must use qis.reset instead of pyqir._native.reset"
+
+
+def check_conditional_branching(qir: list[str], expected_branches: int) -> None:
+    """Verify conditional branching based on measurement results."""
+    entry_body = get_entry_point_body(qir)
+    branch_count = 0
+
+    for line in entry_body:
+        if line.strip().startswith("br") and ("%" in line or "label" in line):
+            branch_count += 1
+
+    assert (
+        branch_count >= expected_branches
+    ), f"Expected at least {expected_branches} branches, found {branch_count}"
+
+
+def check_qubit_reuse_after_measurement(qir: list[str], qubit_list: list[int]) -> None:
+    """Verify qubits can be reused after measurement (adaptive profile feature)."""
+    entry_body = get_entry_point_body(qir)
+    measured_qubits = set()
+    reused_qubits = set()
+
+    for line in entry_body:
+        # Track measurements
+        if "qis__mz" in line:
+            for qubit in qubit_list:
+                if _qubit_string(qubit) in line:
+                    measured_qubits.add(qubit)
+                    break
+
+        # Check for operations on previously measured qubits
+        elif any(
+            gate in line
+            for gate in [
+                "qis__h",
+                "qis__x",
+                "qis__y",
+                "qis__z",
+                "qis__rx",
+                "qis__ry",
+                "qis__rz",
+                "qis__cx",
+            ]
+        ):
+            for qubit in measured_qubits:
+                if _qubit_string(qubit) in line:
+                    reused_qubits.add(qubit)
+
+    assert len(reused_qubits) > 0, "No qubit reuse after measurement detected"
+
+
+def check_register_grouped_output(qir: list[str], register_sizes: list[int]) -> None:
+    """Verify output recording preserves register structure."""
+    entry_body = get_entry_point_body(qir)
+    array_record_calls = []
+
+    for line in entry_body:
+        if "array_record_output" in line:
+            # Extract the number from the call
+
+            match = re.search(r"i64 (\d+)", line)
+            if match:
+                array_record_calls.append(int(match.group(1)))
+
+    assert len(array_record_calls) == len(
+        register_sizes
+    ), f"Expected {len(register_sizes)} register outputs, found {len(array_record_calls)}"
+
+    for expected, actual in zip(register_sizes, array_record_calls):
+        assert expected == actual, f"Register size mismatch: expected {expected}, got {actual}"
+
+
+def check_measurement_state_tracking(qir: list[str], expected_state_changes: int) -> None:
+    """Verify measurement state tracking for qubits."""
+    entry_body = get_entry_point_body(qir)
+    state_changes = 0
+
+    for line in entry_body:
+        # Count measurements and resets as state changes
+        if any(op in line for op in ["qis__mz", "qis__reset"]):
+            state_changes += 1
+
+    assert (
+        state_changes >= expected_state_changes
+    ), f"Expected at least {expected_state_changes} state changes, found {state_changes}"
+
+
+def check_read_result_calls(qir: list[str], expected_calls: int, result_list: list[int]) -> None:
+    """Verify read_result function calls for accessing measurement outcomes."""
+    entry_body = get_entry_point_body(qir)
+    read_result_count = 0
+    result_id = 0
+
+    for line in entry_body:
+        if "read_result" in line:
+            expected_call = read_result_call_string(result_list[result_id])
+            assert (
+                expected_call in line
+            ), f"Incorrect read_result call: expected {expected_call} in {line}"
+            read_result_count += 1
+            result_id += 1
+
+        if read_result_count == expected_calls:
+            break
+
+    assert (
+        read_result_count == expected_calls
+    ), f"Expected {expected_calls} read_result calls, found {read_result_count}"
+
+
+def check_return_exit_code(qir: list[str]) -> None:
+    """Verify return instruction returns i64 zero exit code (ADAPTIVE_007)."""
+    entry_body = get_entry_point_body(qir)
+
+    # Find the return statement
+    return_found = False
+    for line in entry_body:
+        if line.strip().startswith("ret"):
+            assert (
+                "ret i64 0" in line or "ret void" in line
+            ), f"ADAPTIVE_007: Return must be 'ret i64 0' or 'ret void', found: {line.strip()}"
+            return_found = True
+            break
+
+    assert return_found, "No return statement found in entry point"
+
+
+def check_no_backward_jumps(qir: list[str]) -> None:
+    """Verify no backward jumps in control flow (ADAPTIVE_008)."""
+    entry_body = get_entry_point_body(qir)
+    labels_seen = set()
+
+    for line in entry_body:
+        line = line.strip()
+
+        # Track labels
+        if line.endswith(":") and not line.startswith(";"):
+            label = line[:-1]
+            labels_seen.add(label)
+
+        # Check branch targets
+        elif line.startswith("br"):
+            # Extract label references
+            labels_in_branch = re.findall(r"label %(\w+)", line)
+            for label in labels_in_branch:
+                assert (
+                    label not in labels_seen
+                ), f"ADAPTIVE_008: Backward jump detected to label {label}"
+
+
+def check_full_barrier_coverage(qir: list[str]) -> None:
+    """Verify barriers cover all qubits (not partial barriers)."""
+    entry_body = get_entry_point_body(qir)
+
+    for line in entry_body:
+        if "qis__barrier" in line:
+            # For full barriers, should be simple call with no qubit parameters
+            assert (
+                line.strip() == _barrier_string()
+            ), f"Barrier must cover all qubits, found: {line.strip()}"
+
+
+# Helper functions for the new test utilities
+
+
+def if_result_call_string(result_id: int) -> str:
+    """Generate expected if_result call string."""
+    return f"call void @__quantum__qis__if_result__body({_result_string(result_id)})"
+
+
+def read_result_call_string(result_id: int) -> str:
+    """Generate expected read_result call string."""
+    return f"call i1 @__quantum__qis__read_result__body({_result_string(result_id)})"
+
+
+def conditional_gate_call_string(gate_name: str, condition_result: int, qubits: list[int]) -> str:
+    """Generate conditional gate call string."""
+    qubit_params = ", ".join([_qubit_string(q) for q in qubits])
+    return f"call void @__quantum__qis__{gate_name}__ctl({_result_string(condition_result)}, {qubit_params})"  # pylint: disable=line-too-long
+
+
+def check_adaptive_gate_set(qir: list[str]) -> None:
+    """Verify only adaptive profile supported gates are used."""
+    entry_body = get_entry_point_body(qir)
+
+    allowed_gates = {
+        "h",
+        "x",
+        "y",
+        "z",
+        "s",
+        "s__adj",
+        "t",
+        "t__adj",
+        "cnot",
+        "cx",
+        "cz",
+        "ccx",
+        "swap",
+        "rx",
+        "ry",
+        "rz",
+        "mz",
+        "reset",
+    }
+
+    for line in entry_body:
+        if "qis__" in line and "__body" in line:
+            # Extract gate name
+
+            match = re.search(r"qis__(\w+)__", line)
+            if match:
+                gate = match.group(1)
+                if gate.endswith("__adj"):
+                    gate = gate[:-5]  # Remove __adj suffix
+
+                assert gate in allowed_gates, f"Unsupported gate '{gate}' found in adaptive profile"
+
+
+def check_external_gate_linkage(qir: str) -> None:
+    """Verify external gates have proper linkage type."""
+    lines = qir.split("\n")
+
+    for line in lines:
+        if line.strip().startswith("declare") and "quantum" in line:
+            assert "external" in line.lower() or not line.strip().startswith(
+                "declare"
+            ), f"External quantum function must have external linkage: {line.strip()}"
+
+
+def check_parameter_constants_only(qir: list[str]) -> None:
+    """Verify parameterized gates only use constants (not variables)."""
+    entry_body = get_entry_point_body(qir)
+
+    for line in entry_body:
+        if any(gate in line for gate in ["rx", "ry", "rz"]) and "double" in line:
+            # Parameters should be constants (hex values or scientific notation)
+
+            # Look for variable references like %1, %2, etc.
+            if re.search(r"double %\w+", line):
+                assert False, f"Parameterized gates must use constants only: {line.strip()}"

@@ -1,0 +1,159 @@
+{
+  "profile_name": "AdaptiveExecution",
+  "version": "1.0.0",
+  "description": "QIR Adaptive Profile for quantum circuits with conditional branching and qubit reuse after measurement",
+  "capabilities": {
+    "forward_branching": {
+      "enabled": true,
+      "description": "Supports arbitrary forward branching via LLVM 'br' based on measurement outcomes"
+    },
+    "conditional_execution": {
+      "enabled": true,
+      "description": "Support for if/else statements based on measurement results",
+      "supported_conditions": [
+        "i1_from_result", 
+        "negation", 
+        "binary_expression_on_result"
+      ]
+    },
+    "qubit_reuse": {
+      "enabled": true,
+      "description": "Allows quantum operations on qubits after measurement",
+      "reset_after_measurement": true
+    },
+    "measurement_tracking": {
+      "enabled": true,
+      "description": "Track measurement state of individual qubits",
+      "per_qubit_state": true
+    },
+    "output_recording": {
+      "grouped_by_register": true,
+      "preserves_register_structure": true,
+      "inverted_bit_order": true
+    }
+  },
+  "required_functions": {
+    "quantum_intrinsics": [
+      "qis.mz",
+      "qis.reset", 
+      "qis.if_result",
+      "qis.barrier",
+      "qis.h", "qis.x", "qis.y", "qis.z",
+      "qis.s", "qis.s_adj", "qis.t", "qis.t_adj",
+      "qis.cx", "qis.cz", "qis.ccx", "qis.swap",
+      "qis.rx", "qis.ry", "qis.rz"
+    ],
+    "runtime_functions": [
+      "pyqir.rt.initialize",
+      "pyqir.rt.array_record_output",
+      "pyqir.rt.result_record_output",
+      "pyqir.rt.read_result"
+    ]
+  },
+  "restrictions": {
+    "barrier_operations": {
+      "subset_barriers_allowed": false,
+      "must_cover_all_qubits": true,
+      "emit_calls_configurable": true
+    },
+    "external_gates": {
+      "modifiers_supported": false,
+      "parameter_support": "constants_only",
+      "linkage_type": "EXTERNAL",
+      "no_qubit_aliasing": true
+    }
+  },
+    "validation_rules": {
+      "function_structure": {
+      "single_return_point": true,
+      "calls_to_output_functions_must_precede_return": true
+    },
+    "barrier_validation": {
+      "allow_partial_barriers": false,
+      "require_full_qubit_coverage": true
+    },
+    "qubit_usage": {
+      "allow_post_measurement_operations": true,
+      "track_measurement_state": true,
+      "reset_clears_measurement_state": true
+    },
+    "classical_control": {
+      "require_if_result_function": true,
+      "support_nested_conditionals": true,
+      "boolean_condition_support": true
+    },
+    "output_format": {
+      "register_grouped_output": true,
+      "individual_bit_recording": true,
+      "preserve_register_order": true
+    },
+    "function_usage": {
+      "prefer_qis_over_native": true,
+      "required_adaptive_functions": [
+        "qis.if_result",
+        "qis.mz",
+        "qis.reset"
+      ]
+    }
+  },
+  "compliance_checks": [
+    {
+      "rule_id": "ADAPTIVE_001",
+      "description": "Must use qis.mz instead of pyqir._native.mz for measurements",
+      "severity": "error",
+      "check_type": "function_usage"
+    },
+    {
+      "rule_id": "ADAPTIVE_002", 
+      "description": "Must use qis.reset instead of pyqir._native.reset",
+      "severity": "error",
+      "check_type": "function_usage"
+    },
+    {
+      "rule_id": "ADAPTIVE_003",
+      "description": "Must use qis.if_result for conditional branching",
+      "severity": "error", 
+      "check_type": "function_usage"
+    },
+    {
+      "rule_id": "ADAPTIVE_004",
+      "description": "Must track qubit measurement state for post-measurement operations",
+      "severity": "warning",
+      "check_type": "state_tracking"
+    },
+    {
+      "rule_id": "ADAPTIVE_005",
+      "description": "Output recording must preserve register structure",
+      "severity": "error",
+      "check_type": "output_format"
+    },
+    {
+      "rule_id": "ADAPTIVE_006",
+      "description": "Barrier operations must be configurable via emit_barrier_calls parameter",
+      "severity": "warning",
+      "check_type": "barrier_handling"
+    },
+    {
+      "rule_id": "ADAPTIVE_007",
+      "description": "Return instruction must return an i64 zero exit code",
+      "severity": "error",
+      "check_type": "function_structure"
+    },
+    {
+      "rule_id": "ADAPTIVE_008",
+      "description": "All measurement-based branches must terminate without backward jumps unless loops are enabled",
+      "severity": "error",
+      "check_type": "control_flow"
+    }
+  ],
+  "profile_metadata": {
+    "target_platforms": ["adaptive_quantum_processors"],
+    "quantum_runtime_version": ">=0.28.0",
+    "pyqir_version": ">=0.10.0",
+    "supported_gate_sets": ["universal", "parameterized"],
+    "max_qubits": "unspecified",
+    "max_classical_bits": "unspecified",
+    "required_llvm_instructions": ["call", "br", "ret", "inttoptr", "getelementptr"]
+
+  }
+}
