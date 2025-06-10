@@ -23,7 +23,6 @@ import openqasm3
 import pyqasm
 from pyqir import Context, Module, qir_module
 
-# from .adaptive_support import QasmQIRAdaptiveVisitor
 from .elements import QasmQIRModule, generate_module_id
 from .exceptions import Qasm3ConversionError
 from .visitor import QasmQIRVisitor
