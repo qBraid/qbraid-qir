@@ -155,6 +155,7 @@ def test_alias_in_scope_1():
     simple_file = resources_file("simple_if.ll")
     compare_reference_ir(result.bitcode, simple_file)
 
+
 # See reference : https://github.com/qBraid/pyqasm/pull/14
 @pytest.mark.skip(reason="Alias parsing bug, enable after fixing")
 def test_alias_in_scope_2():
