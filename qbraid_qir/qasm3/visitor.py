@@ -33,7 +33,6 @@ from pyqir import qis
 
 from ..profile import QIRVisitor
 from ..profiles import Profile, ProfileRegistry
-
 from .elements import QasmQIRModule
 
 from .exceptions import raise_qasm3_error
@@ -90,7 +89,6 @@ class QasmQIRVisitor(QIRVisitor):
         # Profile-specific attributes
         if self._profile.should_track_qubit_measurement():
             self._measured_qubits: dict[int, bool] = {}
-
         # External gates
         if external_gates is None:
             external_gates = []
