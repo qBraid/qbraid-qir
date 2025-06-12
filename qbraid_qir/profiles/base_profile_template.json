@@ -1,0 +1,416 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QIR Base Profile Template",
+    "description": "Schema template for defining QIR Base Profiles for standard quantum circuits without advanced features",
+    "type": "object",
+    "required": [
+      "profile_name",
+      "version", 
+      "description",
+      "capabilities",
+      "required_functions",
+      "restrictions",
+      "validation_rules",
+      "compliance_checks",
+      "profile_metadata"
+    ],
+    "properties": {
+      "profile_name": {
+        "type": "string",
+        "description": "Unique identifier for the base profile",
+        "pattern": "^(Base|BaseExecution|Standard)[A-Za-z0-9_]*$",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "version": {
+        "type": "string",
+        "description": "Semantic version of the profile",
+        "pattern": "^\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.-]+)?$"
+      },
+      "description": {
+        "type": "string",
+        "description": "Human-readable description of the base profile's purpose and capabilities",
+        "minLength": 10,
+        "maxLength": 500
+      },
+      "capabilities": {
+        "type": "object",
+        "description": "Standard quantum execution capabilities for base profiles",
+        "properties": {
+          "forward_branching": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "const": false,
+                "description": "Base profiles do not support forward branching"
+              },
+              "description": {"type": "string"}
+            },
+            "required": ["enabled", "description"]
+          },
+          "conditional_execution": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "const": true,
+                "description": "Base profiles support basic conditional execution"
+              },
+              "description": {"type": "string"},
+              "supported_conditions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "i1_from_result",
+                    "negation", 
+                    "binary_expression_on_result"
+                  ]
+                },
+                "maxItems": 3
+              }
+            },
+            "required": ["enabled", "description"]
+          },
+          "qubit_reuse": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "const": false,
+                "description": "Base profiles do not allow qubit reuse after measurement"
+              },
+              "description": {"type": "string"},
+              "reset_after_measurement": {
+                "type": "boolean",
+                "const": false
+              }
+            },
+            "required": ["enabled", "description"]
+          },
+          "measurement_tracking": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "const": false,
+                "description": "Base profiles do not track measurement state"
+              },
+              "description": {"type": "string"},
+              "per_qubit_state": {
+                "type": "boolean",
+                "const": false
+              }
+            },
+            "required": ["enabled", "description"]
+          },
+          "output_recording": {
+            "type": "object",
+            "properties": {
+              "grouped_by_register": {
+                "type": "boolean",
+                "const": false,
+                "description": "Base profiles use simple sequential output"
+              },
+              "preserves_register_structure": {
+                "type": "boolean",
+                "const": false
+              },
+              "inverted_bit_order": {
+                "type": "boolean",
+                "const": false
+              }
+            },
+            "required": ["grouped_by_register"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "required_functions": {
+        "type": "object",
+        "description": "Functions required for base profile operation",
+        "properties": {
+          "quantum_intrinsics": {
+            "type": "array",
+            "description": "Required quantum gate and measurement functions for base profiles",
+            "items": {
+              "type": "string",
+              "pattern": "^(pyqir\\._native\\.|qis\\.)[a-z_]+$"
+            },
+            "minItems": 1,
+            "uniqueItems": true,
+            "contains": {
+              "enum": [
+                "pyqir._native.mz",
+                "pyqir._native.reset",
+                "pyqir._native.if_result"
+              ]
+            }
+          },
+          "runtime_functions": {
+            "type": "array", 
+            "description": "Required runtime functions for base profiles",
+            "items": {
+              "type": "string",
+              "pattern": "^pyqir\\.rt\\.[a-z_]+$"
+            },
+            "uniqueItems": true,
+            "contains": {
+              "enum": [
+                "pyqir.rt.initialize",
+                "pyqir.rt.result_record_output"
+              ]
+            }
+          }
+        },
+        "required": ["quantum_intrinsics", "runtime_functions"],
+        "additionalProperties": false
+      },
+      "restrictions": {
+        "type": "object",
+        "description": "Base profile limitations and constraints",
+        "properties": {
+          "barrier_operations": {
+            "type": "object",
+            "properties": {
+              "subset_barriers_allowed": {
+                "type": "boolean",
+                "const": false,
+                "description": "Base profiles require full qubit coverage for barriers"
+              },
+              "must_cover_all_qubits": {
+                "type": "boolean",
+                "const": true
+              },
+              "emit_calls_configurable": {"type": "boolean"}
+            },
+            "required": ["subset_barriers_allowed", "must_cover_all_qubits"]
+          },
+          "external_gates": {
+            "type": "object",
+            "properties": {
+              "modifiers_supported": {
+                "type": "boolean",
+                "const": true,
+                "description": "Base profiles support gate modifiers"
+              },
+              "parameter_support": {
+                "type": "string",
+                "enum": ["constants_only"],
+                "description": "Base profiles only support constant parameters"
+              },
+              "linkage_type": {
+                "type": "string",
+                "enum": ["EXTERNAL"]
+              },
+              "no_qubit_aliasing": {"type": "boolean"}
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "validation_rules": {
+        "type": "object",
+        "description": "Validation rules specific to base profiles",
+        "properties": {
+          "function_structure": {
+            "type": "object",
+            "properties": {
+              "single_return_point": {"type": "boolean"},
+              "calls_to_output_functions_must_precede_return": {"type": "boolean"}
+            }
+          },
+          "barrier_validation": {
+            "type": "object",
+            "properties": {
+              "allow_partial_barriers": {
+                "type": "boolean",
+                "const": false
+              },
+              "require_full_qubit_coverage": {
+                "type": "boolean",
+                "const": true
+              }
+            }
+          },
+          "qubit_usage": {
+            "type": "object",
+            "properties": {
+              "allow_post_measurement_operations": {
+                "type": "boolean",
+                "const": false,
+                "description": "Base profiles prohibit post-measurement operations"
+              },
+              "track_measurement_state": {"type": "boolean"},
+              "reset_clears_measurement_state": {
+                "type": "boolean",
+                "const": false
+              }
+            },
+            "required": ["allow_post_measurement_operations"]
+          },
+          "classical_control": {
+            "type": "object",
+            "properties": {
+              "require_if_result_function": {"type": "boolean"},
+              "support_nested_conditionals": {"type": "boolean"},
+              "boolean_condition_support": {"type": "boolean"}
+            }
+          },
+          "output_format": {
+            "type": "object",
+            "properties": {
+              "register_grouped_output": {
+                "type": "boolean",
+                "const": false
+              },
+              "individual_bit_recording": {"type": "boolean"},
+              "preserve_register_order": {
+                "type": "boolean",
+                "const": false
+              }
+            },
+            "required": ["register_grouped_output"]
+          },
+          "function_usage": {
+            "type": "object",
+            "properties": {
+              "prefer_qis_over_native": {
+                "type": "boolean",
+                "const": false,
+                "description": "Base profiles use native functions"
+              },
+              "required_base_functions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^pyqir\\._native\\.[a-z_]+$"
+                },
+                "uniqueItems": true,
+                "contains": {
+                  "enum": [
+                    "pyqir._native.if_result",
+                    "pyqir._native.mz",
+                    "pyqir._native.reset"
+                  ]
+                }
+              }
+            },
+            "required": ["prefer_qis_over_native"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "compliance_checks": {
+        "type": "array",
+        "description": "Base profile compliance rules and checks",
+        "items": {
+          "type": "object",
+          "properties": {
+            "rule_id": {
+              "type": "string",
+              "pattern": "^BASE_\\d{3}$",
+              "description": "Unique identifier for base profile rules"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 10,
+              "description": "Human-readable description of the rule"
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["error", "warning", "info"],
+              "description": "Severity level of rule violations"
+            },
+            "check_type": {
+              "type": "string",
+              "enum": [
+                "function_usage",
+                "state_tracking", 
+                "output_format",
+                "barrier_handling",
+                "function_structure",
+                "control_flow",
+                "qubit_management"
+              ],
+              "description": "Category of the compliance check"
+            }
+          },
+          "required": ["rule_id", "description", "severity", "check_type"],
+          "additionalProperties": false
+        },
+        "minItems": 4,
+        "contains": {
+          "properties": {
+            "rule_id": {"enum": ["BASE_001", "BASE_002", "BASE_003"]},
+            "check_type": {"const": "function_usage"}
+          }
+        }
+      },
+      "profile_metadata": {
+        "type": "object",
+        "description": "Metadata specific to base profiles",
+        "properties": {
+          "target_platforms": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(basic|standard|classical).*$"
+            },
+            "description": "Target platforms for base quantum computing"
+          },
+          "quantum_runtime_version": {
+            "type": "string",
+            "pattern": "^>=?\\d+\\.\\d+\\.\\d+$",
+            "description": "Minimum required quantum runtime version"
+          },
+          "pyqir_version": {
+            "type": "string", 
+            "pattern": "^>=?\\d+\\.\\d+\\.\\d+$",
+            "description": "Minimum required PyQIR version"
+          },
+          "supported_gate_sets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["universal", "parameterized", "clifford", "pauli"]
+            },
+            "uniqueItems": true,
+            "not": {
+              "contains": {"const": "custom"}
+            }
+          },
+          "max_qubits": {
+            "oneOf": [
+              {"type": "integer", "minimum": 1},
+              {"type": "string", "enum": ["unspecified"]}
+            ]
+          },
+          "max_classical_bits": {
+            "oneOf": [
+              {"type": "integer", "minimum": 1},
+              {"type": "string", "enum": ["unspecified"]}
+            ]
+          },
+          "required_llvm_instructions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "call", "ret", "inttoptr", "getelementptr",
+                "load", "store", "icmp", "select"
+              ]
+            },
+            "uniqueItems": true,
+            "not": {
+              "contains": {"enum": ["br", "phi", "switch"]}
+            }
+          }
+        },
+        "required": ["target_platforms", "quantum_runtime_version", "pyqir_version"],
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  }

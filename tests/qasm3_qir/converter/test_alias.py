@@ -102,7 +102,8 @@ def test_valid_alias_redefinition():
     bit[5] c;
     h q;
     measure q -> c;
-
+    //BASE PROFILE DOES NOT ALLOW REUSING OF QUBITS AFTER MEASUREMENT, SO WE RESET IT
+    reset q[2];
     if (c[0] == 1) {
         float[32] alias = 4.3;
     }
@@ -127,6 +128,12 @@ def test_alias_in_scope_1():
 
     h q;
     measure q -> c;
+
+    //BASE PROFILE DOES NOT ALLOW REUSING OF QUBITS AFTER MEASUREMENT, SO WE RESET IT
+    reset q[0];
+    reset q[1];
+    reset q[2];
+
     if(c[0]){
         let alias = q[0:2];
         x alias[0];

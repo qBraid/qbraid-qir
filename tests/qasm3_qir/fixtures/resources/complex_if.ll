@@ -1,5 +1,5 @@
-; ModuleID = 'my-circuit'
-source_filename = "my-circuit"
+; ModuleID = 'program-b7eef4a0-4573-11f0-be85-773714bb7840'
+source_filename = "program-b7eef4a0-4573-11f0-be85-773714bb7840"
 
 %Qubit = type opaque
 %Result = type opaque
@@ -15,6 +15,10 @@ entry:
   call void @__quantum__qis__mz__body(%Qubit* inttoptr (i64 1 to %Qubit*), %Result* inttoptr (i64 5 to %Result*))
   call void @__quantum__qis__mz__body(%Qubit* inttoptr (i64 2 to %Qubit*), %Result* inttoptr (i64 6 to %Result*))
   call void @__quantum__qis__mz__body(%Qubit* inttoptr (i64 3 to %Qubit*), %Result* inttoptr (i64 7 to %Result*))
+  call void @__quantum__qis__reset__body(%Qubit* null)
+  call void @__quantum__qis__reset__body(%Qubit* inttoptr (i64 1 to %Qubit*))
+  call void @__quantum__qis__reset__body(%Qubit* inttoptr (i64 2 to %Qubit*))
+  call void @__quantum__qis__reset__body(%Qubit* inttoptr (i64 3 to %Qubit*))
   %0 = call i1 @__quantum__qis__read_result__body(%Result* inttoptr (i64 4 to %Result*))
   br i1 %0, label %then, label %else
 
@@ -63,6 +67,8 @@ declare void @__quantum__qis__h__body(%Qubit*)
 
 declare void @__quantum__qis__mz__body(%Qubit*, %Result* writeonly) #1
 
+declare void @__quantum__qis__reset__body(%Qubit*)
+
 declare i1 @__quantum__qis__read_result__body(%Result*)
 
 declare void @__quantum__qis__x__body(%Qubit*)
@@ -71,7 +77,7 @@ declare void @__quantum__qis__cnot__body(%Qubit*, %Qubit*)
 
 declare void @__quantum__rt__result_record_output(%Result*, i8*)
 
-attributes #0 = { "entry_point" "output_labeling_schema" "qir_profiles"="custom" "required_num_qubits"="4" "required_num_results"="8" }
+attributes #0 = { "entry_point" "output_labeling_schema" "qir_profiles"="base" "required_num_qubits"="4" "required_num_results"="8" }
 attributes #1 = { "irreversible" }
 
 !llvm.module.flags = !{!0, !1, !2, !3}

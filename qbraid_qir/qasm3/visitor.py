@@ -88,7 +88,6 @@ class QasmQIRVisitor(QIRVisitor):
         # Profile-specific attributes
         if self._profile.should_track_qubit_measurement():
             self._measured_qubits: dict[int, bool] = {}
-
         # External gates
         if external_gates is None:
             external_gates = []
@@ -126,7 +125,7 @@ class QasmQIRVisitor(QIRVisitor):
         self._llvm_module = module.llvm_module
         context = self._llvm_module.context
         # Set qir_profiles based on the profile being used
-        qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "custom"
+        qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "base"
 
         entry = pyqir.entry_point(
             self._llvm_module,
@@ -254,8 +253,14 @@ class QasmQIRVisitor(QIRVisitor):
         """
         if not self._profile.allow_qubit_use_after_measurement():
             # For profiles that don't allow it, we could add validation here
-            # For now, we just pass - the profile handles the policy
-            pass
+            for qubit_id in qubit_ids:
+                qubit_id_result = pyqir.qubit_id(qubit_id)
+                if qubit_id_result is not None and self._measured_qubits.get(
+                    qubit_id_result, False
+                ):
+                    raise_qasm3_error(
+                        f"Base Profile violation: Cannot use qubit {qubit_id_result} after measurement"  # pylint: disable=line-too-long
+                    )
 
     def _visit_measurement(self, statement: qasm3_ast.QuantumMeasurementStatement) -> None:
         """Visit a measurement statement element.

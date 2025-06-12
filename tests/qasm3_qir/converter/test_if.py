@@ -52,6 +52,11 @@ def test_simple_if():
     bit[4] c;
     h q;
     measure q -> c;
+    //BASE PROFILE DOES NOT ALLOW REUSING OF QUBITS AFTER MEASUREMENT, SO WE RESET IT
+    reset q[0];
+    reset q[1];
+    reset q[2];
+
     if(c[0]){
         x q[0];
         cx q[0], q[1];    
@@ -87,6 +92,12 @@ def test_complex_if():
 
     h q;
     measure q -> c0;
+    //BASE PROFILE DOES NOT ALLOW REUSING OF QUBITS AFTER MEASUREMENT, SO WE RESET IT
+    reset q[0];
+    reset q[1];
+    reset q[2];
+    reset q[3];
+
     if(c0[0]){
         x q[0];
         cx q[0], q[1];
