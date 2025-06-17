@@ -10,6 +10,9 @@
   <a href="https://codecov.io/gh/qBraid/qbraid-qir">
     <img src="https://codecov.io/gh/qBraid/qbraid-qir/graph/badge.svg?token=GUQ3EN8DGI"/>
   </a>
+  <a href="https://pepy.tech/projects/qbraid-qir">
+    <img src="https://static.pepy.tech/badge/qbraid-qir" alt="PyPI Downloads">
+  </a>
   <a href="https://pypi.org/project/qbraid-qir/">
     <img src="https://img.shields.io/pypi/v/qbraid-qir.svg?color=blue" alt="PyPI version"/>
   </a>
