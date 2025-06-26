@@ -13,24 +13,12 @@
 # limitations under the License.
 
 """
-Abstract base classes for QIR visitors and modules.
+Abstract base class for QIR module.
+
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
-
-import pyqir
-
-
-class QIRVisitor(ABC):
-    """Abstract base class for QIR visitors."""
-
-    def __init__(self) -> None:
-        self._record_output: bool = True
-        self._llvm_module: Optional[pyqir.Module] = None
-        self._builder: Optional[pyqir.Builder] = None
-        self._clbit_labels: dict[str, int] = {}
-        self._global_creg_size_map: dict[str, int] = {}
+from typing import Any
 
 
 class QIRModule(ABC):
@@ -42,11 +30,9 @@ class QIRModule(ABC):
     @property
     @abstractmethod
     def num_qubits(self) -> int:
-        """Get the number of qubits in the program."""
-        # pass
+        """Returns the number of qubits in the program."""
 
     @property
     @abstractmethod
     def num_clbits(self) -> int:
-        """Get the number of classical bits in the program."""
-        # pass
+        """Returns the number of classical bits in the program."""

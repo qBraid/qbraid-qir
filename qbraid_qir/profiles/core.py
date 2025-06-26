@@ -16,16 +16,16 @@
 Module containing core profile classes for QIR generation.
 
 """
-
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable
 
-import pyqir
+import pyqir._native
+import pyqir.rt
 from pyqir import qis
 
-from ..profile import QIRModule, QIRVisitor
+from qbraid_qir.module import QIRModule
+from qbraid_qir.visitor import QIRVisitor
 
 
 @dataclass
@@ -64,37 +64,30 @@ class Profile(ABC):
     @abstractmethod
     def get_measurement_function(self) -> Callable:
         """Get the measurement function for this profile."""
-        # pass
 
     @abstractmethod
     def get_reset_function(self) -> Callable:
         """Get the reset function for this profile."""
-        # pass
 
     @abstractmethod
     def get_barrier_function(self) -> Callable:
         """Get the barrier function for this profile."""
-        # pass
 
     @abstractmethod
     def get_conditional_function(self) -> Callable:
         """Get the conditional branching function for this profile."""
-        # pass
 
     @abstractmethod
     def should_track_qubit_measurement(self) -> bool:
         """Whether this profile tracks qubit measurement state."""
-        # pass
 
     @abstractmethod
     def allow_qubit_use_after_measurement(self) -> bool:
         """Whether this profile allows qubit operations after measurement."""
-        # pass
 
     @abstractmethod
     def record_output_method(self, visitor: QIRVisitor, module: QIRModule) -> None:
         """Profile-specific output recording method."""
-        # pass
 
 
 class BaseProfile(Profile):
