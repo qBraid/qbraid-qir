@@ -18,10 +18,10 @@ jobs:
       with:
         python-version: '3.11'
         cache: pip
-    - name: Install dependencies
+    - name: Install tox
       run: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip install -e '.[docs]'
+        pip install --upgrade pip
+        pip install tox
     - name: Build docs
       run: |
-        sphinx-build -W -b html docs docs/build/html
+        tox -e docs
