@@ -91,7 +91,7 @@ qbraid_qir.__version__
 ## Resources
 
 - [User Guide](https://docs.qbraid.com/qir/user-guide)
-- [API Reference](https://sdk.qbraid.com/projects/qir/en/stable/api/qbraid_qir.html)
+- [API Reference](https://sdk.qbraid.com/qbraid-qir/api/qbraid_qir.html)
 - [Example Notebooks](https://github.com/qBraid/qbraid-lab-demo/tree/main/qbraid_qir)
 - [Docker Containers](docker)
 
@@ -167,12 +167,12 @@ citation details, please refer to [CITATION.cff](CITATION.cff).
 
 ```bibtex
 @software{Gupta_qBraid-QIR_Python_package_2025,
-  author = {Gupta, Harshit and Jain, Rohan and Kushnir, Samuel and Parakh, Priyansh and Hill, Ryan James},
+  author = {Gupta, Harshit and Hill, Ryan James},
   license = {Apache-2.0},
-  month = apr,
+  month = jun,
   title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
   url = {https://github.com/qBraid/qbraid-qir},
-  version = {0.3.2},
+  version = {0.4.0},
   year = {2025}
 }
 ```

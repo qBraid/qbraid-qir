@@ -26,13 +26,13 @@ from typing import Any, Callable, List, Optional, Union
 
 import openqasm3.ast as qasm3_ast
 import pyqir
-import pyqir._native
 import pyqir.rt
 from openqasm3.ast import UnaryOperator
 from pyqir import qis
 
-from ..profile import QIRVisitor
-from ..profiles import Profile, ProfileRegistry
+from qbraid_qir.profiles import Profile, ProfileRegistry
+from qbraid_qir.visitor import QIRVisitor
+
 from .elements import QasmQIRModule
 from .exceptions import raise_qasm3_error
 from .maps import PYQIR_ONE_QUBIT_ROTATION_MAP, map_qasm_op_to_pyqir_callable
