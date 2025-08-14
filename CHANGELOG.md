@@ -17,8 +17,10 @@ Types of changes:
 ### ➕  New Features 
 
 ### 🌟  Improvements
+- Split `qbraid_qir.profile` into `qbraid_qir.module` and `qbraid_qir.visitor` ([#237](https://github.com/qBraid/qbraid-qir/pull/237))
 
 ### 📜  Documentation
+- Factor out docs deps into its own requirements file ([#237](https://github.com/qBraid/qbraid-qir/pull/237))
 
 ### 🐛  Bug Fixes
 
