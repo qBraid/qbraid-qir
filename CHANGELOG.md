@@ -23,5 +23,6 @@ Types of changes:
 ### 🐛  Bug Fixes
 
 ### ⬇️  Dependency Updates 
+- Update `pyqasm` requirement from >=0.4.0,<0.5.0 to >=0.4.0,<0.6.0 ([#236](https://github.com/qBraid/qbraid-qir/pull/236))
 
 ### 👋  Deprecations
