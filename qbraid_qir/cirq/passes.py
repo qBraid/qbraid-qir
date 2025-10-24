@@ -23,6 +23,46 @@ import cirq
 from cirq.protocols.decompose_protocol import DecomposeResult
 from .exceptions import CirqConversionError
 
+from cirq import Moment
+import numpy as np
+
+def _add_rads_attribute(
+    circuit: cirq.Circuit, *, context: cirq.TransformerContext = cirq.TransformerContext()
+) -> cirq.Circuit:
+    
+    """
+        Transformer that attaches a `_rads` attribute to all XPowGate, YPowGate, and ZPowGate
+        instances in the circuit.
+
+        This is required because downstream components (e.g., the QIR visitor) expect each
+        single-qubit rotation gate to expose a `_rads` attribute representing its rotation
+        angle in radians. Newer versions of Cirq removed this private field, so this
+        transformer ensures backward compatibility by computing `_rads` as:
+
+            _rads = gate.exponent * π
+
+        Returns:
+            cirq.Circuit: A new circuit with `_rads` attributes added to all relevant gates.
+    """
+
+    new_moments = []
+    for moment in circuit:
+        new_ops = []
+        for op in moment.operations:
+            gate = op.gate
+            # The visitor later expects rotation gates to have a `_rads` field (radians).
+            # Cirq's newer API no longer includes it, so we compute and attach it here.
+            if isinstance(gate, (cirq.XPowGate, cirq.YPowGate, cirq.ZPowGate)):
+                # Compute radians from exponent
+                try:
+                    gate._rads = float(gate.exponent * np.pi)
+                except AttributeError:
+                    # Older Cirq may already have _rads, ignore
+                    pass
+            new_ops.append(op)
+        new_moments.append(Moment(new_ops))
+    return cirq.Circuit(new_moments)
+
 class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
     def __init__(
         self,
@@ -56,7 +96,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
 
     @property
     def postprocess_transformers(self) -> List["cirq.TRANSFORMER"]:
-        return []
+        return [_add_rads_attribute]
 
     def _decompose_single_qubit_operation(
         self, op: "cirq.Operation", moment_idx: int
