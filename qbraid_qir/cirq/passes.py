@@ -134,9 +134,35 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
 
 
     def _decompose_two_qubit_operation(self, op: "cirq.Operation", _) -> "cirq.OP_TREE":
+        # Unwrap TaggedOperation and CircuitOperation to get the actual gate
+        actual_op = op
+        
+        if isinstance(actual_op, cirq.TaggedOperation):
+            actual_op = actual_op.sub_operation
+        
+        if isinstance(actual_op, cirq.CircuitOperation):
+            ops = list(actual_op.circuit.all_operations())
+            if len(ops) == 1:
+                actual_op = ops[0]
+        
+        gate = actual_op.gate if hasattr(actual_op, 'gate') else actual_op
+        
+        # Check if gate is already in our target gateset
+        # CNOT, CZ, SWAP are in the target set (they're CNotPowGate, CZPowGate, SwapPowGate with exponent=1)
+        if isinstance(gate, (cirq.CNotPowGate, cirq.CZPowGate, cirq.SwapPowGate)):
+            yield actual_op
+            return
+        
+        # TOFFOLI (3-qubit gate) - note this is actually a 3-qubit operation
+        if isinstance(gate, cirq.CCXPowGate):
+            yield actual_op
+            return
+        
+        # Decompose unsupported gates
         if not cirq.has_unitary(op):
             return NotImplemented
-        return cirq.two_qubit_matrix_to_cz_operations(
+            
+        yield cirq.two_qubit_matrix_to_cz_operations(
             op.qubits[0],
             op.qubits[1],
             cirq.unitary(op),
