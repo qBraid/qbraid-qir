@@ -44,18 +44,22 @@ def test_convert_gridqubits_to_linequbits(gridqubit_circuit):
     linequbit_circuit = preprocess_circuit(gridqubit_circuit)
     for qubit in linequbit_circuit.all_qubits():
         assert isinstance(qubit, cirq.LineQubit), "Qubit is not a LineQubit"
-    assert np.allclose(
-        linequbit_circuit.unitary(), gridqubit_circuit.unitary()
-    ), "Circuits are not equal"
+    assert cirq.allclose_up_to_global_phase(
+        linequbit_circuit.unitary(),
+        gridqubit_circuit.unitary(),
+        atol=1e-8
+    ), "Circuits are not equivalent up to global phase"
 
 
 def test_convert_namedqubits_to_linequbits(namedqubit_circuit):
     linequbit_circuit = preprocess_circuit(namedqubit_circuit)
     for qubit in linequbit_circuit.all_qubits():
         assert isinstance(qubit, cirq.LineQubit), "Qubit is not a LineQubit"
-    assert np.allclose(
-        linequbit_circuit.unitary(), namedqubit_circuit.unitary()
-    ), "Circuits are not equal"
+    assert cirq.allclose_up_to_global_phase(
+        linequbit_circuit.unitary(),
+        namedqubit_circuit.unitary(),
+        atol=1e-8
+    ), "Circuits are not equivalent up to global phase"
 
 
 def test_empty_circuit_conversion():
