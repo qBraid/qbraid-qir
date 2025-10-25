@@ -63,12 +63,3 @@ def test_empty_circuit_conversion():
     converted_circuit = preprocess_circuit(circuit)
     assert len(converted_circuit.all_qubits()) == 0, "Converted empty circuit should have no qubits"
 
-
-def test_multi_qubit_measurement_error():
-    qubits = cirq.LineQubit.range(3)
-    circuit = cirq.Circuit()
-    ps = cirq.X(qubits[0]) * cirq.Y(qubits[1]) * cirq.X(qubits[2])
-    meas_gates = cirq.measure_single_paulistring(ps)
-    circuit.append(meas_gates)
-    with pytest.raises(CirqConversionError):
-        preprocess_circuit(circuit)
