@@ -101,10 +101,37 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
     def _decompose_single_qubit_operation(
         self, op: "cirq.Operation", moment_idx: int
     ) -> DecomposeResult:
+        # Unwrap TaggedOperation and CircuitOperation to get the actual gate
+        actual_op = op
+        
+        if isinstance(actual_op, cirq.TaggedOperation):
+            actual_op = actual_op.sub_operation
+        
+        if isinstance(actual_op, cirq.CircuitOperation):
+            ops = list(actual_op.circuit.all_operations())
+            if len(ops) == 1:
+                actual_op = ops[0]
+        
+        gate = actual_op.gate if hasattr(actual_op, 'gate') else actual_op
+        
+        # Check if gate is already in our target gateset
+        # For Pow gates, any exponent is fine (they're all supported)
+        if isinstance(gate, (cirq.HPowGate, cirq.XPowGate, cirq.YPowGate, cirq.ZPowGate)):
+            yield actual_op
+            return
+        
+        # Other supported single-qubit gates
+        if isinstance(gate, (cirq.IdentityGate, cirq.ResetChannel,
+                            cirq.MeasurementGate, cirq.PauliMeasurementGate)):
+            yield actual_op
+            return
+        
+        # Decompose everything else
         qubit = op.qubits[0]
         mat = cirq.unitary(op)
-        for gate in cirq.single_qubit_matrix_to_gates(mat, self.atol):
-            yield gate(qubit)
+        for gate_result in cirq.single_qubit_matrix_to_gates(mat, self.atol):
+            yield gate_result(qubit)
+
 
     def _decompose_two_qubit_operation(self, op: "cirq.Operation", _) -> "cirq.OP_TREE":
         if not cirq.has_unitary(op):
@@ -116,6 +143,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             allow_partial_czs=self.allow_partial_czs,
             atol=self.atol,
         )
+    
 
 def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     """
