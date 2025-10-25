@@ -22,8 +22,9 @@ from typing import Sequence, Union, Type, List
 import cirq
 from cirq.protocols.decompose_protocol import DecomposeResult
 from .exceptions import CirqConversionError
+from cirq.transformers import create_transformer_with_kwargs
 
-from cirq import Moment
+from cirq import Moment, transformers, protocols
 import numpy as np
 
 def _add_rads_attribute(
@@ -95,6 +96,24 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         self.atol = atol
 
     @property
+    def preprocess_transformers(self) -> List["cirq.TRANSFORMER"]:
+        """Override to prevent decomposing TOFFOLI in preprocessing."""
+        from cirq.transformers import merge_k_qubit_gates
+        
+        return [
+            create_transformer_with_kwargs(
+                transformers.expand_composite,
+                # Don't decompose operations that are in our gateset OR have <= 2 qubits
+                no_decomp=lambda op: protocols.num_qubits(op) <= 2 or op in self,
+            ),
+            create_transformer_with_kwargs(
+                merge_k_qubit_gates.merge_k_qubit_unitaries,
+                k=2,
+                rewriter=lambda op: op.with_tags(self._intermediate_result_tag),
+            ),
+        ]
+
+    @property
     def postprocess_transformers(self) -> List["cirq.TRANSFORMER"]:
         return [_add_rads_attribute]
 
@@ -153,11 +172,6 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             yield actual_op
             return
         
-        # TOFFOLI (3-qubit gate) - note this is actually a 3-qubit operation
-        if isinstance(gate, cirq.CCXPowGate):
-            yield actual_op
-            return
-        
         # Decompose unsupported gates
         if not cirq.has_unitary(op):
             return NotImplemented
@@ -169,7 +183,39 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             allow_partial_czs=self.allow_partial_czs,
             atol=self.atol,
         )
-    
+
+    def _decompose_multi_qubit_operation(
+        self, op: cirq.Operation, moment_idx: int
+    ) -> DecomposeResult:
+        """Decomposes operations acting on more than 2 qubits using gates from this gateset."""
+        
+        # Check if operation is already valid (in our gateset)
+        if self.validate(op):
+            # Don't decompose - return the operation as-is
+            yield op
+            return
+        
+        # If not valid, try to unwrap and check the actual gate
+        actual_op = op
+        
+        if isinstance(actual_op, cirq.TaggedOperation):
+            actual_op = actual_op.sub_operation
+        
+        if isinstance(actual_op, cirq.CircuitOperation):
+            ops_list = list(actual_op.circuit.all_operations())
+            if len(ops_list) == 1:
+                actual_op = ops_list[0]
+        
+        gate = actual_op.gate if hasattr(actual_op, 'gate') else actual_op
+        
+        # Check if the unwrapped gate is TOFFOLI
+        if isinstance(gate, cirq.CCXPowGate):
+            yield actual_op
+            return
+        
+        # Unknown multi-qubit operation - can't decompose
+        return NotImplemented
+
 
 def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     """
@@ -190,4 +236,5 @@ def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
         return qir_circuit
     except CirqConversionError: 
         raise CirqConversionError("Couldn't convert circuit to QIR gate set.")
+
 
