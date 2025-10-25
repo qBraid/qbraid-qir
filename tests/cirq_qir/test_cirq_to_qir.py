@@ -23,7 +23,7 @@ import cirq
 import pyqir
 import pytest
 
-from qbraid_qir.cirq import CirqConversionError, cirq_to_qir
+from qbraid_qir.cirq import cirq_to_qir
 from tests.cirq_qir.fixtures.basic_gates import (
     double_op_tests,
     measurement_tests,

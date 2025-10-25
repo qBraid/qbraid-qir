@@ -12,31 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Module that contains QIRTargetGateSet class.
+
+"""
+
+from typing import List, Sequence, Type, Union
 
 import cirq
-from typing import Sequence, Union, Type, List
-from cirq.protocols.decompose_protocol import DecomposeResult
-from cirq.transformers import create_transformer_with_kwargs
-from cirq import Moment, transformers, protocols
 import numpy as np
+from cirq import Moment, protocols, transformers
+from cirq.protocols.decompose_protocol import DecomposeResult
+from cirq.transformers import create_transformer_with_kwargs, merge_k_qubit_gates
+
 
 def _add_rads_attribute(
     circuit: cirq.Circuit, *, context: cirq.TransformerContext = cirq.TransformerContext()
 ) -> cirq.Circuit:
-    
     """
-        Transformer that attaches a `_rads` attribute to all XPowGate, YPowGate, and ZPowGate
-        instances in the circuit.
+    Transformer that attaches a `_rads` attribute to all XPowGate, YPowGate, and ZPowGate
+    instances in the circuit.
 
-        This is required because downstream components (e.g., the QIR visitor) expect each
-        single-qubit rotation gate to expose a `_rads` attribute representing its rotation
-        angle in radians. Newer versions of Cirq removed this private field, so this
-        transformer ensures backward compatibility by computing `_rads` as:
+    This is required because downstream components (e.g., the QIR visitor) expect each
+    single-qubit rotation gate to expose a `_rads` attribute representing its rotation
+    angle in radians. Newer versions of Cirq removed this private field, so this
+    transformer ensures backward compatibility by computing `_rads` as:
 
-            _rads = gate.exponent * π
+        _rads = gate.exponent * π
 
-        Returns:
-            cirq.Circuit: A new circuit with `_rads` attributes added to all relevant gates.
+    Returns:
+        cirq.Circuit: A new circuit with `_rads` attributes added to all relevant gates.
     """
 
     new_moments = []
@@ -57,15 +62,14 @@ def _add_rads_attribute(
         new_moments.append(Moment(new_ops))
     return cirq.Circuit(new_moments)
 
+
 class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
     def __init__(
         self,
         *,
         atol: float = 1e-8,
         allow_partial_czs: bool = False,
-        additional_gates: Sequence[
-            Union[Type["cirq.Gate"], "cirq.Gate", "cirq.GateFamily"]
-        ] = (),
+        additional_gates: Sequence[Union[Type["cirq.Gate"], "cirq.Gate", "cirq.GateFamily"]] = (),
         preserve_moment_structure: bool = True,
     ) -> None:
         super().__init__(
@@ -91,8 +95,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
     @property
     def preprocess_transformers(self) -> List["cirq.TRANSFORMER"]:
         """Override to handle TOFFOLI gate."""
-        from cirq.transformers import merge_k_qubit_gates
-        
+
         return [
             create_transformer_with_kwargs(
                 transformers.expand_composite,
@@ -103,7 +106,6 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
                 merge_k_qubit_gates.merge_k_qubit_unitaries,
                 k=2,
                 rewriter=lambda op: op.with_tags(self._intermediate_result_tag),
-
             ),
         ]
 
@@ -116,60 +118,62 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
     ) -> DecomposeResult:
         # Unwrap TaggedOperation and CircuitOperation to get the actual gate
         actual_op = op
-        
+
         if isinstance(actual_op, cirq.TaggedOperation):
             actual_op = actual_op.sub_operation
-        
+
         if isinstance(actual_op, cirq.CircuitOperation):
             ops = list(actual_op.circuit.all_operations())
             if len(ops) == 1:
                 actual_op = ops[0]
-        
-        gate = actual_op.gate if hasattr(actual_op, 'gate') else actual_op
-        
+
+        gate = actual_op.gate if hasattr(actual_op, "gate") else actual_op
+
         # Check if gate is already in our target gateset
         # For Pow gates, any exponent is fine (they're all supported)
         if isinstance(gate, (cirq.HPowGate, cirq.XPowGate, cirq.YPowGate, cirq.ZPowGate)):
             yield actual_op
             return
-        
+
         # Other supported single-qubit gates
-        if isinstance(gate, (cirq.IdentityGate, cirq.ResetChannel,
-                            cirq.MeasurementGate, cirq.PauliMeasurementGate)):
+        if isinstance(
+            gate,
+            (cirq.IdentityGate, cirq.ResetChannel, cirq.MeasurementGate, cirq.PauliMeasurementGate),
+        ):
             yield actual_op
             return
-        
+
         # Decompose everything else
         qubit = op.qubits[0]
         mat = cirq.unitary(op)
         for gate_result in cirq.single_qubit_matrix_to_gates(mat, self.atol):
             yield gate_result(qubit)
 
-
     def _decompose_two_qubit_operation(self, op: "cirq.Operation", _) -> "cirq.OP_TREE":
         # Unwrap TaggedOperation and CircuitOperation to get the actual gate
         actual_op = op
-        
+
         if isinstance(actual_op, cirq.TaggedOperation):
             actual_op = actual_op.sub_operation
-        
+
         if isinstance(actual_op, cirq.CircuitOperation):
             ops = list(actual_op.circuit.all_operations())
             if len(ops) == 1:
                 actual_op = ops[0]
-        
-        gate = actual_op.gate if hasattr(actual_op, 'gate') else actual_op
-        
+
+        gate = actual_op.gate if hasattr(actual_op, "gate") else actual_op
+
         # Check if gate is already in our target gateset
-        # CNOT, CZ, SWAP are in the target set (they're CNotPowGate, CZPowGate, SwapPowGate with exponent=1)
+        # CNOT, CZ, SWAP are in the target set
+        # (they're CNotPowGate, CZPowGate, SwapPowGate with exponent=1)
         if isinstance(gate, (cirq.CNotPowGate, cirq.CZPowGate, cirq.SwapPowGate)):
             yield actual_op
             return
-        
+
         # Decompose unsupported gates
         if not cirq.has_unitary(op):
             return NotImplemented
-            
+
         yield cirq.two_qubit_matrix_to_cz_operations(
             op.qubits[0],
             op.qubits[1],
@@ -182,30 +186,30 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         self, op: cirq.Operation, moment_idx: int
     ) -> DecomposeResult:
         """Decomposes operations acting on more than 2 qubits using gates from this gateset."""
-        
+
         # Check if operation is already valid (in our gateset)
         if self.validate(op):
             # Don't decompose - return the operation as-is
             yield op
             return
-        
+
         # If not valid, try to unwrap and check the actual gate
         actual_op = op
-        
+
         if isinstance(actual_op, cirq.TaggedOperation):
             actual_op = actual_op.sub_operation
-        
+
         if isinstance(actual_op, cirq.CircuitOperation):
             ops_list = list(actual_op.circuit.all_operations())
             if len(ops_list) == 1:
                 actual_op = ops_list[0]
-        
-        gate = actual_op.gate if hasattr(actual_op, 'gate') else actual_op
-        
+
+        gate = actual_op.gate if hasattr(actual_op, "gate") else actual_op
+
         # Check if the unwrapped gate is TOFFOLI
         if isinstance(gate, cirq.CCXPowGate):
             yield actual_op
             return
-        
+
         # Unknown multi-qubit operation - can't decompose
         return NotImplemented

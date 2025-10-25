@@ -17,10 +17,8 @@ Test functions that preprocess Cirq circuits before conversion to QIR.
 
 """
 import cirq
-import numpy as np
 import pytest
 
-from qbraid_qir.cirq.exceptions import CirqConversionError
 from qbraid_qir.cirq.passes import preprocess_circuit
 
 # pylint: disable=redefined-outer-name
@@ -45,9 +43,7 @@ def test_convert_gridqubits_to_linequbits(gridqubit_circuit):
     for qubit in linequbit_circuit.all_qubits():
         assert isinstance(qubit, cirq.LineQubit), "Qubit is not a LineQubit"
     assert cirq.allclose_up_to_global_phase(
-        linequbit_circuit.unitary(),
-        gridqubit_circuit.unitary(),
-        atol=1e-8
+        linequbit_circuit.unitary(), gridqubit_circuit.unitary(), atol=1e-8
     ), "Circuits are not equivalent up to global phase"
 
 
@@ -56,9 +52,7 @@ def test_convert_namedqubits_to_linequbits(namedqubit_circuit):
     for qubit in linequbit_circuit.all_qubits():
         assert isinstance(qubit, cirq.LineQubit), "Qubit is not a LineQubit"
     assert cirq.allclose_up_to_global_phase(
-        linequbit_circuit.unitary(),
-        namedqubit_circuit.unitary(),
-        atol=1e-8
+        linequbit_circuit.unitary(), namedqubit_circuit.unitary(), atol=1e-8
     ), "Circuits are not equivalent up to global phase"
 
 
@@ -66,4 +60,3 @@ def test_empty_circuit_conversion():
     circuit = cirq.Circuit()
     converted_circuit = preprocess_circuit(circuit)
     assert len(converted_circuit.all_qubits()) == 0, "Converted empty circuit should have no qubits"
-
