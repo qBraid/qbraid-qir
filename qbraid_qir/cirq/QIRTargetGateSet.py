@@ -91,6 +91,10 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         )
         self.allow_partial_czs = allow_partial_czs
         self.atol = atol
+        self._supported_single_qubit_set = (cirq.IdentityGate, cirq.ResetChannel, cirq.MeasurementGate, cirq.PauliMeasurementGate)
+        self._supported_power_gate_set = (cirq.HPowGate, cirq.XPowGate, cirq.YPowGate, cirq.ZPowGate)
+        self._supported_two_qubit_set = (cirq.CNotPowGate, cirq.CZPowGate, cirq.SwapPowGate)
+        self._supported_multi_qubit_set = (cirq.CCXPowGate)
 
     @property
     def preprocess_transformers(self) -> List["cirq.TRANSFORMER"]:
@@ -131,14 +135,14 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
 
         # Check if gate is already in our target gateset
         # For Pow gates, any exponent is fine (they're all supported)
-        if isinstance(gate, (cirq.HPowGate, cirq.XPowGate, cirq.YPowGate, cirq.ZPowGate)):
+        if isinstance(gate, self._supported_power_gate_set):
             yield actual_op
             return
 
         # Other supported single-qubit gates
         if isinstance(
             gate,
-            (cirq.IdentityGate, cirq.ResetChannel, cirq.MeasurementGate, cirq.PauliMeasurementGate),
+            self._supported_single_qubit_set,
         ):
             yield actual_op
             return
@@ -166,7 +170,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         # Check if gate is already in our target gateset
         # CNOT, CZ, SWAP are in the target set
         # (they're CNotPowGate, CZPowGate, SwapPowGate with exponent=1)
-        if isinstance(gate, (cirq.CNotPowGate, cirq.CZPowGate, cirq.SwapPowGate)):
+        if isinstance(gate, self._supported_two_qubit_set):
             yield actual_op
             return
 
@@ -207,7 +211,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         gate = actual_op.gate if hasattr(actual_op, "gate") else actual_op
 
         # Check if the unwrapped gate is TOFFOLI
-        if isinstance(gate, cirq.CCXPowGate):
+        if isinstance(gate, self._supported_multi_qubit_set):
             yield actual_op
             return
 
