@@ -39,9 +39,14 @@ def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     if has_conditional:
         # For circuits with conditional operations, skip the full optimization
         # and just apply the postprocessors
-        processed = line_qubit_circuit
+        processed: cirq.Circuit = line_qubit_circuit
         for transformer in gateset.postprocess_transformers:
-            processed = transformer(processed)
+            result = transformer(processed)
+            # Ensure we have a Circuit, not AbstractCircuit
+            if not isinstance(result, cirq.Circuit):
+                processed = cirq.Circuit(result.all_operations())
+            else:
+                processed = result
         return processed
 
     try:
