@@ -130,7 +130,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         return [_add_rads_attribute]  # type: ignore[list-item]
 
     def _decompose_single_qubit_operation(
-        self, op: "cirq.Operation", moment_idx: int
+        self, op: "cirq.Operation", moment_idx: int # pylint: disable=unused-argument
     ) -> DecomposeResult:  # type: ignore[return,return-value]
         # Unwrap TaggedOperation and CircuitOperation to get the actual gate
         actual_op = op
