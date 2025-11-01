@@ -27,7 +27,9 @@ from cirq.transformers import create_transformer_with_kwargs, merge_k_qubit_gate
 
 
 def _add_rads_attribute(
-    circuit: cirq.Circuit, *, context: cirq.TransformerContext = cirq.TransformerContext()  # pylint: disable=unused-argument
+    circuit: cirq.Circuit,
+    *,
+    context: cirq.TransformerContext = cirq.TransformerContext(),  # pylint: disable=unused-argument
 ) -> cirq.Circuit:
     """
     Transformer that attaches a `_rads` attribute to all XPowGate, YPowGate, and ZPowGate
@@ -162,7 +164,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         mat = cirq.unitary(op)
         for gate_result in cirq.single_qubit_matrix_to_gates(mat, self.atol):
             yield gate_result(qubit)
-        return  # type: ignore[return-value]
+        return None  # type: ignore[return-value]
 
     def _decompose_two_qubit_operation(
         self, op: "cirq.Operation", _
@@ -198,11 +200,9 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             allow_partial_czs=self.allow_partial_czs,
             atol=self.atol,
         )
-        return  # type: ignore[return-value]
+        return None  # type: ignore[return-value]
 
-    def _decompose_multi_qubit_operation(
-        self, op: cirq.Operation
-    ) -> DecomposeResult:
+    def _decompose_multi_qubit_operation(self, op: cirq.Operation, _) -> DecomposeResult:
         """Decomposes operations acting on more than 2 qubits using gates from this gateset."""
 
         # Check if operation is already valid (in our gateset)
