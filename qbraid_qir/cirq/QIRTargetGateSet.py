@@ -27,7 +27,7 @@ from cirq.transformers import create_transformer_with_kwargs, merge_k_qubit_gate
 
 
 def _add_rads_attribute(
-    circuit: cirq.Circuit, *, context: cirq.TransformerContext = cirq.TransformerContext()
+    circuit: cirq.Circuit, *, context: cirq.TransformerContext = cirq.TransformerContext()  # pylint: disable=unused-argument
 ) -> cirq.Circuit:
     """
     Transformer that attaches a `_rads` attribute to all XPowGate, YPowGate, and ZPowGate
@@ -201,7 +201,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         return  # type: ignore[return-value]
 
     def _decompose_multi_qubit_operation(
-        self, op: cirq.Operation, moment_idx: int
+        self, op: cirq.Operation
     ) -> DecomposeResult:
         """Decomposes operations acting on more than 2 qubits using gates from this gateset."""
 

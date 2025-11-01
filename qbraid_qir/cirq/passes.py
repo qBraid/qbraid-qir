@@ -52,5 +52,5 @@ def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:
     try:
         qir_circuit = cirq.optimize_for_target_gateset(line_qubit_circuit, gateset=gateset)
         return qir_circuit
-    except Exception as e:
+    except Exception:
         raise CirqConversionError("Failed to preprocess circuit.")
