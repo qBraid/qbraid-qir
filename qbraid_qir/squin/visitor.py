@@ -29,33 +29,26 @@ from kirin import ir, lowering, types
 from kirin.dialects import func, ilist, py
 from kirin.rewrite import CFGCompactify, Walk
 
+from qbraid_qir.exceptions import InvalidSquinInput
+
 
 def load(
     module: str | pyqir.Module,
-    kernel_name: str = "main",
-    dialects: ir.DialectGroup = kernel,
-    register_as_argument: bool = False,
-    return_register: bool = False,
-    register_argument_name: str = "q",
-    globals: dict[str, Any] | None = None,
-    file: str | None = None,
-    lineno_offset: int = 0,
-    col_offset: int = 0,
-    compactify: bool = True,
+    **kwargs,
 ):
     """Converts a PyQIR module into a squin kernel.
 
     Args:
-        module (str): PyQIR code or path to the .ll or .bc file.
+        module (str | pyqir.Module): PyQIR code or path to the .ll or .bc file, or a PyQIR Module object.
 
     Keyword Args:
         kernel_name (str): The name of the kernel to load. Defaults to "main".
-        dialects (ir.DialectGroup | None): The dialects to use. Defaults to `squin.kernel`.
+        dialects (ir.DialectGroup): The dialects to use. Defaults to `squin.kernel`.
         register_as_argument (bool): Determine whether the resulting kernel function should accept
             a single `ilist.IList[Qubit, Any]` argument that is a list of qubits used within the
             function. This allows you to compose kernel functions generated from circuits.
             Defaults to `False`.
-        return_register (bool): Determine whether the resulting kernel functionr returns a
+        return_register (bool): Determine whether the resulting kernel function returns a
             single value of type `ilist.IList[Qubit, Any]` that is the list of qubits used
             in the kernel function. Useful when you want to compose multiple kernel functions
             generated from circuits. Defaults to `False`.
@@ -69,30 +62,56 @@ def load(
 
     """
 
+    # Extract parameters from kwargs with defaults
+    kernel_name: str = kwargs.pop("kernel_name", "main")
+    dialects: ir.DialectGroup = kwargs.pop("dialects", kernel)
+    register_as_argument: bool = kwargs.pop("register_as_argument", False)
+    return_register: bool = kwargs.pop("return_register", False)
+    register_argument_name: str = kwargs.pop("register_argument_name", "q")
+    globals: dict[str, Any] | None = kwargs.pop("globals", None)
+    file: str | None = kwargs.pop("file", None)
+    lineno_offset: int = kwargs.pop("lineno_offset", 0)
+    col_offset: int = kwargs.pop("col_offset", 0)
+    compactify: bool = kwargs.pop("compactify", True)
+
+    # Raise error if unexpected kwargs are provided
+    if kwargs:
+        unexpected = ", ".join(f"'{k}'" for k in kwargs.keys())
+        raise TypeError(f"load() got unexpected keyword argument(s): {unexpected}")
+
+    # Validate input type at the start
+    if not isinstance(module, (str, pyqir.Module)):
+        raise InvalidSquinInput(f"Invalid input {type(module)}, expected 'str | pyqir.Module'")
+
     # If module is a string, interpret as path to a file (.ll or .bc for QIR IR/bitcode)
-    if os.path.exists(module):
-        _, ext = os.path.splitext(module)
-        if ext.lower() == ".ll":
-            # Load LLVM IR (text) file as a PyQIR module
-            with open(module, "r", encoding="utf-8") as f:
-                ir_text = f.read()
-            module = pyqir.Module.from_ir(ir_text)
-        elif ext.lower() == ".bc":
-            # Load LLVM bitcode as a PyQIR module
-            with open(module, "rb") as f:
-                bitcode_bytes = f.read()
-            module = pyqir.Module.from_bitcode(bitcode_bytes)
+    # or as QIR IR text that can be parsed
+    if isinstance(module, str):
+        if os.path.exists(module):
+            _, ext = os.path.splitext(module)
+            if ext.lower() == ".ll":
+                # Load LLVM IR (text) file as a PyQIR module
+                with open(module, "r", encoding="utf-8") as f:
+                    ir_text = f.read()
+                module = pyqir.Module.from_ir(ir_text)
+            elif ext.lower() == ".bc":
+                # Load LLVM bitcode as a PyQIR module
+                with open(module, "rb") as f:
+                    bitcode_bytes = f.read()
+                module = pyqir.Module.from_bitcode(bitcode_bytes)
+            else:
+                raise InvalidFileException(f"Expected file extension .ll or .bc but got {ext!r}")
         else:
-            raise InvalidFileException(f"Expected file extension .ll or .bc but got {ext!r}")
+            # Try to parse string as QIR IR text
+            try:
+                module = pyqir.Module.from_ir(pyqir.Context(), module, name=kernel_name)
+            except Exception as exc:
+                raise InvalidSquinInput(
+                    f"Invalid input {type(module)}, expected 'str | pyqir.Module'. "
+                    f"String must be a valid file path (.ll or .bc) or valid QIR IR text."
+                ) from exc
     elif isinstance(module, pyqir.Module):
+        # Already a valid PyQIR module, no conversion needed
         pass
-    else:
-        try:
-            module = pyqir.Module.from_ir(pyqir.Context(), module, name=kernel_name)
-        except Exception as exc:
-            raise ValueError(
-                f'Expected string to be a valid "PyQIR module, but got {module!r}'
-            ) from exc
 
     target = SquinVisitor(dialects=dialects, module=module)
     body = target.run(
@@ -292,6 +311,8 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
             if gate_match:
                 gate_name = gate_match.group(1)
                 return gate_name + "__adj"
+        elif "call void @__quantum__rt__" in str_instruction:
+            return "rt"
 
     def lower_qubit_getindex(self, state: lowering.State[pyqir.Module], qid: int):
         index = qid
@@ -394,6 +415,8 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         gate_name = self.get_gate_operation(node)
         if gate_name != "mz" and len(self.measurements) > 0:
             self.measure_all_qubits(state)
+        if gate_name == "rt":
+            return None
         return getattr(self, f"visit_{gate_name}", self.generic_visit)(state, node)
 
     def extract_qubit_indices(self, args_str: str) -> list[int]:

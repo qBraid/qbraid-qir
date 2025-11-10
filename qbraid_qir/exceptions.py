@@ -24,3 +24,7 @@ class QbraidQirError(Exception):
 
 class QirConversionError(QbraidQirError):
     """Class for errors raised when converting quantum program to QIR."""
+
+
+class InvalidSquinInput(QbraidQirError):
+    """Class for errors raised when invalid input is provided to squin converter."""
