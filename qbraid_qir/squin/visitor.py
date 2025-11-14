@@ -30,6 +30,20 @@ from kirin.dialects import func, ilist, py
 from kirin.rewrite import CFGCompactify, Walk
 
 from qbraid_qir.exceptions import InvalidSquinInput
+from qbraid_qir.qasm3.maps import (
+    PYQIR_MEASUREMENT_OP_MAP,
+    PYQIR_ONE_QUBIT_OP_MAP,
+    PYQIR_ONE_QUBIT_ROTATION_MAP,
+    PYQIR_TWO_QUBIT_OP_MAP,
+)
+
+# Combined map for efficient gate lookup
+PYQIR_ALL_GATES_MAP = {
+    **PYQIR_ONE_QUBIT_OP_MAP,
+    **PYQIR_ONE_QUBIT_ROTATION_MAP,
+    **PYQIR_TWO_QUBIT_OP_MAP,
+    **PYQIR_MEASUREMENT_OP_MAP,
+}
 
 
 def load(
@@ -180,99 +194,6 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
     num_qubits: int = field(init=False)
     measurements: list[int] = field(default_factory=list, init=False)
 
-    def extract_gates_from_module_functions(self, module):
-        """
-        Extract gate information by directly accessing PyQIR function instructions.
-
-        Args:
-            module: PyQIR module object
-
-        Returns:
-            list: List of dictionaries containing gate information with name, qubit_indices, and parameters
-        """
-        gates = []
-
-        # Find the entry point function
-        entry_func = None
-        for func in module.functions:
-            if pyqir.is_entry_point(func):
-                entry_func = func
-                break
-
-        if not entry_func:
-            return gates
-
-        # Process each basic block in the entry function
-        for block in entry_func.basic_blocks:
-            for instruction in block.instructions:
-                # Check if this is a quantum instruction call
-                if hasattr(instruction, "callee") and instruction.callee:
-                    callee_name = str(instruction.callee)
-
-                    # Extract gate name from quantum instruction calls
-                    if "__quantum__qis__" in callee_name and "__body" in callee_name:
-                        gate_name = callee_name.split("__quantum__qis__")[1].split("__body")[0]
-
-                        # Extract operands
-                        qubit_indices = []
-                        cbit_indices = []
-                        parameters = []
-
-                        for operand in instruction.operands:
-                            operand_str = str(operand)
-
-                            # Extract qubit indices
-                            if "inttoptr" in operand_str and "Qubit" in operand_str:
-                                # Extract the integer value
-                                import re
-
-                                match = re.search(
-                                    r"inttoptr \(i64 (\d+) to %Qubit\*\)", operand_str
-                                )
-                                if match:
-                                    qubit_indices.append(int(match.group(1)))
-                                elif "null" in operand_str:
-                                    qubit_indices.append(0)
-
-                            # Extract classical bit indices
-                            elif "inttoptr" in operand_str and "Result" in operand_str:
-                                match = re.search(
-                                    r"inttoptr \(i64 (\d+) to %Result\*\)", operand_str
-                                )
-                                if match:
-                                    cbit_indices.append(int(match.group(1)))
-                                elif "null" in operand_str:
-                                    cbit_indices.append(0)
-
-                            # Extract parameters (double values)
-                            elif "double" in operand_str:
-                                match = re.search(r"double ([0-9.e+-]+)", operand_str)
-                                if match:
-                                    parameters.append(float(match.group(1)))
-                                else:
-                                    # Handle hex double values
-                                    hex_match = re.search(r"double 0x([0-9a-fA-F]+)", operand_str)
-                                    if hex_match:
-                                        try:
-                                            int_val = int(hex_match.group(1), 16)
-                                            float_val = struct.unpack(
-                                                "d", struct.pack("Q", int_val)
-                                            )[0]
-                                            parameters.append(float_val)
-                                        except:
-                                            parameters.append(f"0x{hex_match.group(1)}")
-
-                        gate_info = {
-                            "gate_name": gate_name,
-                            "qubit_indices": qubit_indices,
-                            "cbit_indices": cbit_indices,
-                            "parameters": parameters,
-                        }
-
-                        gates.append(gate_info)
-
-        return gates
-
     def get_num_qubits(self, module):
         """
         Extract the number of qubits from the pyqir module.
@@ -284,35 +205,14 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
             int: Number of qubits
         """
         # Find the entry point function
-        entry_func = None
-        for func in module.functions:
-            if pyqir.is_entry_point(func):
-                entry_func = func
-                break
-
+        entry_func = next(filter(pyqir.is_entry_point, module.functions))
         if not entry_func:
             return 0
 
         # Get the required number of qubits and results (classical bits)
         qubits = pyqir.required_num_qubits(entry_func)
-        num_cbits = pyqir.required_num_results(entry_func)
 
         return qubits
-
-    def get_gate_operation(self, instruction: pyqir.Instruction):
-        str_instruction = str(instruction)
-        if "call void @__quantum__qis__" in str_instruction and "__body(" in str_instruction:
-            gate_match = re.search(r"@__quantum__qis__(\w+)__body", str_instruction)
-            if gate_match:
-                gate_name = gate_match.group(1)
-                return gate_name
-        elif "call void @__quantum__qis__" in str_instruction and "__adj(" in str_instruction:
-            gate_match = re.search(r"@__quantum__qis__(\w+)__adj", str_instruction)
-            if gate_match:
-                gate_name = gate_match.group(1)
-                return gate_name + "__adj"
-        elif "call void @__quantum__rt__" in str_instruction:
-            return "rt"
 
     def lower_qubit_getindex(self, state: lowering.State[pyqir.Module], qid: int):
         index = qid
@@ -324,6 +224,14 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         qbits_getitem = [self.lower_qubit_getindex(state, qid) for qid in qids]
         qbits = state.current_frame.push(ilist.New(values=qbits_getitem))
         return qbits.result
+
+    def lower_literal(self, state: lowering.State[pyqir.Module], value) -> ir.SSAValue:
+        raise lowering.BuildError("Literals not supported in pyqir module")
+
+    def lower_global(
+        self, state: lowering.State[pyqir.Module], node: pyqir.Module
+    ) -> lowering.LoweringABC.Result:
+        raise lowering.BuildError("Globals not supported in pyqir module")
 
     def run(
         self,
@@ -361,7 +269,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
                 n = frame.push(py.Constant(self.num_qubits))
                 self.qreg = frame.push(func.Invoke((n.result,), callee=qalloc, kwargs=())).result
 
-            self.visit(state, module)
+            self.visit_block(state, module)
 
             if compactify:
                 Walk(CFGCompactify()).rewrite(frame.curr_region)
@@ -370,216 +278,123 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
 
         return region
 
-    def visit(self, state: lowering.State[pyqir.Module], node: pyqir.Module) -> lowering.Result:
-        name = node.__class__.__name__
-        return getattr(self, f"visit_{name}", self.generic_visit)(state, node)
-
-    def generic_visit(
-        self, state: lowering.State[pyqir.Module], node: pyqir.Module | pyqir.Function
-    ):
-        if isinstance(node, (pyqir.Function, pyqir.Module)):
-            raise lowering.BuildError(f"Cannot lower {node.__class__.__name__} node: {node}")
-        raise lowering.BuildError(f"Cannot lower {node}")
-
-    def lower_literal(self, state: lowering.State[pyqir.Module], value) -> ir.SSAValue:
-        raise lowering.BuildError("Literals not supported in pyqir module")
-
-    def lower_global(
-        self, state: lowering.State[pyqir.Module], node: pyqir.Module
-    ) -> lowering.LoweringABC.Result:
-        raise lowering.BuildError("Globals not supported in pyqir module")
-
-    def measure_all_qubits(self, state: lowering.State[pyqir.Module]):
-        m_qargs = self.lower_qubit_getindices(state, self.measurements)
-        state.current_frame.push(qubit.stmts.Measure(m_qargs))
-        self.measurements.clear()
-
-    def visit_Module(
+    def visit_block(
         self, state: lowering.State[pyqir.Module], node: pyqir.Module
     ) -> lowering.Result:
-        return self.visit_Function(state, node)
+        entry_point = next(filter(pyqir.is_entry_point, node.functions))
+        for block in entry_point.basic_blocks:
+            for instruction in block.instructions:
+                if isinstance(instruction, pyqir.Call):
+                    gate = instruction.callee.name.removeprefix("__quantum__qis__").removesuffix(
+                        "__body"
+                    )
+                    args = instruction.args
+                    if gate in PYQIR_ALL_GATES_MAP:
+                        self.visit(state, gate, args)
+            if len(self.measurements) > 0:
+                self.visit_measurement_gate(state, self.measurements)
+                self.measurements.clear()
 
-    def visit_Function(
-        self, state: lowering.State[pyqir.Module], node: pyqir.Module
+    def visit(
+        self, state: lowering.State[pyqir.Module], gate: str, args: list[pyqir.Value]
     ) -> lowering.Result:
-        for fun in node.functions:
-            if pyqir.is_entry_point(fun):
-                for block in fun.basic_blocks:
-                    for instruction in block.instructions:
-                        if isinstance(instruction, pyqir.Call):
-                            self.visit_gate_operation(state, instruction)
-                    if len(self.measurements) > 0:
-                        self.measure_all_qubits(state)
+        if gate not in PYQIR_MEASUREMENT_OP_MAP and len(self.measurements) > 0:
+            self.visit_measurement_gate(state, self.measurements)
+            self.measurements.clear()
 
-    def visit_gate_operation(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        gate_name = self.get_gate_operation(node)
-        if gate_name != "mz" and len(self.measurements) > 0:
-            self.measure_all_qubits(state)
-        if gate_name == "rt":
-            return None
-        return getattr(self, f"visit_{gate_name}", self.generic_visit)(state, node)
+        return getattr(self, f"visit_{gate}")(state, args)
 
-    def extract_qubit_indices(self, args_str: str) -> list[int]:
-        """Extract qubit indices from PyQIR instruction arguments string."""
-        qubit_indices = []
-        # Handle null qubits (which represent qubit 0)
-        null_qubit_count = args_str.count("%Qubit* null")
-        for _ in range(null_qubit_count):
-            qubit_indices.append(0)
-
-        # Extract explicit qubit indices
-        qubit_pattern = r"%Qubit\* inttoptr \(i64 (\d+) to %Qubit\*\)"
-        qubit_matches = re.findall(qubit_pattern, args_str)
-        if qubit_matches:
-            qubit_indices.extend([int(idx) for idx in qubit_matches])
-
-        return qubit_indices
-
-    def extract_cbit_indices(self, args_str: str) -> list[int]:
-        """Extract classical bit indices from PyQIR instruction arguments string."""
-        cbit_indices = []
-        # Handle null results (which represent result 0)
-        null_result_count = args_str.count("%Result* null")
-        for _ in range(null_result_count):
-            cbit_indices.append(0)
-
-        # Extract explicit result indices
-        cbit_pattern = r"%Result\* inttoptr \(i64 (\d+) to %Result\*\)"
-        cbit_matches = re.findall(cbit_pattern, args_str)
-        if cbit_matches:
-            cbit_indices.extend([int(idx) for idx in cbit_matches])
-
-        return cbit_indices
-
-    def extract_args_string(self, node: pyqir.Instruction) -> str:
-        """Extract the arguments string from a PyQIR instruction."""
-        str_node = str(node)
-        args_match = re.search(r"__body\s*\((.*)\)", str_node)
-        if not args_match:
-            args_match = re.search(r"__adj\s*\((.*)\)", str_node)
-        return args_match.group(1) if args_match else ""
-
-    def extract_parameter(self, args_str: str) -> float:
-        """Extract the parameter from the PyQIR instruction arguments string."""
-        num = 0.0
-        hex_parameter_match = re.search(r"double\s+0x([^\s,)\]]+)", args_str)
-        float_parameter_match = re.search(r"double\s+(?!0x)([^\s,)\]]+)", args_str)
-        if hex_parameter_match:
-            num = int(hex_parameter_match.group(1), 16)
-            num = struct.unpack("d", struct.pack("Q", num))[0]
-        elif float_parameter_match:
-            num = float(float_parameter_match.group(1))
-        return num
-
-    def visit_single_qubit_gate(
-        self, state: lowering.State[pyqir.Module], node: pyqir.Instruction, gate_name: str
-    ):
-        args_str = self.extract_args_string(node)
-        qubit_indices = self.extract_qubit_indices(args_str)
+    # One qubit gate
+    def visit_one_qubit_gate(
+        self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]
+    ) -> lowering.Result:
+        qubit_indices = [0 if arg.is_null else pyqir.qubit_id(arg) for arg in args]
         qargs = self.lower_qubit_getindices(state, qubit_indices)
         return qargs
 
-    def visit_h(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs = self.visit_single_qubit_gate(state, node, "h")
+    def visit_h(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qargs = self.visit_one_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.H(qargs))
 
-    def visit_x(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs = self.visit_single_qubit_gate(state, node, "x")
+    def visit_x(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qargs = self.visit_one_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.X(qargs))
 
-    def visit_y(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs = self.visit_single_qubit_gate(state, node, "y")
+    def visit_y(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qargs = self.visit_one_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.Y(qargs))
 
-    def visit_z(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs = self.visit_single_qubit_gate(state, node, "z")
+    def visit_z(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qargs = self.visit_one_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.Z(qargs))
 
-    def visit_s(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs = self.visit_single_qubit_gate(state, node, "s")
+    def visit_s(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qargs = self.visit_one_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.S(qargs))
 
-    def visit_t(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs = self.visit_single_qubit_gate(state, node, "t")
+    def visit_t(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qargs = self.visit_one_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.T(qargs))
 
-    def visit_s__adj(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs = self.visit_single_qubit_gate(state, node, "s__adj")
+    def visit_s__adj(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qargs = self.visit_one_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.S(adjoint=True, qubits=qargs))
 
-    def visit_t__adj(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs = self.visit_single_qubit_gate(state, node, "t__adj")
+    def visit_t__adj(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qargs = self.visit_one_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.T(adjoint=True, qubits=qargs))
 
+    # Two qubit gate
     def visit_two_qubit_gate(
-        self, state: lowering.State[pyqir.Module], node: pyqir.Instruction, gate_name: str
-    ):
-        args_str = self.extract_args_string(node)
-        split_args = args_str.split(",")
-
-        # Extract control qubit (first argument)
-        control_args = split_args[0].strip() if len(split_args) > 0 else ""
-        control_qubit_indices = self.extract_qubit_indices(control_args)
+        self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]
+    ) -> lowering.Result:
+        control_qubit_indices = [0 if args[0].is_null else pyqir.qubit_id(args[0])]
+        target_qubit_indices = [0 if args[1].is_null else pyqir.qubit_id(args[1])]
         control_qargs = self.lower_qubit_getindices(state, control_qubit_indices)
-
-        # Extract target qubit (second argument)
-        target_args = split_args[1].strip() if len(split_args) > 1 else ""
-        target_qubit_indices = self.extract_qubit_indices(target_args)
         target_qargs = self.lower_qubit_getindices(state, target_qubit_indices)
-
         return control_qargs, target_qargs
 
-    def visit_cnot(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        control_qargs, target_qargs = self.visit_two_qubit_gate(state, node, "cnot")
+    def visit_cnot(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        control_qargs, target_qargs = self.visit_two_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.CX(control_qargs, target_qargs))
 
-    def visit_cz(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        control_qargs, target_qargs = self.visit_two_qubit_gate(state, node, "cz")
+    def visit_cz(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        control_qargs, target_qargs = self.visit_two_qubit_gate(state, args)
         return state.current_frame.push(gate.stmts.CZ(control_qargs, target_qargs))
 
-    def visit_single_qubit_rotation(
-        self, state: lowering.State[pyqir.Module], node: pyqir.Instruction, gate_name: str
-    ):
-        args_str = self.extract_args_string(node)
-        split_args = args_str.split(",")
-
-        # Extract parameter (first argument)
-        parameter = self.extract_parameter(split_args[0].strip() if len(split_args) > 0 else "")
-
-        # Extract qubit (second argument)
-        qubit_args = split_args[1].strip() if len(split_args) > 1 else ""
-        qubit_indices = self.extract_qubit_indices(qubit_args)
-
+    # One qubit rotation gate
+    def visit_one_qubit_rotation_gate(
+        self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]
+    ) -> lowering.Result:
+        parameter = args[0].value
+        qubit_indices = [0 if args[1].is_null else pyqir.qubit_id(args[1])]
         qargs = self.lower_qubit_getindices(state, qubit_indices)
+        return parameter, qargs
 
-        return qargs, parameter
-
-    def visit_rx(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs, parameter = self.visit_single_qubit_rotation(state, node, "rx")
+    def visit_rx(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        parameter, qargs = self.visit_one_qubit_rotation_gate(state, args)
         angle = state.current_frame.push(py.Constant(value=parameter))
         return state.current_frame.push(gate.stmts.Rx(angle=angle.result, qubits=qargs))
 
-    def visit_ry(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs, parameter = self.visit_single_qubit_rotation(state, node, "ry")
+    def visit_ry(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        parameter, qargs = self.visit_one_qubit_rotation_gate(state, args)
         angle = state.current_frame.push(py.Constant(value=parameter))
         return state.current_frame.push(gate.stmts.Ry(angle=angle.result, qubits=qargs))
 
-    def visit_rz(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        qargs, parameter = self.visit_single_qubit_rotation(state, node, "rz")
+    def visit_rz(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        parameter, qargs = self.visit_one_qubit_rotation_gate(state, args)
         angle = state.current_frame.push(py.Constant(value=parameter))
         return state.current_frame.push(gate.stmts.Rz(angle=angle.result, qubits=qargs))
 
-    def visit_mz(self, state: lowering.State[pyqir.Module], node: pyqir.Instruction):
-        args_str = self.extract_args_string(node)
-        split_args = args_str.split(",")
+    # Measurement gate
+    def visit_measurement_gate(
+        self, state: lowering.State[pyqir.Module], qubit_indices: list[int]
+    ) -> lowering.Result:
+        qargs = self.lower_qubit_getindices(state, qubit_indices)
+        state.current_frame.push(qubit.stmts.Measure(qargs))
+        self.measurements.clear()
 
-        # Extract qubit (first argument)
-        qubit_args = split_args[0].strip() if len(split_args) > 0 else ""
-        qubit_indices = self.extract_qubit_indices(qubit_args)
+    def visit_mz(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+        qubit_indices = [0 if args[0].is_null else pyqir.qubit_id(args[0])]
         for q in qubit_indices:
             self.measurements.append(q)
-        # qargs = self.lower_qubit_getindices(state, qubit_indices)
-        # Extract classical bit (second argument)
-        # cbit_args = split_args[1].strip() if len(split_args) > 1 else ""
-        # cbit_indices = self.extract_cbit_indices(cbit_args)
-        # return state.current_frame.push(qubit.stmts.Measure(qargs))

@@ -78,6 +78,10 @@ PYQIR_THREE_QUBIT_OP_MAP = {
     "ccnot": pyqir._native.ccx,
 }
 
+PYQIR_MEASUREMENT_OP_MAP = {
+    "mz": pyqir._native.mz,
+}
+
 CONSTANTS_MAP = {"pi": 3.141592653589793}
 
 
