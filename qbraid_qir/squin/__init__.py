@@ -12,19 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Module defining exceptions for errors raised by qBraid QIR.
+# type: ignore
 
 """
+This module contains the functionality to convert a PyQIR module into a squin kernel.
+"""
+from .visitor import load
 
-
-class QbraidQirError(Exception):
-    """Base class for errors raised by qbraid-qir."""
-
-
-class QirConversionError(QbraidQirError):
-    """Class for errors raised when converting quantum program to QIR."""
-
-
-class InvalidSquinInput(QbraidQirError):
-    """Class for errors raised when invalid input is provided to squin converter."""
+__all__ = ["load"]
