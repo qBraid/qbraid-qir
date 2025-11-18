@@ -16,12 +16,11 @@
 # type: ignore
 
 import os
-import re
-import struct
 from dataclasses import dataclass, field
 from plistlib import InvalidFileException
 from typing import Any
 
+import numpy as np
 import pyqir
 from bloqade import qubit
 from bloqade.squin import gate, kernel, qalloc
@@ -29,13 +28,14 @@ from kirin import ir, lowering, types
 from kirin.dialects import func, ilist, py
 from kirin.rewrite import CFGCompactify, Walk
 
-from qbraid_qir.exceptions import InvalidSquinInput
 from qbraid_qir.qasm3.maps import (
     PYQIR_MEASUREMENT_OP_MAP,
     PYQIR_ONE_QUBIT_OP_MAP,
     PYQIR_ONE_QUBIT_ROTATION_MAP,
     PYQIR_TWO_QUBIT_OP_MAP,
 )
+
+from .exceptions import InvalidSquinInput
 
 # Combined map for efficient gate lookup
 PYQIR_ALL_GATES_MAP = {
@@ -123,9 +123,8 @@ def load(
                     f"Invalid input {type(module)}, expected 'str | pyqir.Module'. "
                     f"String must be a valid file path (.ll or .bc) or valid QIR IR text."
                 ) from exc
-    elif isinstance(module, pyqir.Module):
-        # Already a valid PyQIR module, no conversion needed
-        pass
+    elif not isinstance(module, pyqir.Module):
+        raise InvalidSquinInput(f"Invalid input {type(module)}, expected 'pyqir.Module'")
 
     target = SquinVisitor(dialects=dialects, module=module)
     body = target.run(
@@ -156,7 +155,6 @@ def load(
     else:
         args = ()
 
-    # NOTE: add _self as argument; need to know signature before so do it after lowering
     signature = func.Signature(args, return_node.value.type)
     body.blocks[0].args.insert_from(
         0,
@@ -171,8 +169,6 @@ def load(
     )
 
     mt = ir.Method(
-        mod=None,
-        py_func=None,
         sym_name=kernel_name,
         arg_names=arg_names,
         dialects=dialects,
@@ -193,26 +189,6 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
     qreg: ir.SSAValue = field(init=False)
     num_qubits: int = field(init=False)
     measurements: list[int] = field(default_factory=list, init=False)
-
-    def get_num_qubits(self, module):
-        """
-        Extract the number of qubits from the pyqir module.
-
-        Args:
-            module: PyQIR module object
-
-        Returns:
-            int: Number of qubits
-        """
-        # Find the entry point function
-        entry_func = next(filter(pyqir.is_entry_point, module.functions))
-        if not entry_func:
-            return 0
-
-        # Get the required number of qubits and results (classical bits)
-        qubits = pyqir.required_num_qubits(entry_func)
-
-        return qubits
 
     def lower_qubit_getindex(self, state: lowering.State[pyqir.Module], qid: int):
         index = qid
@@ -255,9 +231,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
 
         with state.frame([module], globals=globals, finalize_next=False) as frame:
 
-            # NOTE: need a register of qubits before lowering statements
             if register_as_argument:
-                # NOTE: register as argument to the kernel; we have freedom of choice for the name here
                 frame.curr_block.args.append_from(
                     ilist.IListType[qubit.QubitType, types.Any],
                     name=register_argument_name,
@@ -265,9 +239,12 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
                 self.qreg = frame.curr_block.args[0]
             else:
                 # NOTE: create a new register of appropriate size
-                self.num_qubits = self.get_num_qubits(module)
+                self.entry_point = next(filter(pyqir.is_entry_point, module.functions), None)
+                if not self.entry_point:
+                    raise InvalidSquinInput("No entry point found in pyqir module")
+                self.num_qubits = pyqir.required_num_qubits(self.entry_point)
                 n = frame.push(py.Constant(self.num_qubits))
-                self.qreg = frame.push(func.Invoke((n.result,), callee=qalloc, kwargs=())).result
+                self.qreg = frame.push(func.Invoke((n.result,), callee=qalloc)).result
 
             self.visit_block(state, module)
 
@@ -281,28 +258,31 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
     def visit_block(
         self, state: lowering.State[pyqir.Module], node: pyqir.Module
     ) -> lowering.Result:
-        entry_point = next(filter(pyqir.is_entry_point, node.functions))
-        for block in entry_point.basic_blocks:
+        # There could be multiple basic blocks in the entry point
+        for block in self.entry_point.basic_blocks:
             for instruction in block.instructions:
-                if isinstance(instruction, pyqir.Call):
-                    gate = instruction.callee.name.removeprefix("__quantum__qis__").removesuffix(
-                        "__body"
-                    )
-                    args = instruction.args
-                    if gate in PYQIR_ALL_GATES_MAP:
-                        self.visit(state, gate, args)
+                self.visit_instruction(state, instruction)
             if len(self.measurements) > 0:
                 self.visit_measurement_gate(state, self.measurements)
                 self.measurements.clear()
 
-    def visit(
-        self, state: lowering.State[pyqir.Module], gate: str, args: list[pyqir.Value]
+    def visit_instruction(
+        self, state: lowering.State[pyqir.Module], instruction: pyqir.Instruction
     ) -> lowering.Result:
-        if gate not in PYQIR_MEASUREMENT_OP_MAP and len(self.measurements) > 0:
+        if isinstance(instruction, pyqir.Call):
+            gate = instruction.callee.name.removeprefix("__quantum__qis__").removesuffix("__body")
+            args = instruction.args
+            if gate in PYQIR_ALL_GATES_MAP:
+                return self.visit(state, gate, args)
+
+    def visit(
+        self, state: lowering.State[pyqir.Module], instruction: str, args: list[pyqir.Value]
+    ) -> lowering.Result:
+        if instruction not in PYQIR_MEASUREMENT_OP_MAP and len(self.measurements) > 0:
             self.visit_measurement_gate(state, self.measurements)
             self.measurements.clear()
 
-        return getattr(self, f"visit_{gate}")(state, args)
+        return getattr(self, f"visit_{instruction}")(state, args)
 
     # One qubit gate
     def visit_one_qubit_gate(
@@ -369,7 +349,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         parameter = args[0].value
         qubit_indices = [0 if args[1].is_null else pyqir.qubit_id(args[1])]
         qargs = self.lower_qubit_getindices(state, qubit_indices)
-        return parameter, qargs
+        return 0.5 * (parameter / np.pi), qargs
 
     def visit_rx(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
         parameter, qargs = self.visit_one_qubit_rotation_gate(state, args)

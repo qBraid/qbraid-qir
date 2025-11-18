@@ -13,14 +13,10 @@
 # limitations under the License.
 
 """
-Module defining exceptions for errors raised by qBraid QIR.
+Module defining exceptions for errors raised by SQUIN conversions.
 
 """
 
 
-class QbraidQirError(Exception):
-    """Base class for errors raised by qbraid-qir."""
-
-
-class QirConversionError(QbraidQirError):
-    """Class for errors raised when converting quantum program to QIR."""
+class InvalidSquinInput(Exception):
+    """Class for errors raised when invalid input is provided to squin converter."""
