@@ -22,8 +22,8 @@ from typing import Any
 
 import numpy as np
 import pyqir
-from bloqade import qubit
-from bloqade.squin import gate, kernel, qalloc
+from bloqade import qubit, squin
+from bloqade.squin import kernel
 from kirin import ir, lowering, types
 from kirin.dialects import func, ilist, py
 from kirin.rewrite import CFGCompactify, Walk
@@ -42,7 +42,7 @@ PYQIR_ALL_GATES_MAP = {
     **PYQIR_ONE_QUBIT_OP_MAP,
     **PYQIR_ONE_QUBIT_ROTATION_MAP,
     **PYQIR_TWO_QUBIT_OP_MAP,
-    **PYQIR_MEASUREMENT_OP_MAP,
+    # **PYQIR_MEASUREMENT_OP_MAP,
 }
 
 
@@ -62,10 +62,7 @@ def load(
             a single `ilist.IList[Qubit, Any]` argument that is a list of qubits used within the
             function. This allows you to compose kernel functions generated from circuits.
             Defaults to `False`.
-        return_register (bool): Determine whether the resulting kernel function returns a
-            single value of type `ilist.IList[Qubit, Any]` that is the list of qubits used
-            in the kernel function. Useful when you want to compose multiple kernel functions
-            generated from circuits. Defaults to `False`.
+        return_measurements (list[int] | None): Which measured qubit results to return. Default: None.
         register_argument_name (str): The name of the argument that represents the qubit register.
             Only used when `register_as_argument=True`. Defaults to "q".
         globals (dict[str, Any] | None): The global variables to use. Defaults to None.
@@ -80,7 +77,7 @@ def load(
     kernel_name: str = kwargs.pop("kernel_name", "main")
     dialects: ir.DialectGroup = kwargs.pop("dialects", kernel)
     register_as_argument: bool = kwargs.pop("register_as_argument", False)
-    return_register: bool = kwargs.pop("return_register", False)
+    return_measurements: list[int] | None = kwargs.pop("return_measurements", None)
     register_argument_name: str = kwargs.pop("register_argument_name", "q")
     globals: dict[str, Any] | None = kwargs.pop("globals", None)
     file: str | None = kwargs.pop("file", None)
@@ -136,13 +133,41 @@ def load(
         compactify=compactify,
         register_as_argument=register_as_argument,
         register_argument_name=register_argument_name,
+        return_measurements=return_measurements,
     )
 
-    if return_register:
-        return_value = target.qreg
-    else:
-        return_value = func.ConstantNone()
-        body.blocks[0].stmts.append(return_value)
+    # TODO: Determine what to return based on return_measurements parameter
+    # if return_measurements and len(return_measurements) > 0:
+    #     # Return measurement results for specified qubits
+    #     measurement_results = []
+    #     for qid in return_measurements:
+    #         # Validate qubit index is in range
+    #         if qid < 0 or qid >= target.num_qubits:
+    #             raise InvalidSquinInput(
+    #                 f"Cannot return measurement for qubit {qid}: "
+    #                 f"qubit index out of range [0, {target.num_qubits})"
+    #             )
+    #         # Check if qubit was measured
+    #         if qid in target.measurement_results:
+    #             measurement_results.append(target.measurement_results[qid])
+    #         else:
+    #             raise InvalidSquinInput(
+    #                 f"Cannot return measurement for qubit {qid}: qubit was not measured"
+    #             )
+
+    #     if len(measurement_results) == 1:
+    #         # Single measurement result - return directly
+    #         return_value = measurement_results[0]
+    #     else:
+    #         # Multiple measurement results - create tuple (py.tuple.New requires tuple, not list)
+    #         tuple_stmt = py.tuple.New(values=tuple(measurement_results))
+    #         body.blocks[0].stmts.append(tuple_stmt)
+    #         return_value = tuple_stmt.result
+    # else:
+
+    # Return None
+    return_value = func.ConstantNone()
+    body.blocks[0].stmts.append(return_value)
 
     return_node = func.Return(value_or_stmt=return_value)
     body.blocks[0].stmts.append(return_node)
@@ -188,18 +213,9 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
     module: pyqir.Module
     qreg: ir.SSAValue = field(init=False)
     num_qubits: int = field(init=False)
-    measurements: list[int] = field(default_factory=list, init=False)
-
-    def lower_qubit_getindex(self, state: lowering.State[pyqir.Module], qid: int):
-        index = qid
-        index_ssa = state.current_frame.push(py.Constant(index)).result
-        qbit_getitem = state.current_frame.push(py.GetItem(self.qreg, index_ssa))
-        return qbit_getitem.result
-
-    def lower_qubit_getindices(self, state: lowering.State[pyqir.Module], qids: list[int]):
-        qbits_getitem = [self.lower_qubit_getindex(state, qid) for qid in qids]
-        qbits = state.current_frame.push(ilist.New(values=qbits_getitem))
-        return qbits.result
+    # measurements: list[int] = field(default_factory=list, init=False) # TODO: Handle measurements
+    qubit_ssa_map: dict[int, ir.SSAValue] = field(default_factory=dict, init=False)
+    measurement_results: dict[int, ir.SSAValue] = field(default_factory=dict, init=False)
 
     def lower_literal(self, state: lowering.State[pyqir.Module], value) -> ir.SSAValue:
         raise lowering.BuildError("Literals not supported in pyqir module")
@@ -220,6 +236,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         compactify: bool = True,
         register_as_argument: bool = False,
         register_argument_name: str = "q",
+        return_measurements: list[int] | None = None,
     ) -> ir.Region:
 
         state = lowering.State(
@@ -231,22 +248,30 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
 
         with state.frame([module], globals=globals, finalize_next=False) as frame:
 
+            # Get entry point and number of qubits first
+            self.entry_point = next(filter(pyqir.is_entry_point, module.functions), None)
+            if not self.entry_point:
+                raise InvalidSquinInput("No entry point found in pyqir module")
+            self.num_qubits = pyqir.required_num_qubits(self.entry_point)
+
             if register_as_argument:
                 frame.curr_block.args.append_from(
                     ilist.IListType[qubit.QubitType, types.Any],
                     name=register_argument_name,
                 )
                 self.qreg = frame.curr_block.args[0]
+                # Extract individual qubit SSA values from the register and store in map
+                for qid in range(self.num_qubits):
+                    index_ssa = frame.push(py.Constant(qid)).result
+                    qbit_getitem = frame.push(py.GetItem(self.qreg, index_ssa))
+                    self.qubit_ssa_map[qid] = qbit_getitem.result
             else:
-                # NOTE: create a new register of appropriate size
-                self.entry_point = next(filter(pyqir.is_entry_point, module.functions), None)
-                if not self.entry_point:
-                    raise InvalidSquinInput("No entry point found in pyqir module")
-                self.num_qubits = pyqir.required_num_qubits(self.entry_point)
-                n = frame.push(py.Constant(self.num_qubits))
-                self.qreg = frame.push(func.Invoke((n.result,), callee=qalloc)).result
+                # Create individual qubits using qubit.new() and store SSA values directly in map
+                for qid in range(self.num_qubits):
+                    squin_qubit = frame.push(func.Invoke((), callee=qubit.new))
+                    self.qubit_ssa_map[qid] = squin_qubit.result
 
-            self.visit_block(state, module)
+            self.visit_block(state)
 
             if compactify:
                 Walk(CFGCompactify()).rewrite(frame.curr_region)
@@ -255,16 +280,15 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
 
         return region
 
-    def visit_block(
-        self, state: lowering.State[pyqir.Module], node: pyqir.Module
-    ) -> lowering.Result:
+    def visit_block(self, state: lowering.State[pyqir.Module]) -> lowering.Result:
         # There could be multiple basic blocks in the entry point
         for block in self.entry_point.basic_blocks:
             for instruction in block.instructions:
                 self.visit_instruction(state, instruction)
-            if len(self.measurements) > 0:
-                self.visit_measurement_gate(state, self.measurements)
-                self.measurements.clear()
+            # TODO: Handle measurements
+            # if len(self.measurements) > 0:
+            #     self.visit_measurement_gate(state, self.measurements)
+            #     self.measurements.clear()
 
     def visit_instruction(
         self, state: lowering.State[pyqir.Module], instruction: pyqir.Instruction
@@ -278,9 +302,10 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
     def visit(
         self, state: lowering.State[pyqir.Module], instruction: str, args: list[pyqir.Value]
     ) -> lowering.Result:
-        if instruction not in PYQIR_MEASUREMENT_OP_MAP and len(self.measurements) > 0:
-            self.visit_measurement_gate(state, self.measurements)
-            self.measurements.clear()
+        # TODO: Handle measurements
+        # if instruction not in PYQIR_MEASUREMENT_OP_MAP and len(self.measurements) > 0:
+        #     self.visit_measurement_gate(state, self.measurements)
+        #     self.measurements.clear()
 
         return getattr(self, f"visit_{instruction}")(state, args)
 
@@ -288,93 +313,96 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
     def visit_one_qubit_gate(
         self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]
     ) -> lowering.Result:
-        qubit_indices = [0 if arg.is_null else pyqir.qubit_id(arg) for arg in args]
-        qargs = self.lower_qubit_getindices(state, qubit_indices)
-        return qargs
+        qid = 0 if args[0].is_null else pyqir.qubit_id(args[0])
+        qubit_ssa = self.qubit_ssa_map[qid]
+        return qubit_ssa
 
     def visit_h(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qargs = self.visit_one_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.H(qargs))
+        qubit_ssa = self.visit_one_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((qubit_ssa,), callee=squin.h))
 
     def visit_x(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qargs = self.visit_one_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.X(qargs))
+        qubit_ssa = self.visit_one_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((qubit_ssa,), callee=squin.x))
 
     def visit_y(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qargs = self.visit_one_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.Y(qargs))
+        qubit_ssa = self.visit_one_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((qubit_ssa,), callee=squin.y))
 
     def visit_z(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qargs = self.visit_one_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.Z(qargs))
+        qubit_ssa = self.visit_one_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((qubit_ssa,), callee=squin.z))
 
     def visit_s(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qargs = self.visit_one_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.S(qargs))
+        qubit_ssa = self.visit_one_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((qubit_ssa,), callee=squin.s))
 
     def visit_t(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qargs = self.visit_one_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.T(qargs))
+        qubit_ssa = self.visit_one_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((qubit_ssa,), callee=squin.t))
 
     def visit_s__adj(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qargs = self.visit_one_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.S(adjoint=True, qubits=qargs))
+        qubit_ssa = self.visit_one_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((qubit_ssa,), callee=squin.s_adj))
 
     def visit_t__adj(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qargs = self.visit_one_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.T(adjoint=True, qubits=qargs))
+        qubit_ssa = self.visit_one_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((qubit_ssa,), callee=squin.t_adj))
 
     # Two qubit gate
     def visit_two_qubit_gate(
         self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]
     ) -> lowering.Result:
-        control_qubit_indices = [0 if args[0].is_null else pyqir.qubit_id(args[0])]
-        target_qubit_indices = [0 if args[1].is_null else pyqir.qubit_id(args[1])]
-        control_qargs = self.lower_qubit_getindices(state, control_qubit_indices)
-        target_qargs = self.lower_qubit_getindices(state, target_qubit_indices)
-        return control_qargs, target_qargs
+        control_qid = 0 if args[0].is_null else pyqir.qubit_id(args[0])
+        target_qid = 0 if args[1].is_null else pyqir.qubit_id(args[1])
+        control_qubit = self.qubit_ssa_map[control_qid]
+        target_qubit = self.qubit_ssa_map[target_qid]
+        return control_qubit, target_qubit
 
     def visit_cnot(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        control_qargs, target_qargs = self.visit_two_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.CX(control_qargs, target_qargs))
+        control_qubit, target_qubit = self.visit_two_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((control_qubit, target_qubit), callee=squin.cx))
 
     def visit_cz(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        control_qargs, target_qargs = self.visit_two_qubit_gate(state, args)
-        return state.current_frame.push(gate.stmts.CZ(control_qargs, target_qargs))
+        control_qubit, target_qubit = self.visit_two_qubit_gate(state, args)
+        return state.current_frame.push(func.Invoke((control_qubit, target_qubit), callee=squin.cz))
 
     # One qubit rotation gate
     def visit_one_qubit_rotation_gate(
         self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]
     ) -> lowering.Result:
         parameter = args[0].value
-        qubit_indices = [0 if args[1].is_null else pyqir.qubit_id(args[1])]
-        qargs = self.lower_qubit_getindices(state, qubit_indices)
-        return 0.5 * (parameter / np.pi), qargs
+        qid = 0 if args[1].is_null else pyqir.qubit_id(args[1])
+        qubit_ssa = self.qubit_ssa_map[qid]
+        angle = state.current_frame.push(py.Constant(value=0.5 * (parameter / np.pi)))
+        return angle.result, qubit_ssa
 
     def visit_rx(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        parameter, qargs = self.visit_one_qubit_rotation_gate(state, args)
-        angle = state.current_frame.push(py.Constant(value=parameter))
-        return state.current_frame.push(gate.stmts.Rx(angle=angle.result, qubits=qargs))
+        angle, qubit_ssa = self.visit_one_qubit_rotation_gate(state, args)
+        return state.current_frame.push(func.Invoke((angle, qubit_ssa), callee=squin.rx))
 
     def visit_ry(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        parameter, qargs = self.visit_one_qubit_rotation_gate(state, args)
-        angle = state.current_frame.push(py.Constant(value=parameter))
-        return state.current_frame.push(gate.stmts.Ry(angle=angle.result, qubits=qargs))
+        angle, qubit_ssa = self.visit_one_qubit_rotation_gate(state, args)
+        return state.current_frame.push(func.Invoke((angle, qubit_ssa), callee=squin.ry))
 
     def visit_rz(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        parameter, qargs = self.visit_one_qubit_rotation_gate(state, args)
-        angle = state.current_frame.push(py.Constant(value=parameter))
-        return state.current_frame.push(gate.stmts.Rz(angle=angle.result, qubits=qargs))
+        angle, qubit_ssa = self.visit_one_qubit_rotation_gate(state, args)
+        return state.current_frame.push(func.Invoke((angle, qubit_ssa), callee=squin.rz))
 
-    # Measurement gate
-    def visit_measurement_gate(
-        self, state: lowering.State[pyqir.Module], qubit_indices: list[int]
-    ) -> lowering.Result:
-        qargs = self.lower_qubit_getindices(state, qubit_indices)
-        state.current_frame.push(qubit.stmts.Measure(qargs))
-        self.measurements.clear()
+    # TODO: Handle measurements
+    # def visit_measurement_gate(
+    #     self, state: lowering.State[pyqir.Module], qubit_indices: list[int]
+    # ) -> lowering.Result:
+    #     for qid in qubit_indices:
+    #         qubit_ssa = self.qubit_ssa_map[qid]
+    #         measure_invoke = state.current_frame.push(
+    #             func.Invoke((qubit_ssa,), callee=squin.measure)
+    #         )
+    #         # Store the measurement result (overwrites previous measurement for same qubit)
+    #         self.measurement_results[qid] = measure_invoke.result
+    #     self.measurements.clear()
 
-    def visit_mz(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
-        qubit_indices = [0 if args[0].is_null else pyqir.qubit_id(args[0])]
-        for q in qubit_indices:
-            self.measurements.append(q)
+    # def visit_mz(self, state: lowering.State[pyqir.Module], args: list[pyqir.Value]):
+    #     qubit_indices = [0 if args[0].is_null else pyqir.qubit_id(args[0])]
+    #     for q in qubit_indices:
+    #         self.measurements.append(q)
