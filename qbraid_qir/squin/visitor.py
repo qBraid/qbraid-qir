@@ -16,7 +16,6 @@
 This module contains the functionality to convert a PyQIR module into a squin kernel.
 """
 import os
-from dataclasses import dataclass, field
 from plistlib import InvalidFileException
 from typing import Any, Callable
 
@@ -195,14 +194,30 @@ def load(
     return mt
 
 
-@dataclass
 class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
     """convert a pyqir module to a squin kernel"""
 
-    module: pyqir.Module
-    qreg: ir.SSAValue = field(init=False)
-    num_qubits: int | None = field(init=False)
-    qubit_ssa_map: dict[int, ir.SSAValue] = field(default_factory=dict, init=False)
+    def __init__(self, dialects: ir.DialectGroup, module: pyqir.Module):
+        """Initialize the SquinVisitor.
+
+        Args:
+            dialects: The dialects to use for lowering.
+            module: The PyQIR module to convert.
+        """
+        super().__init__(dialects=dialects)
+        self.module = module
+        self.qreg: ir.SSAValue = None  # type: ignore
+        self.num_qubits: int | None = None
+        self.qubit_ssa_map: dict[int, ir.SSAValue] = {}
+        self.visit_map: dict[
+            type, Callable[[lowering.State[pyqir.Module], Any], lowering.Result]
+        ] = {
+            pyqir.Call: self.visit_call,
+            pyqir.BasicBlock: self.visit_basic_block,
+            pyqir.Constant: self.visit_constant,
+            pyqir.FloatConstant: self.visit_constant,
+            pyqir.IntConstant: self.visit_constant,
+        }
 
     # Abstract/Required Methods
     def lower_literal(self, state: lowering.State[pyqir.Module], value) -> ir.SSAValue:
@@ -308,14 +323,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         Returns:
             lowering.Result: The result of the visitor.
         """
-        visit_map: dict[type, Callable[[lowering.State[pyqir.Module], Any], lowering.Result]] = {
-            pyqir.Call: self.visit_call,
-            pyqir.BasicBlock: self.visit_basic_block,
-            pyqir.Constant: self.visit_constant,
-            pyqir.FloatConstant: self.visit_floatConstant,
-            pyqir.IntConstant: self.visit_intConstant,
-        }
-        visitor_function = visit_map.get(type(statement))
+        visitor_function = self.visit_map.get(type(statement))
         if visitor_function:
             return visitor_function(state, statement)
 
@@ -333,8 +341,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         Returns:
             lowering.Result: The result of the visitor.
         """
-        if not isinstance(block, pyqir.BasicBlock):
-            raise InvalidSquinInput(f"Invalid basic block: {block}")
+
         if len(block.instructions) < 1:
             raise InvalidSquinInput("No instructions found in basic block")
         for instruction in block.instructions:
@@ -350,8 +357,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         Returns:
             lowering.Result: The result of the visitor.
         """
-        if not isinstance(call, pyqir.Call):
-            raise InvalidSquinInput(f"Invalid call instruction: {call}")
+
         gate_name = call.callee.name
         args = call.args
         if gate_name not in PYQIR_TO_SQUIN_GATES_MAP:
@@ -401,40 +407,16 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         Returns:
             ir.SSAValue: The SSA value of the constant.
         """
-
         qubit_id = pyqir.qubit_id(value)
         if qubit_id is not None and qubit_id in self.qubit_ssa_map:
             return self.qubit_ssa_map[qubit_id]
 
-        if value.type.is_double or isinstance(value.type, pyqir.IntType):
+        supported_classical_const = (
+            isinstance(value, (pyqir.FloatConstant, pyqir.IntConstant))
+            or value.type.is_double
+            or isinstance(value.type, pyqir.IntType)
+        )
+        if supported_classical_const:
             return state.current_frame.push(py.Constant(value=value.value)).result  # type: ignore
 
         raise InvalidSquinInput(f"Unsupported constant value: {value}")
-
-    def visit_floatConstant(
-        self, state: lowering.State[pyqir.Module], value: pyqir.FloatConstant
-    ) -> ir.SSAValue:
-        """Visit a PyQIR FloatConstant instruction.
-
-        Args:
-            state (lowering.State[pyqir.Module]): The state of the visitor.
-            value (pyqir.FloatConstant): The value to visit.
-
-        Returns:
-            ir.SSAValue: The SSA value of the constant.
-        """
-        return state.current_frame.push(py.Constant(value=value.value)).result
-
-    def visit_intConstant(
-        self, state: lowering.State[pyqir.Module], value: pyqir.IntConstant
-    ) -> ir.SSAValue:
-        """Visit a PyQIR IntConstant instruction.
-
-        Args:
-            state (lowering.State[pyqir.Module]): The state of the visitor.
-            value (pyqir.IntConstant): The value to visit.
-
-        Returns:
-            ir.SSAValue: The SSA value of the constant.
-        """
-        return state.current_frame.push(py.Constant(value=value.value)).result
