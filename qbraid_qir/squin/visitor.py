@@ -298,7 +298,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
 
     def visit_statement(
         self, state: lowering.State[pyqir.Module], statement: Any
-    ) -> lowering.Result:
+    ) -> lowering.Result | None:
         """Visit a PyQIR statement.
 
         Args:
@@ -319,7 +319,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         if visitor_function:
             return visitor_function(state, statement)
 
-        raise InvalidSquinInput(f"Unsupported statement: {statement}")
+        return None
 
     def visit_basic_block(
         self, state: lowering.State[pyqir.Module], block: pyqir.BasicBlock
