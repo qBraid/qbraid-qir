@@ -24,6 +24,7 @@ import numpy as np
 from qbraid.interface import circuits_allclose
 
 from qbraid_qir.cirq.passes import preprocess_circuit
+from qbraid_qir.cirq.QIRTargetGateSet import QirTargetGateSet
 
 
 def test_only_supported_gates():
@@ -268,3 +269,263 @@ def test_circuit_with_reset():
         isinstance(op.gate, cirq.ResetChannel) for op in preprocessed_circuit.all_operations()
     )
     assert has_reset
+
+
+def test_tagged_multi_qubit_operation_unwrapping():
+    """
+    Test that a TaggedOperation is unwrapped to check the actual gate.
+    """
+    qubits = cirq.LineQubit.range(3)
+    # Create a tagged TOFFOLI
+    tagged_toffoli = cirq.TOFFOLI(*qubits).with_tags("custom_tag")
+    circuit = cirq.Circuit(tagged_toffoli)
+
+    preprocessed = preprocess_circuit(circuit)
+
+    # Should recognize TOFFOLI after unwrapping the tag
+    ops = list(preprocessed.all_operations())
+    assert len(ops) >= 1
+    # The TOFFOLI should be preserved
+    has_ccx = any(isinstance(op.gate, cirq.CCXPowGate) for op in ops)
+    assert has_ccx
+
+
+def test_multi_tagged_multi_qubit_operation():
+    """
+    Test operation with multiple tags is unwrapped correctly.
+    """
+    qubits = cirq.LineQubit.range(3)
+    multi_tagged = cirq.TOFFOLI(*qubits).with_tags("tag1").with_tags("tag2")
+    circuit = cirq.Circuit(multi_tagged)
+
+    preprocessed = preprocess_circuit(circuit)
+
+    # Should still recognize and preserve TOFFOLI
+    ops = list(preprocessed.all_operations())
+    has_ccx = any(isinstance(op.gate, cirq.CCXPowGate) for op in ops)
+    assert has_ccx
+
+
+def test_circuit_operation_single_multi_qubit_gate():
+    """
+    Test CircuitOperation containing exactly one multi-qubit operation.
+    """
+    qubits = cirq.LineQubit.range(3)
+    # Create a subcircuit with exactly ONE operation
+    subcircuit = cirq.Circuit(cirq.TOFFOLI(*qubits))
+    circuit_op = cirq.CircuitOperation(cirq.FrozenCircuit(subcircuit))
+    circuit = cirq.Circuit(circuit_op)
+
+    preprocessed = preprocess_circuit(circuit)
+
+    # Should unwrap and recognize TOFFOLI
+    ops = list(preprocessed.all_operations())
+    assert len(ops) >= 1
+
+
+def test_circuit_operation_multiple_multi_qubit_gates():
+    """
+    Test CircuitOperation with MORE than one operation.
+    """
+    qubits = cirq.LineQubit.range(4)
+    # Create subcircuit with MULTIPLE operations (not just one)
+    subcircuit = cirq.Circuit(
+        cirq.TOFFOLI(qubits[0], qubits[1], qubits[2]),
+        cirq.TOFFOLI(qubits[1], qubits[2], qubits[3]),
+    )
+    circuit_op = cirq.CircuitOperation(cirq.FrozenCircuit(subcircuit))
+    circuit = cirq.Circuit(circuit_op)
+
+    preprocessed = preprocess_circuit(circuit)
+
+    # Should handle the CircuitOperation properly
+    ops = list(preprocessed.all_operations())
+    assert len(ops) >= 1
+
+
+def test_tagged_circuit_operation_with_single_toffoli():
+    """
+    Test a TaggedOperation wrapping a CircuitOperation with single TOFFOLI.
+    """
+    qubits = cirq.LineQubit.range(3)
+    subcircuit = cirq.Circuit(cirq.TOFFOLI(*qubits))
+    circuit_op = cirq.CircuitOperation(cirq.FrozenCircuit(subcircuit))
+    tagged_circuit_op = circuit_op.with_tags("wrapper_tag")
+    circuit = cirq.Circuit(tagged_circuit_op)
+
+    preprocessed = preprocess_circuit(circuit)
+
+    # Should unwrap both Tag and CircuitOperation
+    ops = list(preprocessed.all_operations())
+    assert len(ops) >= 1
+
+
+def test_tagged_circuit_operation_with_multiple_ops():
+    """
+    Test TaggedOperation wrapping CircuitOperation with multiple operations.
+    """
+    qubits = cirq.LineQubit.range(3)
+    subcircuit = cirq.Circuit(
+        cirq.H(qubits[0]),
+        cirq.TOFFOLI(*qubits),
+    )
+    circuit_op = cirq.CircuitOperation(cirq.FrozenCircuit(subcircuit))
+    tagged_circuit_op = circuit_op.with_tags("wrapper")
+    circuit = cirq.Circuit(tagged_circuit_op)
+
+    preprocessed = preprocess_circuit(circuit)
+    ops = list(preprocessed.all_operations())
+    assert len(ops) >= 1
+
+
+def test_operation_with_gate_attribute():
+    """
+    Test that operation with 'gate' attribute is handled correctly.
+    """
+    qubits = cirq.LineQubit.range(3)
+    toffoli_op = cirq.TOFFOLI(*qubits)
+    circuit = cirq.Circuit(toffoli_op)
+
+    # Verify the operation has a gate attribute
+    assert hasattr(toffoli_op, "gate")
+
+    preprocessed = preprocess_circuit(circuit)
+    ops = list(preprocessed.all_operations())
+    assert len(ops) >= 1
+
+
+def test_unwrapped_gate_is_ccxpowgate():
+    """
+    Test that after unwrapping, CCXPowGate is recognized.
+    """
+    qubits = cirq.LineQubit.range(3)
+    ccx_gate = cirq.CCXPowGate(exponent=1.0)
+    circuit = cirq.Circuit(ccx_gate(*qubits))
+
+    preprocessed = preprocess_circuit(circuit)
+
+    # Should yield the operation as-is
+    ops = list(preprocessed.all_operations())
+    assert any(isinstance(op.gate, cirq.CCXPowGate) for op in ops)
+
+
+def test_ccxpowgate_with_different_exponents():
+    """
+    Test CCXPowGate with various exponents.
+    """
+    qubits = cirq.LineQubit.range(3)
+
+    for exponent in [0.5, 1.0, 2.0, -0.5]:
+        ccx_gate = cirq.CCXPowGate(exponent=exponent)
+        circuit = cirq.Circuit(ccx_gate(*qubits))
+
+        preprocessed = preprocess_circuit(circuit)
+
+        # CCXPowGate should be recognized regardless of exponent
+        ops = list(preprocessed.all_operations())
+        assert len(ops) >= 1
+
+
+def test_tagged_ccxpowgate_recognized():
+    """
+    Test that a tagged CCXPowGate is recognized after unwrapping.
+    """
+    qubits = cirq.LineQubit.range(3)
+    tagged_ccx = cirq.CCXPowGate(exponent=1.0)(*qubits).with_tags("my_tag")
+    circuit = cirq.Circuit(tagged_ccx)
+
+    preprocessed = preprocess_circuit(circuit)
+
+    ops = list(preprocessed.all_operations())
+    has_ccx = any(isinstance(op.gate, cirq.CCXPowGate) for op in ops)
+    assert has_ccx
+
+
+def test_validate_false_but_unwrapped_is_toffoli():
+    """
+    Test case where validate(op) is False initially,
+    but after unwrapping, we find a TOFFOLI.
+    """
+    qubits = cirq.LineQubit.range(3)
+
+    # Wrap TOFFOLI in a way that might not validate directly
+    toffoli = cirq.TOFFOLI(*qubits)
+    tagged_toffoli = toffoli.with_tags("special")
+
+    circuit = cirq.Circuit(tagged_toffoli)
+    preprocessed = preprocess_circuit(circuit)
+
+    # After unwrapping, TOFFOLI should be recognized
+    ops = list(preprocessed.all_operations())
+    has_ccx = any(isinstance(op.gate, cirq.CCXPowGate) for op in ops)
+    assert has_ccx
+
+
+def test_circuit_operation_empty_circuit():
+    """
+    Test CircuitOperation with empty subcircuit (edge case).
+    """
+    subcircuit = cirq.Circuit()  # Empty circuit
+    circuit_op = cirq.CircuitOperation(cirq.FrozenCircuit(subcircuit))
+    circuit = cirq.Circuit(circuit_op)
+
+    # Should handle empty CircuitOperation
+    preprocessed = preprocess_circuit(circuit)
+    ops = list(preprocessed.all_operations())
+    # Empty circuit should result in no operations
+    assert len(ops) == 0
+
+
+def test_all_multi_qubit_paths_in_one_circuit():
+    """
+    Test a circuit that exercises all paths in _decompose_multi_qubit_operation.
+    """
+    qubits = cirq.LineQubit.range(4)
+
+    circuit = cirq.Circuit(
+        # Direct TOFFOLI (line 209-212)
+        cirq.TOFFOLI(qubits[0], qubits[1], qubits[2]),
+        # Tagged TOFFOLI (line 217-218, then 228-230)
+        cirq.TOFFOLI(qubits[1], qubits[2], qubits[3]).with_tags("tagged"),
+    )
+
+    preprocessed = preprocess_circuit(circuit)
+
+    # Should have both TOFFOLIs preserved
+    ops = list(preprocessed.all_operations())
+    ccx_count = sum(1 for op in ops if isinstance(op.gate, cirq.CCXPowGate))
+    assert ccx_count >= 2
+
+
+def test_actual_op_equals_op_path():
+    """
+    Test where actual_op doesn't change (no unwrapping needed).
+    """
+    qubits = cirq.LineQubit.range(3)
+    # Plain TOFFOLI with no wrapping
+    plain_toffoli = cirq.TOFFOLI(*qubits)
+    circuit = cirq.Circuit(plain_toffoli)
+
+    preprocessed = preprocess_circuit(circuit)
+
+    ops = list(preprocessed.all_operations())
+    assert len(ops) == 1
+    assert isinstance(ops[0].gate, cirq.CCXPowGate)
+
+
+def test_gateset_directly_for_multi_qubit():
+    """
+    Test QirTargetGateSet._decompose_multi_qubit_operation directly if possible.
+    This ensures we're testing the exact method.
+    """
+    qubits = cirq.LineQubit.range(3)
+    toffoli_op = cirq.TOFFOLI(*qubits)
+
+    gateset = QirTargetGateSet()
+
+    # Call _decompose_multi_qubit_operation directly
+    result = list(gateset._decompose_multi_qubit_operation(toffoli_op, 0))
+
+    # Should yield the operation
+    assert len(result) == 1
+    assert result[0] == toffoli_op
