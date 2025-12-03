@@ -33,3 +33,9 @@ PYQIR_TO_SQUIN_GATES_MAP = {
     "__quantum__qis__cnot__body": squin.cx,
     "__quantum__qis__cz__body": squin.cz,
 }
+
+QIR_TO_SQUIN_UNSUPPORTED_STATEMENTS_MAP = [
+    "__quantum__rt__initialize",
+    "__quantum__rt__result_record_output",
+    "__quantum__rt__array_record_output",
+]

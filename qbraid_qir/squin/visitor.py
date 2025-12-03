@@ -27,7 +27,7 @@ from kirin.dialects import func, ilist, py
 from kirin.rewrite import CFGCompactify, Walk
 
 from .exceptions import InvalidSquinInput
-from .maps import PYQIR_TO_SQUIN_GATES_MAP
+from .maps import PYQIR_TO_SQUIN_GATES_MAP, QIR_TO_SQUIN_UNSUPPORTED_STATEMENTS_MAP
 
 
 # pylint: disable=too-many-locals, too-many-statements
@@ -105,8 +105,6 @@ def load(
                 raise InvalidSquinInput(
                     f"Invalid input {type(module)}, String must be a valid QIR IR text."
                 ) from exc
-    elif not isinstance(module, pyqir.Module):
-        raise InvalidSquinInput(f"Invalid input {type(module)}, expected 'pyqir.Module'")
 
     target = SquinVisitor(  # pylint: disable=unexpected-keyword-arg
         dialects=dialects, module=module
@@ -306,8 +304,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
             lowering.Result: The result of the visitor.
         """
         # There could be multiple basic blocks in the entry point
-        if len(self.entry_point.basic_blocks) < 1:  # type: ignore
-            raise InvalidSquinInput("No basic blocks found in entry point, expected at least 1")
+        assert isinstance(self.entry_point.basic_blocks, list)  # type: ignore
         for block in self.entry_point.basic_blocks:  # type: ignore
             self.visit_statement(state, block)
 
@@ -347,7 +344,9 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         for instruction in block.instructions:
             self.visit_statement(state, instruction)
 
-    def visit_call(self, state: lowering.State[pyqir.Module], call: pyqir.Call) -> lowering.Result:
+    def visit_call(
+        self, state: lowering.State[pyqir.Module], call: pyqir.Call
+    ) -> lowering.Result | None:
         """Visit a PyQIR Call instruction.
 
         Args:
@@ -360,12 +359,12 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
 
         gate_name = call.callee.name
         args = call.args
+
+        if gate_name in QIR_TO_SQUIN_UNSUPPORTED_STATEMENTS_MAP:
+            return None
         if gate_name not in PYQIR_TO_SQUIN_GATES_MAP:
             raise InvalidSquinInput(f"Unsupported gate: {gate_name}")
-        if len(args) < 1:
-            raise InvalidSquinInput(
-                f"Invalid number of arguments for gate: {gate_name}, expected at least 1"
-            )
+        assert isinstance(args, list)
         return self.visit_gate(state, gate_name, args)
 
     def visit_gate(
