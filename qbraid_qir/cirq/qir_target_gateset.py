@@ -131,7 +131,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
 
     def _decompose_single_qubit_operation(
         self, op: "cirq.Operation", moment_idx: int  # pylint: disable=unused-argument
-    ) -> DecomposeResult:  # type: ignore[return,return-value]
+    ) -> DecomposeResult | None:
         # Unwrap TaggedOperation and CircuitOperation to get the actual gate
         actual_op = op
 
@@ -149,7 +149,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         # For Pow gates, any exponent is fine (they're all supported)
         if isinstance(gate, self._supported_power_gate_set):
             yield actual_op
-            return None  # type: ignore[return-value]
+            return None
 
         # Other supported single-qubit gates
         if isinstance(
@@ -157,18 +157,16 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             self._supported_single_qubit_set,
         ):
             yield actual_op
-            return None  # type: ignore[return-value]
+            return None
 
         # Decompose everything else
         qubit = op.qubits[0]
         mat = cirq.unitary(op)
         for gate_result in cirq.single_qubit_matrix_to_gates(mat, self.atol):
             yield gate_result(qubit)
-        return None  # type: ignore[return-value]
+        return None
 
-    def _decompose_two_qubit_operation(
-        self, op: "cirq.Operation", _
-    ) -> "cirq.OP_TREE":  # type: ignore[return,return-value]
+    def _decompose_two_qubit_operation(self, op: "cirq.Operation", _) -> "cirq.OP_TREE" | None:
         # Unwrap TaggedOperation and CircuitOperation to get the actual gate
         actual_op = op
 
@@ -187,7 +185,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         # (they're CNotPowGate, CZPowGate, SwapPowGate with exponent=1)
         if isinstance(gate, self._supported_two_qubit_set):
             yield actual_op
-            return None  # type: ignore[return-value]
+            return None
 
         # Decompose unsupported gates
         if not cirq.has_unitary(op):
@@ -200,16 +198,16 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             allow_partial_czs=self.allow_partial_czs,
             atol=self.atol,
         )
-        return None  # type: ignore[return-value]
+        return None
 
-    def _decompose_multi_qubit_operation(self, op: cirq.Operation, _) -> DecomposeResult:
+    def _decompose_multi_qubit_operation(self, op: cirq.Operation, _) -> DecomposeResult | None:
         """Decomposes operations acting on more than 2 qubits using gates from this gateset."""
 
         # Check if operation is already valid (in our gateset)
         if self.validate(op):
             # Don't decompose - return the operation as-is
             yield op
-            return None  # type: ignore[return-value]
+            return None
 
         # If not valid, try to unwrap and check the actual gate
         actual_op = op
@@ -227,7 +225,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         # Check if the unwrapped gate is TOFFOLI
         if isinstance(gate, self._supported_multi_qubit_set):
             yield actual_op
-            return None  # type: ignore[return-value]
+            return None
 
         # Unknown multi-qubit operation - can't decompose
         return NotImplemented
