@@ -101,3 +101,19 @@ def test_no_instructions_in_basic_block():
     _qis = BasicQisBuilder(mod.builder)
     with pytest.raises(InvalidSquinInput, match="No instructions found in basic block"):
         load(mod._module)
+
+
+def test_unsupported_keyword_arguments():
+    """Test unsupported keyword arguments."""
+    qasm3 = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+    qubit[1] q;
+    h q[0];
+    """
+
+    qir_mod = qasm3_to_qir(qasm3)
+    with pytest.raises(
+        InvalidSquinInput, match=r"load\(\) got unexpected keyword argument\(s\): 'unsupported_arg'"
+    ):
+        load(str(qir_mod), unsupported_arg=True)

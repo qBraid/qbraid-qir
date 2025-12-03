@@ -74,7 +74,7 @@ def load(
 
     if kwargs:
         unexpected = ", ".join(f"'{k}'" for k in kwargs)
-        raise TypeError(f"load() got unexpected keyword argument(s): {unexpected}")
+        raise InvalidSquinInput(f"load() got unexpected keyword argument(s): {unexpected}")
 
     # Validate input type
     if not isinstance(module, (str, pyqir.Module)):
