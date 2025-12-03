@@ -20,7 +20,7 @@ Module for processing Cirq circuits before conversion to QIR.
 import cirq
 
 from .exceptions import CirqConversionError
-from .QIRTargetGateSet import QirTargetGateSet
+from .qir_target_gateset import QirTargetGateSet
 
 
 def preprocess_circuit(circuit: cirq.Circuit) -> cirq.Circuit:

@@ -24,7 +24,7 @@ import numpy as np
 from qbraid.interface import circuits_allclose
 
 from qbraid_qir.cirq.passes import preprocess_circuit
-from qbraid_qir.cirq.QIRTargetGateSet import QirTargetGateSet
+from qbraid_qir.cirq.qir_target_gateset import QirTargetGateSet
 
 
 def test_only_supported_gates():

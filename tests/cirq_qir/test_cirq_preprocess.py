@@ -23,7 +23,7 @@ from qbraid.interface import circuits_allclose
 
 from qbraid_qir.cirq.exceptions import CirqConversionError
 from qbraid_qir.cirq.passes import preprocess_circuit
-from qbraid_qir.cirq.QIRTargetGateSet import QirTargetGateSet
+from qbraid_qir.cirq.qir_target_gateset import QirTargetGateSet
 
 # pylint: disable=redefined-outer-name
 
