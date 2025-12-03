@@ -131,7 +131,7 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
 
     def _decompose_single_qubit_operation(
         self, op: "cirq.Operation", moment_idx: int  # pylint: disable=unused-argument
-    ) -> DecomposeResult | None:
+    ) -> Union[DecomposeResult, None]:
         # Unwrap TaggedOperation and CircuitOperation to get the actual gate
         actual_op = op
 
@@ -166,7 +166,9 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
             yield gate_result(qubit)
         return None
 
-    def _decompose_two_qubit_operation(self, op: "cirq.Operation", _) -> "cirq.OP_TREE" | None:
+    def _decompose_two_qubit_operation(
+        self, op: "cirq.Operation", _
+    ) -> Union["cirq.OP_TREE", None]:
         # Unwrap TaggedOperation and CircuitOperation to get the actual gate
         actual_op = op
 
@@ -200,7 +202,9 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         )
         return None
 
-    def _decompose_multi_qubit_operation(self, op: cirq.Operation, _) -> DecomposeResult | None:
+    def _decompose_multi_qubit_operation(
+        self, op: cirq.Operation, _
+    ) -> Union[DecomposeResult, None]:
         """Decomposes operations acting on more than 2 qubits using gates from this gateset."""
 
         # Check if operation is already valid (in our gateset)
