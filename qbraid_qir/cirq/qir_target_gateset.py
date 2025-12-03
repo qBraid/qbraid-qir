@@ -229,7 +229,6 @@ class QirTargetGateSet(cirq.TwoQubitCompilationTargetGateset):
         # Check if the unwrapped gate is TOFFOLI
         if isinstance(gate, self._supported_multi_qubit_set):
             yield actual_op
-            return None
 
         # Unknown multi-qubit operation - can't decompose
         return NotImplemented
