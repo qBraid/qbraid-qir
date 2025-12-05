@@ -71,3 +71,31 @@ jobs:
           fail_ci_if_error: false
           files: ./build/coverage/coverage.xml
           verbose: true
+
+  test-cudaq-to-squin:
+    if: github.event.pull_request.draft == false
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Download built package
+        uses: actions/download-artifact@v5
+        with:
+          name: built-package
+          path: dist
+      - name: Install package wheel with squin and test extras
+        run: |
+          pip install setuptools
+          bin/install_wheel_extras.sh dist --extra squin --extra test
+      - name: Run CUDAQ to Squin tests
+        run: |
+          pytest tests/squin_qir/test_cudaq_to_squin.py -v
