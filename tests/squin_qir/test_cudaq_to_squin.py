@@ -18,10 +18,22 @@ import cudaq
 
 from qbraid_qir.squin import load
 
-from .test_qir_to_squin import _validate_statement_order
+from .test_qir_to_squin import _compare_output
 
 
 def test_bell_state():
+
+    expected_output = """func.func @main() -> !py.NoneType {
+  ^0(%main_self):
+  │ %0 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %1 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %2 = func.invoke h(%0) : !py.NoneType maybe_pure=False
+  │ %3 = func.invoke cx(%0, %1) : !py.NoneType maybe_pure=False
+  │ %4 = func.const.none() : !py.NoneType
+  │      func.return %4
+} // func.func main
+"""
+
     @cudaq.kernel
     def bell():
         q = cudaq.qvector(2)
@@ -30,20 +42,24 @@ def test_bell_state():
 
     qir_str = cudaq.translate(bell, format="qir-base")
     squin_kernel = load(qir_str)
-    _validate_statement_order(
-        squin_kernel,
-        [
-            "qubit_new",
-            "qubit_new",
-            "h",
-            "cx",
-            "constant_none",
-            "return",
-        ],
-    )
+    _compare_output(squin_kernel, expected_output)
 
 
 def test_ghz_state():
+
+    expected_output = """func.func @main() -> !py.NoneType {
+  ^0(%main_self):
+  │ %0 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %1 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %2 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %3 = func.invoke h(%0) : !py.NoneType maybe_pure=False
+  │ %4 = func.invoke cx(%0, %1) : !py.NoneType maybe_pure=False
+  │ %5 = func.invoke cx(%1, %2) : !py.NoneType maybe_pure=False
+  │ %6 = func.const.none() : !py.NoneType
+  │      func.return %6
+} // func.func main
+"""
+
     @cudaq.kernel
     def ghz():
         q = cudaq.qvector(3)
@@ -53,16 +69,4 @@ def test_ghz_state():
 
     qir_str = cudaq.translate(ghz, format="qir-base")
     squin_kernel = load(qir_str)
-    _validate_statement_order(
-        squin_kernel,
-        [
-            "qubit_new",
-            "qubit_new",
-            "qubit_new",
-            "h",
-            "cx",
-            "cx",
-            "constant_none",
-            "return",
-        ],
-    )
+    _compare_output(squin_kernel, expected_output)

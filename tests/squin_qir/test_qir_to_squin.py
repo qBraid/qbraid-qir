@@ -14,7 +14,7 @@
 
 """Unit tests for QIR to Squin conversion functions."""
 import os
-from typing import Any
+import re
 
 from bloqade import qubit
 from bloqade import squin as squin_gates
@@ -49,29 +49,14 @@ _TYPE_MAP = {
 }
 
 
-def _identify_statement_type(stmt: Any) -> str | None:
-    """Identify the type of a statement."""
-    if isinstance(stmt, func.Invoke):
-        return _GATE_TYPE_MAP.get(stmt.callee)
-    stmt_type = type(stmt)
-    if stmt_type in _TYPE_MAP:
-        return _TYPE_MAP[stmt_type]
-    name = stmt_type.__name__.lower()
-    if "getitem" in name or "indexing" in name:
-        return "qubit_getitem"
-    if "ilist" in name and "new" in name:
-        return "ilist_new"
-    return None
-
-
-def _validate_statement_order(kernel: ir.Method, expected: list[str]) -> None:
-    """Validate that statements in kernel match expected order."""
-    actual = [
-        t
-        for s in kernel.code.body.blocks[0].stmts
-        if (t := _identify_statement_type(s)) is not None
-    ]
-    assert actual == expected, f"Statement order mismatch.\nExpected: {expected}\nActual: {actual}"
+def _compare_output(kernel: ir.Method, expected: list[str]) -> None:
+    """Compare the output of the kernel to the expected output."""
+    actual = kernel.print_str()
+    ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+    plain_output = ansi_escape.sub("", actual)
+    assert (
+        plain_output == expected
+    ), f"Output mismatch.\nExpected: {expected}\nActual: {plain_output}"
 
 
 def test_all_supported_gates():
@@ -94,68 +79,72 @@ def test_all_supported_gates():
     cx qb[0], qb[1];
     cz qb[0], qb[1];
     """
+
+    expected_output = """func.func @test_clifford() -> !py.NoneType {
+  ^0(%test_clifford_self):
+  │  %0 = func.invoke new() : !py.Qubit maybe_pure=False
+  │  %1 = func.invoke new() : !py.Qubit maybe_pure=False
+  │  %2 = func.invoke h(%0) : !py.NoneType maybe_pure=False
+  │  %3 = func.invoke h(%1) : !py.NoneType maybe_pure=False
+  │  %4 = func.invoke x(%0) : !py.NoneType maybe_pure=False
+  │  %5 = func.invoke y(%1) : !py.NoneType maybe_pure=False
+  │  %6 = func.invoke z(%0) : !py.NoneType maybe_pure=False
+  │  %7 = func.invoke s(%1) : !py.NoneType maybe_pure=False
+  │  %8 = func.invoke t(%0) : !py.NoneType maybe_pure=False
+  │  %9 = func.invoke s_adj(%1) : !py.NoneType maybe_pure=False
+  │ %10 = func.invoke t_adj(%0) : !py.NoneType maybe_pure=False
+  │ %11 = py.constant.constant 3.141592653589793 : !py.float
+  │ %12 = func.invoke rx(%11, %1) : !py.NoneType maybe_pure=False
+  │ %13 = py.constant.constant 1.5707963267948966 : !py.float
+  │ %14 = func.invoke ry(%13, %0) : !py.NoneType maybe_pure=False
+  │ %15 = py.constant.constant 0.7853981633974483 : !py.float
+  │ %16 = func.invoke rz(%15, %1) : !py.NoneType maybe_pure=False
+  │ %17 = func.invoke cx(%0, %1) : !py.NoneType maybe_pure=False
+  │ %18 = func.invoke cz(%0, %1) : !py.NoneType maybe_pure=False
+  │ %19 = func.const.none() : !py.NoneType
+  │       func.return %19
+} // func.func test_clifford
+"""
+
     kernel = load(str(qasm3_to_qir(qasm3)), kernel_name="test_clifford")
-    _validate_statement_order(
-        kernel,
-        [
-            "qubit_new",
-            "qubit_new",
-            "h",
-            "h",
-            "x",
-            "y",
-            "z",
-            "s",
-            "t",
-            "sdg",
-            "tdg",
-            "constant",
-            "rx",
-            "constant",
-            "ry",
-            "constant",
-            "rz",
-            "cx",
-            "cz",
-            "constant_none",
-            "return",
-        ],
-    )
+    _compare_output(kernel, expected_output)
 
 
 def test_bell_state():
     """Test conversion of Bell state from QIR to Squin."""
+    expected_output = """func.func @main() -> !py.NoneType {
+  ^0(%main_self, %q):
+  │ %0 = py.constant.constant 0 : !py.int
+  │ %1 = py.indexing.getitem(%q : !py.IList[!py.Qubit, !Any], %0) : !py.Qubit
+  │ %2 = py.constant.constant 1 : !py.int
+  │ %3 = py.indexing.getitem(%q : !py.IList[!py.Qubit, !Any], %2) : !py.Qubit
+  │ %4 = func.invoke h(%1) : !py.NoneType maybe_pure=False
+  │ %5 = func.invoke cx(%1, %3) : !py.NoneType maybe_pure=False
+  │ %6 = func.const.none() : !py.NoneType
+  │      func.return %6
+} // func.func main
+"""
+
     kernel = load(os.path.join(_RESOURCES, "bell_pair.ll"), register_as_argument=True)
-    _validate_statement_order(
-        kernel,
-        [
-            "constant",
-            "qubit_getitem",
-            "constant",
-            "qubit_getitem",
-            "h",
-            "cx",
-            "constant_none",
-            "return",
-        ],
-    )
+    _compare_output(kernel, expected_output)
 
 
 def test_ghz_state():
     """Test conversion of GHZ state from QIR to Squin."""
+    expected_output = """func.func @main() -> !py.NoneType {
+  ^0(%main_self):
+  │ %0 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %1 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %2 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %3 = func.invoke new() : !py.Qubit maybe_pure=False
+  │ %4 = func.invoke h(%0) : !py.NoneType maybe_pure=False
+  │ %5 = func.invoke cx(%0, %1) : !py.NoneType maybe_pure=False
+  │ %6 = func.invoke cx(%1, %2) : !py.NoneType maybe_pure=False
+  │ %7 = func.invoke cx(%2, %3) : !py.NoneType maybe_pure=False
+  │ %8 = func.const.none() : !py.NoneType
+  │      func.return %8
+} // func.func main
+"""
+
     kernel = load(os.path.join(_RESOURCES, "ghz_4.bc"))
-    _validate_statement_order(
-        kernel,
-        [
-            "qubit_new",
-            "qubit_new",
-            "qubit_new",
-            "qubit_new",
-            "h",
-            "cx",
-            "cx",
-            "cx",
-            "constant_none",
-            "return",
-        ],
-    )
+    _compare_output(kernel, expected_output)
