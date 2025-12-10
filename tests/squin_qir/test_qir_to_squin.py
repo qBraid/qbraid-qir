@@ -16,37 +16,12 @@
 import os
 import re
 
-from bloqade import qubit
-from bloqade import squin as squin_gates
 from kirin import ir
-from kirin.dialects import func, py
 
 from qbraid_qir.qasm3.convert import qasm3_to_qir
 from qbraid_qir.squin import load
 
 _RESOURCES = os.path.join(os.path.dirname(__file__), "resources")
-_GATE_TYPE_MAP = {
-    qubit.new: "qubit_new",
-    squin_gates.h: "h",
-    squin_gates.x: "x",
-    squin_gates.y: "y",
-    squin_gates.z: "z",
-    squin_gates.s: "s",
-    squin_gates.t: "t",
-    squin_gates.s_adj: "sdg",
-    squin_gates.t_adj: "tdg",
-    squin_gates.rx: "rx",
-    squin_gates.ry: "ry",
-    squin_gates.rz: "rz",
-    squin_gates.cx: "cx",
-    squin_gates.cz: "cz",
-}
-_TYPE_MAP = {
-    py.GetItem: "qubit_getitem",
-    func.Return: "return",
-    func.ConstantNone: "constant_none",
-    py.Constant: "constant",
-}
 
 
 def _compare_output(kernel: ir.Method, expected: list[str]) -> None:
@@ -111,7 +86,13 @@ def test_all_supported_gates():
 
 
 def test_bell_state():
-    """Test conversion of Bell state from QIR to Squin."""
+    """Test conversion of Bell state from QIR to Squin.
+
+    This test demonstrates using the 'register_as_argument' option in the load() function,
+    which causes the kernel to accept the qubit register as an argument rather than
+    allocating new qubits inside the kernel. The generated Squin kernel will have the register
+    argument (%q), and the qubits will be accessed from this register.
+    """
     expected_output = """func.func @main() -> !py.NoneType {
   ^0(%main_self, %q):
   │ %0 = py.constant.constant 0 : !py.int
