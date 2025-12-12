@@ -96,9 +96,9 @@ def test_bell_state():
     expected_output = """func.func @main() -> !py.NoneType {
   ^0(%main_self, %q):
   │ %0 = py.constant.constant 0 : !py.int
-  │ %1 = py.indexing.getitem(%q : !py.IList[!py.Qubit, !Any], %0) : !py.Qubit
+  │ %1 = py.indexing.getitem(%q : !py.IList[!py.Qubit, Literal(2,int)], %0) : !py.Qubit
   │ %2 = py.constant.constant 1 : !py.int
-  │ %3 = py.indexing.getitem(%q : !py.IList[!py.Qubit, !Any], %2) : !py.Qubit
+  │ %3 = py.indexing.getitem(%q : !py.IList[!py.Qubit, Literal(2,int)], %2) : !py.Qubit
   │ %4 = func.invoke h(%1) : !py.NoneType maybe_pure=False
   │ %5 = func.invoke cx(%1, %3) : !py.NoneType maybe_pure=False
   │ %6 = func.const.none() : !py.NoneType
