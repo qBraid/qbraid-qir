@@ -15,9 +15,11 @@
 """
 This module contains the functionality to convert a PyQIR module into a squin kernel.
 """
+from __future__ import annotations
+
 import os
 from plistlib import InvalidFileException
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, TypedDict
 
 import pyqir
 from bloqade import qubit
@@ -29,11 +31,29 @@ from kirin.rewrite import CFGCompactify, Walk
 from .exceptions import InvalidSquinInput
 from .maps import PYQIR_TO_SQUIN_GATES_MAP, QIR_TO_SQUIN_UNSUPPORTED_STATEMENTS_MAP
 
+if TYPE_CHECKING:
+    from typing import Unpack
+
+
+class LoadKwargs(TypedDict, total=False):
+    """Type definition for keyword arguments to the load function."""
+
+    kernel_name: str
+    dialects: ir.DialectGroup
+    register_as_argument: bool
+    return_measurements: list[int] | None
+    register_argument_name: str
+    globals: dict[str, Any] | None
+    file: str | None
+    lineno_offset: int
+    col_offset: int
+    compactify: bool
+
 
 # pylint: disable=too-many-locals, too-many-statements
 def load(
     module: str | pyqir.Module,
-    **kwargs,
+    **kwargs: Unpack[LoadKwargs],
 ):
     """Converts a PyQIR module into a squin kernel.
 
@@ -264,7 +284,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
 
             if register_as_argument:
                 frame.curr_block.args.append_from(
-                    ilist.IListType[qubit.QubitType, types.Any],
+                    ilist.IListType[qubit.QubitType, types.Literal(self.num_qubits)],
                     name=register_argument_name,
                 )
                 self.qreg = frame.curr_block.args[0]
@@ -306,23 +326,21 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         # There could be multiple basic blocks in the entry point
         assert isinstance(self.entry_point.basic_blocks, list)  # type: ignore
         for block in self.entry_point.basic_blocks:  # type: ignore
-            self.visit_statement(state, block)
+            self.visit_node(state, block)
 
-    def visit_statement(
-        self, state: lowering.State[pyqir.Module], statement: Any
-    ) -> lowering.Result | None:
-        """Visit a PyQIR statement.
+    def visit_node(self, state: lowering.State[pyqir.Module], node: Any) -> lowering.Result | None:
+        """Visit a PyQIR node.
 
         Args:
             state (lowering.State[pyqir.Module]): The state of the visitor.
-            statement (Any): The statement to visit.
+            node (Any): The node to visit.
 
         Returns:
             lowering.Result: The result of the visitor.
         """
-        visitor_function = self.visit_map.get(type(statement))
+        visitor_function = self.visit_map.get(type(node))
         if visitor_function:
-            return visitor_function(state, statement)
+            return visitor_function(state, node)
 
         return None
 
@@ -342,7 +360,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         if len(block.instructions) < 1:
             raise InvalidSquinInput("No instructions found in basic block")
         for instruction in block.instructions:
-            self.visit_statement(state, instruction)
+            self.visit_node(state, instruction)
 
     def visit_call(
         self, state: lowering.State[pyqir.Module], call: pyqir.Call
@@ -386,7 +404,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         squin_gate = PYQIR_TO_SQUIN_GATES_MAP[gate_name]
         inputs: list[ir.SSAValue] = []
         for arg in args:
-            inputs.append(self.visit_statement(state, arg))
+            inputs.append(self.visit_node(state, arg))
         inputs = tuple(inputs)  # type: ignore
         return state.current_frame.push(
             func.Invoke(  # pylint: disable=unexpected-keyword-arg, too-many-function-args
