@@ -93,7 +93,7 @@ def test_bell_state():
     allocating new qubits inside the kernel. The generated Squin kernel will have the register
     argument (%q), and the qubits will be accessed from this register.
     """
-    expected_output = """func.func @main() -> !py.NoneType {
+    expected_output = """func.func @main(q : !py.IList[!py.Qubit, Literal(2,int)]) -> !py.NoneType {
   ^0(%main_self, %q):
   │ %0 = py.constant.constant 0 : !py.int
   │ %1 = py.indexing.getitem(%q : !py.IList[!py.Qubit, Literal(2,int)], %0) : !py.Qubit

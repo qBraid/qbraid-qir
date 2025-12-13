@@ -182,8 +182,11 @@ def load(
     if register_as_argument:
         args = (target.qreg.type,)
         arg_names.append(register_argument_name)
+        # Include argument name in slots so it appears in the printed signature
+        slots = (register_argument_name,)
     else:
         args = ()  # type: ignore
+        slots = ()  # type: ignore
 
     signature = func.Signature(args, return_node.value.type)
     body.blocks[0].args.insert_from(
@@ -196,6 +199,7 @@ def load(
     code = func.Function(
         sym_name=kernel_name,
         signature=signature,
+        slots=slots,
         body=body,
     )
 
