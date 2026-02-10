@@ -52,7 +52,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Download built package
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: built-package
           path: dist
