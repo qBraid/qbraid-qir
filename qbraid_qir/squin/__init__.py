@@ -12,12 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# type: ignore
-
 """
 This module contains the functionality to convert a PyQIR module into a squin kernel.
+
+Functions
+-----------
+
+.. autosummary::
+   :toctree: ../stubs/
+
+   load
+
+Classes
+---------
+
+.. autosummary::
+   :toctree: ../stubs/
+
+   SquinVisitor
+
+Exceptions
+-----------
+
+.. autosummary::
+   :toctree: ../stubs/
+
+   InvalidSquinInput
+
 """
 
-from .visitor import load
+from .exceptions import InvalidSquinInput
+from .visitor import SquinVisitor, load
 
-__all__ = ["load"]
+__all__ = ["load", "SquinVisitor", "InvalidSquinInput"]
