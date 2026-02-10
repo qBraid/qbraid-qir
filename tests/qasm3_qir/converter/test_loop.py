@@ -20,6 +20,7 @@ converting OpenQASM3 programs that contain loops.
 
 import pytest
 
+from qbraid_qir._pyqir_compat import pyqir_uses_opaque_pointers
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import (
     check_attributes,
@@ -45,6 +46,52 @@ measure q->c;
 
 
 EXAMPLE_QIR_OUTPUT = """; ModuleID = 'test'
+source_filename = "test"
+
+define void @test() #0 {
+entry:
+  call void @__quantum__rt__initialize(ptr null)
+  call void @__quantum__qis__h__body(ptr null)
+  call void @__quantum__qis__h__body(ptr inttoptr (i64 1 to ptr))
+  call void @__quantum__qis__h__body(ptr inttoptr (i64 2 to ptr))
+  call void @__quantum__qis__h__body(ptr inttoptr (i64 3 to ptr))
+  call void @__quantum__qis__cnot__body(ptr null, ptr inttoptr (i64 1 to ptr))
+  call void @__quantum__qis__cnot__body(ptr inttoptr (i64 1 to ptr), ptr inttoptr (i64 2 to ptr))
+  call void @__quantum__qis__cnot__body(ptr inttoptr (i64 2 to ptr), ptr inttoptr (i64 3 to ptr))
+  call void @__quantum__qis__mz__body(ptr null, ptr null)
+  call void @__quantum__qis__mz__body(ptr inttoptr (i64 1 to ptr), ptr inttoptr (i64 1 to ptr))
+  call void @__quantum__qis__mz__body(ptr inttoptr (i64 2 to ptr), ptr inttoptr (i64 2 to ptr))
+  call void @__quantum__qis__mz__body(ptr inttoptr (i64 3 to ptr), ptr inttoptr (i64 3 to ptr))
+  call void @__quantum__rt__result_record_output(ptr null, ptr null)
+  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 1 to ptr), ptr null)
+  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 2 to ptr), ptr null)
+  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 3 to ptr), ptr null)
+  ret void
+}
+
+declare void @__quantum__rt__initialize(ptr)
+
+declare void @__quantum__qis__h__body(ptr)
+
+declare void @__quantum__qis__cnot__body(ptr, ptr)
+
+declare void @__quantum__qis__mz__body(ptr, ptr writeonly) #1
+
+declare void @__quantum__rt__result_record_output(ptr, ptr)
+
+attributes #0 = { "entry_point" "output_labeling_schema" "qir_profiles"="base" "required_num_qubits"="4" "required_num_results"="4" }
+attributes #1 = { "irreversible" }
+
+!llvm.module.flags = !{!0, !1, !2, !3}
+
+!0 = !{i32 1, !"qir_major_version", i32 1}
+!1 = !{i32 7, !"qir_minor_version", i32 0}
+!2 = !{i32 1, !"dynamic_qubit_management", i1 false}
+!3 = !{i32 1, !"dynamic_result_management", i1 false}
+"""
+
+
+EXAMPLE_QIR_OUTPUT_TYPED = """; ModuleID = 'test'
 source_filename = "test"
 
 %Qubit = type opaque
@@ -93,6 +140,10 @@ attributes #1 = { "irreversible" }
 """
 
 
+def _example_qir_expected():
+    return EXAMPLE_QIR_OUTPUT if pyqir_uses_opaque_pointers() else EXAMPLE_QIR_OUTPUT_TYPED
+
+
 def test_convert_qasm3_for_loop():
     """Test converting a QASM3 program that contains a for loop."""
     qir_expected = qasm3_to_qir(EXAMPLE_WITHOUT_LOOP, name="test")
@@ -113,7 +164,7 @@ def test_convert_qasm3_for_loop():
         name="test",
     )
     assert str(qir_expected) == str(qir_from_loop)
-    assert str(qir_from_loop) == EXAMPLE_QIR_OUTPUT
+    assert str(qir_from_loop) == _example_qir_expected()
 
 
 def test_convert_qasm3_for_loop_shadow():
@@ -276,7 +327,7 @@ def test_convert_qasm3_for_loop_discrete_set():
         name="test",
     )
     assert str(qir_expected) == str(qir_from_loop)
-    assert str(qir_from_loop) == EXAMPLE_QIR_OUTPUT
+    assert str(qir_from_loop) == _example_qir_expected()
 
 
 def test_function_executed_in_loop():

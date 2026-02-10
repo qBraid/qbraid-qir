@@ -60,9 +60,24 @@ jobs:
         run: |
           pip install setuptools
           bin/install_wheel_extras.sh dist --extra qasm3 --extra cirq --extra test --extra squin
-      - name: Run tests with coverage
+      - name: Run tests with pyqir 0.10.x (typed pointers)
         run: |
-          pytest --cov=qbraid_qir tests/ --cov-report=html --cov-report=xml --cov-report=term
+          pip install "pyqir>=0.10.0,<0.12"
+          pytest tests/ --cov=qbraid_qir --cov-report=term --cov-report= --cov-config=pyproject.toml -q
+          pip install coverage
+          mkdir -p cov_runs
+          coverage combine -o cov_runs/.coverage.run1
+      - name: Run tests with pyqir 0.12+ (opaque pointers)
+        run: |
+          pip install "pyqir>=0.12.0,<0.13.0"
+          pytest tests/ --cov=qbraid_qir --cov-report=term --cov-report= --cov-config=pyproject.toml -q
+          coverage combine -o cov_runs/.coverage.run2
+      - name: Combine coverage and generate report
+        run: |
+          coverage combine cov_runs/.coverage.run1 cov_runs/.coverage.run2
+          coverage report
+          mkdir -p build/coverage
+          coverage xml -o build/coverage/coverage.xml
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v5.5.1

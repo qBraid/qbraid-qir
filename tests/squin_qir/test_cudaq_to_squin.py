@@ -14,7 +14,9 @@
 
 """Unit tests for CUDAQ to Squin conversion functions."""
 
-import cudaq
+import pytest
+
+cudaq = pytest.importorskip("cudaq")
 
 from qbraid_qir.squin import load
 

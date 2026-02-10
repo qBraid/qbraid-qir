@@ -26,6 +26,8 @@ import pyqir._native
 import pyqir.rt
 from pyqir import BasicBlock, Builder, Constant, IntType, PointerType
 
+from qbraid_qir._pyqir_compat import pointer_id
+
 from .elements import CirqModule
 from .opsets import map_cirq_op_to_pyqir_callable
 
@@ -111,7 +113,7 @@ class BasicCirqVisitor(CircuitElementVisitor):
         def handle_measurement(pyqir_func):
             logger.debug("Visiting measurement operation '%s'", str(operation))
             for qubit, result in zip(qubits, results):
-                self._measured_qubits[pyqir.qubit_id(qubit)] = True
+                self._measured_qubits[pointer_id(qubit)] = True
                 pyqir_func(self._builder, qubit, result)
 
         # dealing with conditional gates

@@ -28,7 +28,7 @@ from tests.qir_utils import (
     check_two_qubit_gate_op,
 )
 
-from .test_if import compare_reference_ir, resources_file
+from .test_if import compare_reference_ir, resources_file, version_specific_ll_file
 
 
 def test_alias():
@@ -152,7 +152,7 @@ def test_alias_in_scope_1():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 4, 4)
-    simple_file = resources_file("simple_if.ll")
+    simple_file = version_specific_ll_file("simple_if")
     compare_reference_ir(result.bitcode, simple_file)
 
 
@@ -187,5 +187,5 @@ def test_alias_in_scope_2():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 4, 4)
-    simple_file = resources_file("simple_if.ll")
+    simple_file = version_specific_ll_file("simple_if")
     compare_reference_ir(result.bitcode, simple_file)

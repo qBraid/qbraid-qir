@@ -22,6 +22,7 @@ from pathlib import Path
 
 import pyqir
 
+from qbraid_qir._pyqir_compat import pyqir_uses_opaque_pointers
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import check_attributes, get_entry_point_body
 
@@ -32,6 +33,12 @@ RESOURCES_DIR = os.path.join(
 
 def resources_file(filename: str) -> str:
     return str(os.path.join(RESOURCES_DIR, f"{filename}"))
+
+
+def version_specific_ll_file(base: str) -> str:
+    """Path to typed or opaque .ll fixture based on installed pyqir version."""
+    suffix = "opaque" if pyqir_uses_opaque_pointers() else "typed"
+    return resources_file(f"{base}_{suffix}.ll")
 
 
 def compare_reference_ir(generated_bitcode: bytes, file_path: str) -> None:
@@ -74,7 +81,7 @@ def test_simple_if():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 4, 4)
-    simple_file = resources_file("simple_if.ll")
+    simple_file = version_specific_ll_file("simple_if")
     compare_reference_ir(result.bitcode, simple_file)
 
 
@@ -113,5 +120,5 @@ def test_complex_if():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 4, 8)
-    complex_if = resources_file("complex_if.ll")
+    complex_if = version_specific_ll_file("complex_if")
     compare_reference_ir(result.bitcode, complex_if)

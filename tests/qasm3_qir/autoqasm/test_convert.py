@@ -20,10 +20,13 @@ Tests the convert module of autoqasm to qir
 import re
 from typing import TYPE_CHECKING
 
+import pytest
+
+pytest.importorskip("autoqasm")
+
 import autoqasm as aq
 import autoqasm.instructions as ins
 import numpy as np
-import pytest
 from pyqir import Module
 from qbraid.passes.qasm.compat import add_stdgates_include, insert_gate_def
 

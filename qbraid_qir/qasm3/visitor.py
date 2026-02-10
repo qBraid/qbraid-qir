@@ -31,6 +31,7 @@ import pyqir.rt
 from openqasm3.ast import UnaryOperator
 from pyqir import qis
 
+from qbraid_qir._pyqir_compat import pointer_id, qubit_pointer_type
 from qbraid_qir.profiles import Profile, ProfileRegistry
 from qbraid_qir.visitor import QIRVisitor
 
@@ -255,7 +256,7 @@ class QasmQIRVisitor(QIRVisitor):
         if not self._profile.allow_qubit_use_after_measurement():
             # For profiles that don't allow it, we could add validation here
             for qubit_id in qubit_ids:
-                qubit_id_result = pyqir.qubit_id(qubit_id)
+                qubit_id_result = pointer_id(qubit_id)
                 if qubit_id_result is not None and self._measured_qubits.get(
                     qubit_id_result, False
                 ):
@@ -284,7 +285,7 @@ class QasmQIRVisitor(QIRVisitor):
         for src_id, tgt_id in zip(source_ids, target_ids):
             # Track measurement if profile supports it
             if self._profile.should_track_qubit_measurement():
-                qubit_id_result = pyqir.qubit_id(src_id)
+                qubit_id_result = pointer_id(src_id)
                 if qubit_id_result is not None:
                     self._measured_qubits[qubit_id_result] = True
 
@@ -306,7 +307,7 @@ class QasmQIRVisitor(QIRVisitor):
         for qid in qubit_ids:
             # Clear measurement tracking if profile supports it
             if self._profile.should_track_qubit_measurement():
-                qubit_id_result = pyqir.qubit_id(qid)
+                qubit_id_result = pointer_id(qid)
                 if qubit_id_result is not None:
                     self._measured_qubits[qubit_id_result] = False
 
@@ -520,7 +521,7 @@ class QasmQIRVisitor(QIRVisitor):
         if qir_function is None:
             # First time seeing this external gate -> define new function
             qir_function_arguments = [pyqir.Type.double(context)] * len(operation.arguments)
-            qir_function_arguments += [pyqir.qubit_type(context)] * op_qubit_count
+            qir_function_arguments += [qubit_pointer_type(context)] * op_qubit_count
 
             qir_function = pyqir.Function(
                 pyqir.FunctionType(pyqir.Type.void(context), qir_function_arguments),

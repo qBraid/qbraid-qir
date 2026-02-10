@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING, Any, Callable, TypedDict
 
 import pyqir
 from bloqade import qubit
+
+from qbraid_qir._pyqir_compat import pointer_id
 from bloqade.squin import kernel
 from kirin import ir, lowering, types
 from kirin.dialects import func, ilist, py
@@ -429,7 +431,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         Returns:
             ir.SSAValue: The SSA value of the constant.
         """
-        qubit_id = pyqir.qubit_id(value)
+        qubit_id = pointer_id(value)
         if qubit_id is not None and qubit_id in self.qubit_ssa_map:
             return self.qubit_ssa_map[qubit_id]
 
