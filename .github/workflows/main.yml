@@ -58,8 +58,10 @@ jobs:
           path: dist
       - name: Install package wheel with extras
         run: |
+          pip install --upgrade pip
           pip install setuptools
-          bin/install_wheel_extras.sh dist --extra qasm3 --extra cirq --extra test --extra squin
+          pip install -r requirements-test.txt
+          bin/install_wheel_extras.sh dist --extra qasm3 --extra cirq --extra squin
       - name: Run tests with pyqir 0.11.x (typed pointers)
         run: |
           pip install "pyqir>=0.10.0,<0.12"
