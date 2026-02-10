@@ -16,6 +16,7 @@
 Module containing Cirq to qBraid QIR conversion functions
 
 """
+
 from typing import Optional
 
 import cirq

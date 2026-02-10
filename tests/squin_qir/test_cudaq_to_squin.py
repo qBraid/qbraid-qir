@@ -14,11 +14,14 @@
 
 """Unit tests for CUDAQ to Squin conversion functions."""
 
-import cudaq
+import pytest
 
-from qbraid_qir.squin import load
+cudaq = pytest.importorskip("cudaq")
 
-from .test_qir_to_squin import _compare_output
+# Imports after importorskip so optional dependency is not required at import time.
+from qbraid_qir.squin import load  # pylint: disable=wrong-import-position
+
+from .test_qir_to_squin import _compare_output  # pylint: disable=wrong-import-position
 
 
 def test_bell_state():

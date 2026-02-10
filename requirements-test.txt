@@ -1,0 +1,5 @@
+qbraid>=0.11.0,<0.12.0
+pytest
+pytest-cov
+autoqasm>=0.1.0
+cudaq; platform_system == "Linux" and python_version < '3.14'

@@ -15,6 +15,7 @@
 """
 Module mapping supported QASM gates/operations to pyqir functions.
 """
+
 from typing import Callable
 
 import pyqir

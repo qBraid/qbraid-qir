@@ -16,6 +16,7 @@
 Test functions that preprocess Cirq circuits before conversion to QIR.
 
 """
+
 import cirq
 import numpy as np
 import pytest

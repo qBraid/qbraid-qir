@@ -16,17 +16,25 @@
 Tests the convert module of autoqasm to qir
 
 """
+
 import re
 from typing import TYPE_CHECKING
 
-import autoqasm as aq
-import autoqasm.instructions as ins
-import numpy as np
 import pytest
-from pyqir import Module
-from qbraid.passes.qasm.compat import add_stdgates_include, insert_gate_def
 
-from qbraid_qir.qasm3 import qasm3_to_qir
+pytest.importorskip("autoqasm")
+
+# Imports after importorskip so optional dependency is not required at import time.
+import autoqasm as aq  # pylint: disable=wrong-import-position
+import autoqasm.instructions as ins  # pylint: disable=wrong-import-position
+import numpy as np  # pylint: disable=wrong-import-position
+from pyqir import Module  # pylint: disable=wrong-import-position
+from qbraid.passes.qasm.compat import (  # pylint: disable=wrong-import-position
+    add_stdgates_include,
+    insert_gate_def,
+)
+
+from qbraid_qir.qasm3 import qasm3_to_qir  # pylint: disable=wrong-import-position
 
 if TYPE_CHECKING:
     from autoqasm.program import MainProgram

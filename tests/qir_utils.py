@@ -30,6 +30,7 @@ from pyqir import (
     required_num_results,
 )
 
+from qbraid_qir._pyqir_compat import pyqir_uses_opaque_pointers
 from qbraid_qir.qasm3.maps import CONSTANTS_MAP
 
 
@@ -53,6 +54,10 @@ def assert_equal_qir(given_qir: str, filepath: str) -> None:
 
 
 def _qubit_string(qubit: int) -> str:
+    if pyqir_uses_opaque_pointers():
+        if qubit == 0:
+            return "ptr null"
+        return f"ptr inttoptr (i64 {qubit} to ptr)"
     if qubit == 0:
         return "%Qubit* null"
     return f"%Qubit* inttoptr (i64 {qubit} to %Qubit*)"
@@ -63,12 +68,18 @@ def _barrier_string() -> str:
 
 
 def _result_string(res: int) -> str:
+    if pyqir_uses_opaque_pointers():
+        if res == 0:
+            return "ptr null"
+        return f"ptr inttoptr (i64 {res} to ptr)"
     if res == 0:
         return "%Result* null"
     return f"%Result* inttoptr (i64 {res} to %Result*)"
 
 
 def initialize_call_string() -> str:
+    if pyqir_uses_opaque_pointers():
+        return "call void @__quantum__rt__initialize(ptr null)"
     return "call void @__quantum__rt__initialize(i8* null)"
 
 
@@ -97,11 +108,13 @@ def measure_call_string(name: str, res: str, qb: int) -> str:
 
 
 def array_record_output_string(num_elements: int) -> str:
-    return f"call void @__quantum__rt__array_record_output(i64 {num_elements}, i8* null)"
+    null_arg = "ptr null" if pyqir_uses_opaque_pointers() else "i8* null"
+    return f"call void @__quantum__rt__array_record_output(i64 {num_elements}, {null_arg})"
 
 
 def result_record_output_string(res: str) -> str:
-    return f"call void @__quantum__rt__result_record_output({_result_string(res)}, i8* null)"
+    null_arg = "ptr null" if pyqir_uses_opaque_pointers() else "i8* null"
+    return f"call void @__quantum__rt__result_record_output({_result_string(res)}, {null_arg})"
 
 
 def reset_call_string(qb: int) -> str:

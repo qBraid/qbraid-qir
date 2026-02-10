@@ -15,6 +15,7 @@
 """
 This module contains the functionality to convert a PyQIR module into a squin kernel.
 """
+
 from __future__ import annotations
 
 import os
@@ -27,6 +28,8 @@ from bloqade.squin import kernel
 from kirin import ir, lowering, types
 from kirin.dialects import func, ilist, py
 from kirin.rewrite import CFGCompactify, Walk
+
+from qbraid_qir._pyqir_compat import pointer_id
 
 from .exceptions import InvalidSquinInput
 from .maps import PYQIR_TO_SQUIN_GATES_MAP, QIR_TO_SQUIN_UNSUPPORTED_STATEMENTS_MAP
@@ -428,7 +431,7 @@ class SquinVisitor(lowering.LoweringABC[pyqir.Module]):
         Returns:
             ir.SSAValue: The SSA value of the constant.
         """
-        qubit_id = pyqir.qubit_id(value)
+        qubit_id = pointer_id(value)
         if qubit_id is not None and qubit_id in self.qubit_ssa_map:
             return self.qubit_ssa_map[qubit_id]
 

@@ -16,6 +16,7 @@
 Module containing Cirq circuit fixtures for unit tests.
 
 """
+
 import cirq
 import pytest
 

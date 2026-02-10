@@ -16,6 +16,7 @@
 Module containing unit tests for Cirq to QIR conversion functions.
 
 """
+
 import os
 from pathlib import Path
 
@@ -23,6 +24,7 @@ import cirq
 import pyqir
 import pytest
 
+from qbraid_qir._pyqir_compat import pyqir_uses_opaque_pointers
 from qbraid_qir.cirq import cirq_to_qir
 from tests.cirq_qir.fixtures.basic_gates import (
     double_op_tests,
@@ -54,10 +56,16 @@ def resources_file(filename: str) -> str:
     return os.path.join(RESOURCES_DIR, f"{filename}.ll")
 
 
+def version_specific_ll_path(base_name: str) -> str:
+    """Path to typed or opaque fixture based on installed pyqir version."""
+    suffix = "opaque" if pyqir_uses_opaque_pointers() else "typed"
+    return os.path.join(RESOURCES_DIR, f"{base_name}_{suffix}.ll")
+
+
 def compare_reference_ir(generated_bitcode: bytes, name: str) -> None:
     module = pyqir.Module.from_bitcode(pyqir.Context(), generated_bitcode, f"{name}")
     ir = str(module)
-    file = os.path.join(os.path.dirname(__file__), f"resources/{name}.ll")
+    file = version_specific_ll_path(name)
     expected = Path(file).read_text(encoding="utf-8")
     assert ir == expected
 
@@ -195,8 +203,7 @@ def test_pauli_term_measurements():
 
 def test_verify_qir_bell_fixture(pyqir_bell):
     """Test that pyqir fixture generates code equal to test_qir_bell.ll file."""
-    test_name = "test_qir_bell"
-    filepath = resources_file(test_name)
+    filepath = version_specific_ll_path("test_qir_bell")
     assert_equal_qir(pyqir_bell.ir(), filepath)
 
 
@@ -210,7 +217,7 @@ def test_entry_point_name(cirq_bell):
 def test_convert_bell_compare_file(cirq_bell):
     """Test converting Cirq bell circuit to QIR."""
     test_name = "test_qir_bell"
-    filepath = resources_file(test_name)
+    filepath = version_specific_ll_path("test_qir_bell_cirq")
     module = cirq_to_qir(cirq_bell, name=test_name, initialize_runtime=False, record_output=False)
     assert_equal_qir(str(module), filepath)
 

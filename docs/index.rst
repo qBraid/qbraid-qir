@@ -91,7 +91,7 @@ To enable specific conversions such as OpenQASM 3 to QIR or Cirq to QIR, you can
 Resources
 ----------
 
-- `User Guide <https://docs.qbraid.com/qir/user-guide>`_
+- `User Guide <https://docs.qbraid.com/v2/qir/user-guide>`_
 - `Example Notebooks <https://github.com/qBraid/qbraid-lab-demo/tree/main/qbraid_qir>`_
 - `API Reference <https://qbraid.github.io/qbraid-qir/api/qbraid_qir.html>`_
 - `Source Code <https://github.com/qBraid/qbraid-qir>`_
@@ -117,6 +117,7 @@ Resources
    api/qbraid_qir
    api/qbraid_qir.cirq
    api/qbraid_qir.qasm3
+   api/qbraid_qir.squin
 
 .. toctree::
    :caption: CORE API Reference
@@ -130,3 +131,9 @@ Resources
    :hidden:
 
    pyqasm <https://qbraid.github.io/pyqasm/api/pyqasm.html>
+
+.. toctree::
+   :caption: ALGOS API Reference
+   :hidden:
+
+   qbraid_algorithms <https://qbraid.github.io/qbraid-algorithms/api/qbraid_algorithms.html>

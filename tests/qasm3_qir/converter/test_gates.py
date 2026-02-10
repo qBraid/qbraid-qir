@@ -16,6 +16,7 @@
 Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
+
 import pytest
 
 from qbraid_qir.qasm3 import qasm3_to_qir
@@ -248,8 +249,7 @@ def test_inv_gate_modifier():
 
 
 def test_nested_gate_modifiers():
-    complex_qir = qasm3_to_qir(
-        """
+    complex_qir = qasm3_to_qir("""
     OPENQASM 3;
     include "stdgates.inc";
     qubit[2] q;
@@ -262,8 +262,7 @@ def test_nested_gate_modifiers():
     }
     pow(1) @ inv @ pow(2) @ custom q; 
     pow(-1) @ custom q;
-    """
-    )
+    """)
     generated_qir = str(complex_qir).splitlines()
     check_attributes(generated_qir, 2, 0)
     check_single_qubit_gate_op(generated_qir, 2, [0, 0, 0], "y")
@@ -271,14 +270,12 @@ def test_nested_gate_modifiers():
 
 
 def test_ctrl_modifiers():
-    ctrl_modifiers = qasm3_to_qir(
-        """
+    ctrl_modifiers = qasm3_to_qir("""
         OPENQASM 3;
         include "stdgates.inc";
         qubit[2] q;
         ctrl @ x q[0], q[1];
-        """
-    )
+        """)
     generated_qir = str(ctrl_modifiers).splitlines()
     check_attributes(generated_qir, 2, 0)
     check_two_qubit_gate_op(generated_qir, 1, [[0, 1]], "cx")

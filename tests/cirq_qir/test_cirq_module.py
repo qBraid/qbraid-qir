@@ -16,6 +16,7 @@
 Module containing unit tests for CirqModule and Module elements.
 
 """
+
 import hashlib
 
 import cirq

@@ -44,6 +44,7 @@ Exceptions
    CirqConversionError
 
 """
+
 from .convert import cirq_to_qir
 from .elements import CirqModule
 from .exceptions import CirqConversionError
