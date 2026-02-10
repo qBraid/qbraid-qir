@@ -18,9 +18,10 @@ import pytest
 
 cudaq = pytest.importorskip("cudaq")
 
-from qbraid_qir.squin import load
+# Imports after importorskip so optional dependency is not required at import time.
+from qbraid_qir.squin import load  # pylint: disable=wrong-import-position
 
-from .test_qir_to_squin import _compare_output
+from .test_qir_to_squin import _compare_output  # pylint: disable=wrong-import-position
 
 
 def test_bell_state():

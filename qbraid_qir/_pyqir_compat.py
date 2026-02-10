@@ -1,4 +1,4 @@
-# Copyright 2025 qBraid
+# Copyright 2026 qBraid
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,10 +39,15 @@ def pointer_id(value: Any) -> Optional[int]:
     if _uses_opaque_pointers():
         return pyqir.ptr_id(value)
     # 0.10.x: qubit_id for qubit constants, result_id for result constants
-    out = pyqir.qubit_id(value)
-    if out is not None:
-        return out
-    return pyqir.result_id(value)
+    qubit_id_fn = getattr(pyqir, "qubit_id", None)
+    result_id_fn = getattr(pyqir, "result_id", None)
+    if qubit_id_fn is not None:
+        out = qubit_id_fn(value)
+        if out is not None:
+            return out
+    if result_id_fn is not None:
+        return result_id_fn(value)
+    return None
 
 
 def qubit_pointer_type(context: Any) -> Any:
@@ -53,7 +58,10 @@ def qubit_pointer_type(context: Any) -> Any:
     """
     if _uses_opaque_pointers():
         return pyqir.PointerType(pyqir.Type.void(context))
-    return pyqir.qubit_type(context)
+    qubit_type_fn = getattr(pyqir, "qubit_type", None)
+    if qubit_type_fn is not None:
+        return qubit_type_fn(context)
+    return pyqir.PointerType(pyqir.Type.void(context))
 
 
 def pyqir_uses_opaque_pointers() -> bool:

@@ -28,7 +28,7 @@ from tests.qir_utils import (
     check_two_qubit_gate_op,
 )
 
-from .test_if import compare_reference_ir, resources_file, version_specific_ll_file
+from .test_if import compare_reference_ir, version_specific_ll_file
 
 
 def test_alias():

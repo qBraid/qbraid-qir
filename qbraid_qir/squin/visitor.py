@@ -24,12 +24,12 @@ from typing import TYPE_CHECKING, Any, Callable, TypedDict
 
 import pyqir
 from bloqade import qubit
-
-from qbraid_qir._pyqir_compat import pointer_id
 from bloqade.squin import kernel
 from kirin import ir, lowering, types
 from kirin.dialects import func, ilist, py
 from kirin.rewrite import CFGCompactify, Walk
+
+from qbraid_qir._pyqir_compat import pointer_id
 
 from .exceptions import InvalidSquinInput
 from .maps import PYQIR_TO_SQUIN_GATES_MAP, QIR_TO_SQUIN_UNSUPPORTED_STATEMENTS_MAP
