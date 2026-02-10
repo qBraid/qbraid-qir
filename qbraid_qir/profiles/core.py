@@ -16,6 +16,7 @@
 Module containing core profile classes for QIR generation.
 
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable

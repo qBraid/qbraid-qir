@@ -16,6 +16,7 @@
 Module containing PyQIR circuit fixtures for unit tests.
 
 """
+
 import pytest
 from pyqir import BasicQisBuilder, SimpleModule
 

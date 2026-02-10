@@ -21,6 +21,7 @@ This refactored approach uses Profile objects to handle different QIR profiles
 without code duplication, based on JSON profile specifications.
 
 """
+
 import logging
 from typing import Any, Callable, List, Optional, Union
 

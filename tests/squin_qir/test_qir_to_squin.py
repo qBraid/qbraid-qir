@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Unit tests for QIR to Squin conversion functions."""
+
 import os
 import re
 

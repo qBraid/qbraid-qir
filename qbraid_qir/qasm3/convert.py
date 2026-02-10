@@ -16,6 +16,7 @@
 Module containing OpenQASM to QIR conversion functions
 
 """
+
 from enum import Enum
 from typing import Optional, Union
 

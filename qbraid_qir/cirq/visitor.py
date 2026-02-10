@@ -16,6 +16,7 @@
 Module defining CirqVisitor.
 
 """
+
 import logging
 from abc import ABCMeta, abstractmethod
 

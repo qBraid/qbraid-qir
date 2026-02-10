@@ -16,6 +16,7 @@
 Module defining Cirq basic gate fixtures for use in tests.
 
 """
+
 import cirq
 import pytest
 

@@ -16,6 +16,7 @@
 Module containing unit tests for Cirq to QIR conversion functions.
 
 """
+
 import os
 from pathlib import Path
 

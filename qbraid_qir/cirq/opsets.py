@@ -16,6 +16,7 @@
 Module mapping supported Cirq gates/operations to pyqir functions.
 
 """
+
 from typing import Callable
 
 import cirq

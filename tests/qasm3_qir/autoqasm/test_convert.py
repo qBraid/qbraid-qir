@@ -16,6 +16,7 @@
 Tests the convert module of autoqasm to qir
 
 """
+
 import re
 from typing import TYPE_CHECKING
 

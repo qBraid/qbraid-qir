@@ -16,6 +16,7 @@
 Module defining exceptions for errors raised during QASM3 conversions.
 
 """
+
 import logging
 from typing import Optional, Type
 

@@ -15,6 +15,7 @@
 """
 Module mapping PyQIR gate strings to squin gates.
 """
+
 from bloqade import squin
 
 # Mapping from full PyQIR gate strings to squin gates

@@ -15,6 +15,7 @@
 """
 This module contains the functionality to convert a PyQIR module into a squin kernel.
 """
+
 from __future__ import annotations
 
 import os

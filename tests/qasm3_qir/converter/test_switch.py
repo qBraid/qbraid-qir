@@ -18,7 +18,6 @@ with alias statements to QIR.
 
 """
 
-
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import (
     check_attributes,
