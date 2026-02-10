@@ -152,15 +152,15 @@ ir = str(module)
 from pyqir import BasicQisBuilder, SimpleModule
 from qbraid_qir.squin import load
 
-module = SimpleModule("ghz_n", num_qubits=2, num_results=2)
+module = SimpleModule("bell", num_qubits=2, num_results=2)
 qis = BasicQisBuilder(module.builder)
 
 qis.h(module.qubits[0])
 qis.cx(module.qubits[0], module.qubits[1])
 
-squin_module = load(module.ir())
+squin_kernel = load(module.ir())
 
-squin_module.print()
+squin_kernel.print()
 ```
 
 ## Architecture diagram
