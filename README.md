@@ -29,13 +29,13 @@
 
 qBraid-SDK extension providing support for QIR conversions.
 
-[<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com?gitHubUrl=https://github.com/qBraid/qbraid-qir.git)
+[<img src="https://qbraid-static.s3.amazonaws.com/logos/Launch_on_qBraid_white.png" width="150">](https://account.qbraid.com/explore/projects/qbraid-qir-n792k0)
 
 ## Motivation
 
 <img align="right" width="100" alt="qir" src="https://qbraid-static.s3.amazonaws.com/logos/qir.png">
 
-This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/sdk/user-guide/overview#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
+This project aims to make [QIR](https://www.qir-alliance.org/) representations accessible via the qBraid-SDK [transpiler](#architecture-diagram), and by doing so, open the door to language-specific conversions from any and all high-level quantum languages [supported](https://docs.qbraid.com/v2/sdk/user-guide/overview#supported-frontends) by `qbraid`. See QIR Alliance: [why do we need it?](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html).
 
 ## Installation
 
@@ -61,6 +61,12 @@ For Cirq to QIR conversions, install the `cirq` extra:
 pip install 'qbraid-qir[cirq]'
 ```
 
+For QIR to SQUIN conversions, install the `squin` extra:
+
+```shell
+pip install 'qbraid-qir[squin]'
+```
+
 ### Install from source
 
 You can also install from source by cloning this repository and running a pip install command
@@ -75,7 +81,7 @@ pip install .
 To include optional dependencies when installing from source, use the same "extras_require" format, e.g.
 
 ```shell
-pip install '.[qasm3,cirq]'
+pip install '.[qasm3,cirq,squin]'
 ```
 
 ## Check version
@@ -90,7 +96,7 @@ qbraid_qir.__version__
 
 ## Resources
 
-- [User Guide](https://docs.qbraid.com/qir/user-guide)
+- [User Guide](https://docs.qbraid.com/v2/qir/user-guide)
 - [API Reference](https://sdk.qbraid.com/qbraid-qir/api/qbraid_qir.html)
 - [Example Notebooks](https://github.com/qBraid/qbraid-lab-demo/tree/main/qbraid_qir)
 - [Docker Containers](docker)
@@ -140,9 +146,26 @@ module = cirq_to_qir(circuit, name="my-circuit")
 ir = str(module)
 ```
 
+### SQUIN conversions
+
+```python
+from pyqir import BasicQisBuilder, SimpleModule
+from qbraid_qir.squin import load
+
+module = SimpleModule("ghz_n", num_qubits=2, num_results=2)
+qis = BasicQisBuilder(module.builder)
+
+qis.h(module.qubits[0])
+qis.cx(module.qubits[0], module.qubits[1])
+
+squin_module = load(module.ir())
+
+squin_module.print()
+```
+
 ## Architecture diagram
 
-qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/qir/user-guide/overview#architecture-diagram) with qbraid-qir integration (left) mapped to language specific conversion step in QIR abstraction [layers](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html) (right).
+qBraid-SDK transpiler hub-and-spokes [architecture](https://docs.qbraid.com/v2/qir/user-guide/overview#architecture-diagram) with qbraid-qir integration (left) mapped to language specific conversion step in QIR abstraction [layers](https://www.qir-alliance.org/qir-book/concepts/why-do-we-need.html) (right).
 
 <img width="full" alt="architecture" src="https://github.com/qBraid/qbraid-qir/assets/46977852/36644614-2715-4f08-8a8c-8a2e61aebf38">
 
@@ -169,10 +192,10 @@ citation details, please refer to [CITATION.cff](CITATION.cff).
 @software{Gupta_qBraid-QIR_Python_package_2025,
   author = {Gupta, Harshit and Hill, Ryan James},
   license = {Apache-2.0},
-  month = jun,
+  month = dec,
   title = {{qBraid-QIR: Python package for QIR conversions, integrations, and utilities.}},
   url = {https://github.com/qBraid/qbraid-qir},
-  version = {0.4.0},
+  version = {0.5.0},
   year = {2025}
 }
 ```
