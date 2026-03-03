@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This module is derived from microsoft/qiskit-qir (MIT License).
-# Original code: Copyright (c) Microsoft Corporation.
-# See NOTICE.md for attribution details.
+# pylint: disable=line-too-long
+# Portions of this module are adapted from microsoft/qiskit-qir
+# (https://github.com/microsoft/qiskit-qir), with modifications by qBraid.
+# The original MIT license notice is reproduced in NOTICE.md.
+# pylint: enable=line-too-long
 
 """
 Module defining Qiskit circuit elements for QIR conversion.
