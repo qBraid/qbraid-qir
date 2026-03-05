@@ -94,7 +94,7 @@ class QiskitModule:
         reg_sizes: List of sizes for each classical register.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         circuit: QuantumCircuit,
         name: str,

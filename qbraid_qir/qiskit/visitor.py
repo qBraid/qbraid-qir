@@ -28,8 +28,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Union
 
 import pyqir
-import pyqir.qis as qis
-import pyqir.rt as rt
+from pyqir import qis, rt
 from pyqir import BasicBlock, Builder, Constant, IntType, PointerType, entry_point
 from qiskit import ClassicalRegister, QuantumRegister
 from qiskit.circuit import Clbit, Qubit
@@ -83,7 +82,9 @@ class QuantumCircuitElementVisitor(metaclass=ABCMeta):
         """Visit an instruction element."""
 
 
-class BasicQiskitVisitor(QuantumCircuitElementVisitor):
+class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
+    QuantumCircuitElementVisitor
+):
     """A visitor for basic Qiskit circuit elements.
 
     This class traverses and converts Qiskit circuit elements to QIR.
@@ -182,7 +183,7 @@ class BasicQiskitVisitor(QuantumCircuitElementVisitor):
             self._qubit_labels.update(
                 {bit: n + len(self._qubit_labels) for n, bit in enumerate(register)}
             )
-            logger.debug("Added labels for qubits %s", [bit for bit in register])
+            logger.debug("Added labels for qubits %s", list(register))
         elif isinstance(register, ClassicalRegister):
             self._clbit_labels.update(
                 {bit: n + len(self._clbit_labels) for n, bit in enumerate(register)}
@@ -235,7 +236,7 @@ class BasicQiskitVisitor(QuantumCircuitElementVisitor):
             )
             self.visit_instruction(inst, mapped_qbits, mapped_clbits)
 
-    def visit_instruction(
+    def visit_instruction(  # pylint: disable=too-many-branches,too-many-statements
         self,
         instruction: Instruction,
         qargs: tuple[Qubit, ...],

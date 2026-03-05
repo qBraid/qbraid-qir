@@ -188,7 +188,7 @@ class TestQiskitModule:
         module = QiskitModule.from_circuit(bell_circuit, None)
         assert module.num_qubits == 2
         assert module.num_clbits == 2
-        assert module.name == bell_circuit.name or module.name == "main"
+        assert module.name in (bell_circuit.name, "main")
 
     def test_circuit_property(self, bell_circuit):
         """Test that circuit property returns the original circuit."""
