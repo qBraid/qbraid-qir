@@ -90,9 +90,9 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
         record_output: bool = True,
         emit_barrier_calls: bool = False,
     ):
-        self._module: pyqir.Module
+        self._module: pyqir.Module = None  # type: ignore[assignment]
         self._qiskit_module: QiskitModule | None = None
-        self._builder: pyqir.Builder
+        self._builder: pyqir.Builder = None  # type: ignore[assignment]
         self._entry_point: str = ""
         self._qubit_labels: dict[Qubit, int] = {}
         self._clbit_labels: dict[Clbit, int] = {}
@@ -113,6 +113,10 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
             module.num_qubits,
             module.num_clbits,
         )
+        self._qubit_labels.clear()
+        self._clbit_labels.clear()
+        self._measured_qubits.clear()
+
         if module.module is None:
             raise ValueError("QiskitModule must have a PyQIR module set before visiting.")
         self._module = module.module
@@ -134,8 +138,16 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
         """Return the entry point name."""
         return self._entry_point
 
+    def _check_initialized(self) -> None:
+        """Raise if the visitor has not been initialized via visit_qiskit_module."""
+        if self._module is None or self._builder is None:
+            raise RuntimeError(
+                "Visitor has not been initialized. Call visit_qiskit_module() first."
+            )
+
     def finalize(self) -> None:
         """Finalize the QIR module by adding a return instruction."""
+        self._check_initialized()
         self._builder.ret(None)
 
     def record_output(self, module: QiskitModule) -> None:
@@ -146,6 +158,7 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
         """
         if not self._record_output:
             return
+        self._check_initialized()
 
         i8p = PointerType(IntType(self._module.context, 8))
 
@@ -282,8 +295,10 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
 
     def ir(self) -> str:
         """Return the QIR as a string."""
+        self._check_initialized()
         return str(self._module)
 
     def bitcode(self) -> bytes:
         """Return the QIR as bitcode."""
+        self._check_initialized()
         return self._module.bitcode

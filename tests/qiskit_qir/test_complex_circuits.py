@@ -128,7 +128,8 @@ class TestParameterizedCircuits:
         ops = _gate_ops(module)
         assert len(ops) == 1
         assert "qis__rx__body" in ops[0]
-        assert "double" in ops[0]
+        # pi/4 ≈ 0.7854; pyqir may emit as hex (0x3FE921FB…) or decimal
+        assert ("0x3FE921FB" in ops[0]) or ("7.853982e-01" in ops[0]) or ("0.785398" in ops[0])
 
     def test_multiple_bound_parameters(self):
         a = Parameter("a")
@@ -319,7 +320,7 @@ class TestTranspilation:
         # Both should have the same gate types
         no_names = [line.split("qis__")[1].split("__")[0] for line in ops_no]
         yes_names = [line.split("qis__")[1].split("__")[0] for line in ops_yes]
-        assert set(no_names) == set(yes_names)
+        assert sorted(no_names) == sorted(yes_names)
 
     def test_ecr_without_transpile_uses_decomposition(self):
         """ECR without transpile should still work via composite decomposition."""
