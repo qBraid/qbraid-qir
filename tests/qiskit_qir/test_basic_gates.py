@@ -23,7 +23,10 @@ import pytest
 from pyqir import is_entry_point, required_num_qubits, required_num_results
 from qiskit import QuantumCircuit
 
+from qbraid_qir._pyqir_compat import pyqir_uses_opaque_pointers
 from qbraid_qir.qiskit import qiskit_to_qir
+
+_OPAQUE = pyqir_uses_opaque_pointers()
 
 
 def _get_body(module):
@@ -38,44 +41,49 @@ def _get_entry_point(module):
     return next(filter(is_entry_point, module.functions))
 
 
+def _qubit_ref(n):
+    """Return the QIR qubit reference string for qubit index *n*."""
+    if _OPAQUE:
+        return "ptr null" if n == 0 else f"ptr inttoptr (i64 {n} to ptr)"
+    return "%Qubit* null" if n == 0 else f"%Qubit* inttoptr (i64 {n} to %Qubit*)"
+
+
+def _result_ref(n):
+    """Return the QIR result reference string for result index *n*."""
+    if _OPAQUE:
+        return "ptr null" if n == 0 else f"ptr inttoptr (i64 {n} to ptr)"
+    return "%Result* null" if n == 0 else f"%Result* inttoptr (i64 {n} to %Result*)"
+
+
 def _op_call(name, qubit=0):
     """Generate expected single-qubit gate call string."""
-    qb = "ptr null" if qubit == 0 else f"ptr inttoptr (i64 {qubit} to ptr)"
-    return f"call void @__quantum__qis__{name}__body({qb})"
+    return f"call void @__quantum__qis__{name}__body({_qubit_ref(qubit)})"
 
 
 def _adj_call(name, qubit=0):
     """Generate expected adjoint gate call string."""
-    qb = "ptr null" if qubit == 0 else f"ptr inttoptr (i64 {qubit} to ptr)"
-    return f"call void @__quantum__qis__{name}__adj({qb})"
+    return f"call void @__quantum__qis__{name}__adj({_qubit_ref(qubit)})"
 
 
 def _rot_call(name, angle, qubit=0):
     """Generate expected rotation gate call string."""
-    qb = "ptr null" if qubit == 0 else f"ptr inttoptr (i64 {qubit} to ptr)"
-    return f"call void @__quantum__qis__{name}__body(double {angle:#e}, {qb})"
+    return f"call void @__quantum__qis__{name}__body(double {angle:#e}, {_qubit_ref(qubit)})"
 
 
 def _two_qubit_call(name, qb1=0, qb2=1):
     """Generate expected two-qubit gate call string."""
-    q1 = "ptr null" if qb1 == 0 else f"ptr inttoptr (i64 {qb1} to ptr)"
-    q2 = "ptr null" if qb2 == 0 else f"ptr inttoptr (i64 {qb2} to ptr)"
-    return f"call void @__quantum__qis__{name}__body({q1}, {q2})"
+    return f"call void @__quantum__qis__{name}__body({_qubit_ref(qb1)}, {_qubit_ref(qb2)})"
 
 
 def _three_qubit_call(name, qb1=0, qb2=1, qb3=2):
     """Generate expected three-qubit gate call string."""
-    qubits = []
-    for q in [qb1, qb2, qb3]:
-        qubits.append("ptr null" if q == 0 else f"ptr inttoptr (i64 {q} to ptr)")
-    return f"call void @__quantum__qis__{name}__body({', '.join(qubits)})"
+    qubits = ", ".join(_qubit_ref(q) for q in [qb1, qb2, qb3])
+    return f"call void @__quantum__qis__{name}__body({qubits})"
 
 
 def _mz_call(qubit=0, result=0):
     """Generate expected measurement call string."""
-    qb = "ptr null" if qubit == 0 else f"ptr inttoptr (i64 {qubit} to ptr)"
-    res = "ptr null" if result == 0 else f"ptr inttoptr (i64 {result} to ptr)"
-    return f"call void @__quantum__qis__mz__body({qb}, {res})"
+    return f"call void @__quantum__qis__mz__body({_qubit_ref(qubit)}, {_result_ref(result)})"
 
 
 def _assert_body_ops(module, expected_ops):
