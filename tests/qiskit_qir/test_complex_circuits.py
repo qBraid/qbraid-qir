@@ -37,7 +37,7 @@ def _get_body(module):
 
 def _gate_ops(module):
     """Return only qis__ gate call lines from the body."""
-    return [l for l in _get_body(module) if "qis__" in l]
+    return [line for line in _get_body(module) if "qis__" in line]
 
 
 # ---------------------------------------------------------------------------
@@ -203,8 +203,8 @@ class TestLargeCircuits:
         assert required_num_qubits(func) == n
 
         ops = _gate_ops(module)
-        h_count = sum(1 for l in ops if "qis__h__body" in l)
-        cx_count = sum(1 for l in ops if "qis__cnot__body" in l)
+        h_count = sum(1 for line in ops if "qis__h__body" in line)
+        cx_count = sum(1 for line in ops if "qis__cnot__body" in line)
         assert h_count == n
         assert cx_count == n - 1
 
@@ -244,7 +244,7 @@ class TestMultipleClassicalRegisters:
         assert required_num_results(func) == 3
 
         body = _get_body(module)
-        array_records = [l for l in body if "array_record_output" in l]
+        array_records = [line for line in body if "array_record_output" in line]
         assert len(array_records) == 2  # Two classical registers
 
     def test_three_classical_registers(self):
@@ -262,7 +262,7 @@ class TestMultipleClassicalRegisters:
 
         module = qiskit_to_qir(circuit)
         body = _get_body(module)
-        array_records = [l for l in body if "array_record_output" in l]
+        array_records = [line for line in body if "array_record_output" in line]
         assert len(array_records) == 3
 
 
@@ -283,7 +283,7 @@ class TestTranspilation:
         ops = _gate_ops(module)
         assert len(ops) > 0
         # Should not contain ECR in the output
-        assert not any("ecr" in l.lower() for l in ops)
+        assert not any("ecr" in line.lower() for line in ops)
 
     def test_u_gate_with_transpile(self):
         """U gate transpiled to basis gates."""
@@ -317,8 +317,8 @@ class TestTranspilation:
         ops_yes = _gate_ops(module_transpile)
 
         # Both should have the same gate types
-        no_names = [l.split("qis__")[1].split("__")[0] for l in ops_no]
-        yes_names = [l.split("qis__")[1].split("__")[0] for l in ops_yes]
+        no_names = [line.split("qis__")[1].split("__")[0] for line in ops_no]
+        yes_names = [line.split("qis__")[1].split("__")[0] for line in ops_yes]
         assert set(no_names) == set(yes_names)
 
     def test_ecr_without_transpile_uses_decomposition(self):
@@ -353,7 +353,7 @@ class TestTranspilation:
 
         module = qiskit_to_qir(circuit, transpile=True, emit_barrier_calls=True)
         body = _get_body(module)
-        assert any("barrier" in l for l in body)
+        assert any("barrier" in line for line in body)
 
 
 # ---------------------------------------------------------------------------
@@ -417,10 +417,10 @@ class TestEdgeCases:
         )
         body = _get_body(module)
 
-        assert not any("rt__initialize" in l for l in body)
-        assert not any("array_record_output" in l for l in body)
-        assert not any("result_record_output" in l for l in body)
-        assert not any("barrier" in l for l in body)
+        assert not any("rt__initialize" in line for line in body)
+        assert not any("array_record_output" in line for line in body)
+        assert not any("result_record_output" in line for line in body)
+        assert not any("barrier" in line for line in body)
 
     def test_circuit_with_no_classical_bits(self):
         """Circuit without classical bits should have no measurement output."""

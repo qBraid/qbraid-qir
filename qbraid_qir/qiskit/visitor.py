@@ -113,7 +113,8 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
             module.num_qubits,
             module.num_clbits,
         )
-        assert module.module is not None, "QiskitModule must have a PyQIR module set"
+        if module.module is None:
+            raise ValueError("QiskitModule must have a PyQIR module set before visiting.")
         self._module = module.module
         self._qiskit_module = module
         context = self._module.context
@@ -253,7 +254,7 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
             return
 
         if op_name in PYQIR_MEASUREMENT_OP_MAP:
-            for qubit, result in zip(qubits, results):
+            for qubit, result in zip(qubits, results, strict=True):
                 qubit_id = pointer_id(qubit)
                 if qubit_id is not None:
                     self._measured_qubits[qubit_id] = True

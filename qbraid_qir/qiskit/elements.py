@@ -62,6 +62,12 @@ class _Register(_QuantumCircuitElement):
 class _Instruction(_QuantumCircuitElement):
     """Wrapper for a Qiskit instruction element."""
 
+    @classmethod
+    def from_element_list(cls, elements):
+        raise NotImplementedError(
+            "_Instruction requires (instruction, qargs, cargs); use direct construction."
+        )
+
     def __init__(
         self,
         instruction: "Instruction",

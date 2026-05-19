@@ -59,7 +59,7 @@ class TestQiskitToQir:
         assert required_num_results(func) == 2
 
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         assert "qis__h__body" in gate_ops[0]
         assert "qis__cnot__body" in gate_ops[1]
         assert "qis__mz__body" in gate_ops[2]
@@ -72,7 +72,7 @@ class TestQiskitToQir:
         assert required_num_results(func) == 3
 
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         # H, CX, CX, MZ, MZ, MZ
         assert len(gate_ops) == 6
         assert "qis__h__body" in gate_ops[0]
@@ -82,7 +82,7 @@ class TestQiskitToQir:
     def test_single_qubit_gates(self, single_qubit_gates_circuit):
         module = qiskit_to_qir(single_qubit_gates_circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
 
         expected_gates = ["h", "x", "y", "z", "s", "s__adj", "t", "t__adj"]
         assert len(gate_ops) == len(expected_gates)
@@ -92,7 +92,7 @@ class TestQiskitToQir:
     def test_rotation_gates(self, rotation_gates_circuit):
         module = qiskit_to_qir(rotation_gates_circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         assert len(gate_ops) == 3
         assert "qis__rx__body" in gate_ops[0]
         assert "qis__ry__body" in gate_ops[1]
@@ -101,7 +101,7 @@ class TestQiskitToQir:
     def test_two_qubit_gates(self, two_qubit_gates_circuit):
         module = qiskit_to_qir(two_qubit_gates_circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         assert len(gate_ops) == 3
         assert "qis__cnot__body" in gate_ops[0]
         assert "qis__cz__body" in gate_ops[1]
@@ -110,14 +110,14 @@ class TestQiskitToQir:
     def test_three_qubit_gates(self, three_qubit_gates_circuit):
         module = qiskit_to_qir(three_qubit_gates_circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         assert len(gate_ops) == 1
         assert "qis__ccx__body" in gate_ops[0]
 
     def test_reset_gate(self, reset_circuit):
         module = qiskit_to_qir(reset_circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         assert len(gate_ops) == 2
         assert "qis__reset__body" in gate_ops[0]
         assert "qis__h__body" in gate_ops[1]
@@ -126,27 +126,27 @@ class TestQiskitToQir:
         """Identity gate is now a true no-op."""
         module = qiskit_to_qir(identity_circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         assert len(gate_ops) == 0
 
     def test_barrier_not_emitted_by_default(self, barrier_circuit):
         module = qiskit_to_qir(barrier_circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
-        assert not any("barrier" in l for l in gate_ops)
+        gate_ops = [line for line in body if "qis__" in line]
+        assert not any("barrier" in line for line in gate_ops)
 
     def test_barrier_emitted_when_enabled(self, barrier_circuit):
         module = qiskit_to_qir(barrier_circuit, emit_barrier_calls=True)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
-        assert any("barrier" in l for l in gate_ops)
+        gate_ops = [line for line in body if "qis__" in line]
+        assert any("barrier" in line for line in gate_ops)
 
     def test_delay_ignored(self, delay_circuit):
         module = qiskit_to_qir(delay_circuit)
         ir = str(module)
         assert "delay" not in ir.lower()
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         assert len(gate_ops) == 2
         assert "qis__h__body" in gate_ops[0]
         assert "qis__x__body" in gate_ops[1]
@@ -164,14 +164,14 @@ class TestQiskitToQir:
 
         body = _get_body(module)
         # Check output recording has two array_record_output calls (2 classical registers)
-        array_records = [l for l in body if "array_record_output" in l]
+        array_records = [line for line in body if "array_record_output" in line]
         assert len(array_records) == 2
 
     def test_composite_gate(self, composite_gate_circuit):
         """Composite gate should be decomposed into primitive gates."""
         module = qiskit_to_qir(composite_gate_circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
 
         # bell_prep decomposes to H + CX, then measure
         gate_names = []

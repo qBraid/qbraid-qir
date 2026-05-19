@@ -54,7 +54,7 @@ __all__ = [
     "qiskit_to_qir",
 ]
 
-_lazy = {"cirq": "cirq_to_qir", "qasm3": "qasm3_to_qir", "qiskit": "qiskit_to_qir"}
+_lazy = {"cirq": ("cirq_to_qir",), "qasm3": ("qasm3_to_qir",), "qiskit": ("qiskit_to_qir",)}
 
 if TYPE_CHECKING:
     from .cirq import cirq_to_qir

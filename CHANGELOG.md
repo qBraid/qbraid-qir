@@ -16,7 +16,7 @@ Types of changes:
 
 ### ➕  New Features
 
-- Added `qbraid_qir.qiskit` module for Qiskit to QIR conversion, ported from the archived [microsoft/qiskit-qir](https://github.com/microsoft/qiskit-qir) repository (MIT License). The module has been updated for compatibility with Qiskit 2.x and follows qbraid-qir conventions. Main entry point is `qiskit_to_qir(circuit, name, **kwargs)` which converts a Qiskit `QuantumCircuit` to a PyQIR `Module`. ([#272](https://github.com/qBraid/qbraid-qir/issues/272), [#271](https://github.com/qBraid/qbraid-qir/pull/271))
+- Added `qbraid_qir.qiskit` module for Qiskit to QIR conversion, ported from the archived [microsoft/qiskit-qir](https://github.com/microsoft/qiskit-qir) repository (MIT License). The module has been updated for compatibility with Qiskit 2.x and follows qbraid-qir conventions. Main entry point is `qiskit_to_qir(circuit, name=None, **kwargs)` which converts a Qiskit `QuantumCircuit` to a PyQIR `Module`. ([#272](https://github.com/qBraid/qbraid-qir/issues/272), [#271](https://github.com/qBraid/qbraid-qir/pull/271))
 
 ### 🌟  Improvements
 

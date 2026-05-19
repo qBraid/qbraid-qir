@@ -96,7 +96,7 @@ def _assert_body_ops(module, expected_ops):
     body = _get_body(module)
 
     # Filter to only "call" lines and "ret" for comparison
-    gate_lines = [l for l in body if l.startswith("call void @__quantum__qis__")]
+    gate_lines = [line for line in body if line.startswith("call void @__quantum__qis__")]
 
     expected_str = "\n  ".join(expected_ops)
     actual_str = "\n  ".join(gate_lines)
@@ -211,7 +211,7 @@ class TestRotationGates:
 
         module = qiskit_to_qir(circuit)
         body = _get_body(module)
-        gate_ops = [l for l in body if "qis__" in l]
+        gate_ops = [line for line in body if "qis__" in line]
         assert len(gate_ops) == 1
         assert "qis__rx__body" in gate_ops[0]
 
@@ -374,10 +374,10 @@ class TestOutputRecording:
         module = qiskit_to_qir(circuit)
         body = _get_body(module)
 
-        rt_calls = [l for l in body if "__quantum__rt__" in l]
+        rt_calls = [line for line in body if "__quantum__rt__" in line]
         # init + array_record_output + 2 result_record_output
-        assert any("array_record_output" in l for l in rt_calls)
-        assert sum("result_record_output" in l for l in rt_calls) == 2
+        assert any("array_record_output" in line for line in rt_calls)
+        assert sum("result_record_output" in line for line in rt_calls) == 2
 
     def test_output_recording_disabled(self):
         circuit = QuantumCircuit(2, 2)
@@ -422,7 +422,7 @@ class TestBarrierAndDelay:
 
         module = qiskit_to_qir(circuit, emit_barrier_calls=True)
         body = _get_body(module)
-        gate_and_barrier = [l for l in body if l.startswith("call void @__quantum__qis__")]
+        gate_and_barrier = [line for line in body if line.startswith("call void @__quantum__qis__")]
 
         assert len(gate_and_barrier) == 3
         assert "barrier" in gate_and_barrier[1]
