@@ -1,4 +1,4 @@
-# Copyright 2025 qBraid
+# Copyright 2026 qBraid
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,19 +27,29 @@ from typing import Optional
 
 from pyqir import Context, Module, qir_module
 from qiskit.circuit import QuantumCircuit
+from qiskit.compiler import transpile as qiskit_transpile
 
 from .elements import QiskitModule, generate_module_id
 from .exceptions import QiskitConversionError
+from .maps import QISKIT_BASIS_GATES
 from .visitor import BasicQiskitVisitor
 
 
-def qiskit_to_qir(circuit: QuantumCircuit, name: Optional[str] = None, **kwargs) -> Module:
+def qiskit_to_qir(
+    circuit: QuantumCircuit,
+    name: Optional[str] = None,
+    transpile: bool = False,
+    **kwargs,
+) -> Module:
     """
     Converts a Qiskit QuantumCircuit to a PyQIR module.
 
     Args:
         circuit: The Qiskit QuantumCircuit to convert.
         name: Identifier for created QIR module. Auto-generated if not provided.
+        transpile: If True, transpile the circuit to the supported basis gate set
+                   before conversion. This enables conversion of circuits containing
+                   gates not directly supported in QIR. Defaults to False.
 
     Keyword Args:
         initialize_runtime (bool): Whether to perform quantum runtime environment initialization,
@@ -72,6 +82,9 @@ def qiskit_to_qir(circuit: QuantumCircuit, name: Optional[str] = None, **kwargs)
 
     if len(circuit.data) == 0:
         raise ValueError("Input quantum circuit must consist of at least one operation.")
+
+    if transpile:
+        circuit = qiskit_transpile(circuit, basis_gates=QISKIT_BASIS_GATES)
 
     if name is None:
         name = generate_module_id(circuit)

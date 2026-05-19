@@ -1,4 +1,4 @@
-# Copyright 2025 qBraid
+# Copyright 2026 qBraid
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,8 +28,16 @@ from abc import ABCMeta, abstractmethod
 from typing import Union
 
 import pyqir
-from pyqir import qis, rt
-from pyqir import BasicBlock, Builder, Constant, IntType, PointerType, entry_point
+from pyqir import (
+    BasicBlock,
+    Builder,
+    Constant,
+    IntType,
+    PointerType,
+    entry_point,
+    qis,
+    rt,
+)
 from qiskit import ClassicalRegister, QuantumRegister
 from qiskit.circuit import Clbit, Qubit
 from qiskit.circuit.instruction import Instruction
@@ -38,36 +46,17 @@ from qbraid_qir._pyqir_compat import pointer_id
 
 from .elements import QiskitModule
 from .exceptions import QiskitConversionError
+from .maps import (
+    NOOP_INSTRUCTIONS,
+    PYQIR_MEASUREMENT_OP_MAP,
+    PYQIR_ONE_QUBIT_OP_MAP,
+    PYQIR_ONE_QUBIT_ROTATION_MAP,
+    PYQIR_THREE_QUBIT_OP_MAP,
+    PYQIR_TWO_QUBIT_OP_MAP,
+    SUPPORTED_INSTRUCTIONS,
+)
 
 logger = logging.getLogger(__name__)
-
-# Supported quantum instructions
-SUPPORTED_INSTRUCTIONS = [
-    "barrier",
-    "ccx",
-    "cx",
-    "cz",
-    "h",
-    "id",
-    "m",
-    "measure",
-    "mz",
-    "reset",
-    "rx",
-    "ry",
-    "rz",
-    "s",
-    "sdg",
-    "swap",
-    "t",
-    "tdg",
-    "x",
-    "y",
-    "z",
-]
-
-# Instructions that are no-ops (ignored during conversion)
-NOOP_INSTRUCTIONS = ["delay"]
 
 
 class QuantumCircuitElementVisitor(metaclass=ABCMeta):
@@ -124,6 +113,7 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
             module.num_qubits,
             module.num_clbits,
         )
+        assert module.module is not None, "QiskitModule must have a PyQIR module set"
         self._module = module.module
         self._qiskit_module = module
         context = self._module.context
@@ -236,7 +226,7 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
             )
             self.visit_instruction(inst, mapped_qbits, mapped_clbits)
 
-    def visit_instruction(  # pylint: disable=too-many-branches,too-many-statements
+    def visit_instruction(
         self,
         instruction: Instruction,
         qargs: tuple[Qubit, ...],
@@ -249,8 +239,8 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
             qargs: Qubit arguments.
             cargs: Classical bit arguments.
         """
-        qlabels = [self._qubit_labels.get(bit) for bit in qargs]
-        clabels = [self._clbit_labels.get(bit) for bit in cargs]
+        qlabels = [self._qubit_labels[bit] for bit in qargs]
+        clabels = [self._clbit_labels[bit] for bit in cargs]
         qubits = [pyqir.qubit(self._module.context, n) for n in qlabels]
         results = [pyqir.result(self._module.context, n) for n in clabels]
 
@@ -259,63 +249,29 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
 
         op_name = instruction.name.lower()
 
-        # Handle measurement
-        if op_name in ("measure", "m", "mz"):
+        if op_name in NOOP_INSTRUCTIONS:
+            return
+
+        if op_name in PYQIR_MEASUREMENT_OP_MAP:
             for qubit, result in zip(qubits, results):
-                self._measured_qubits[pointer_id(qubit)] = True
+                qubit_id = pointer_id(qubit)
+                if qubit_id is not None:
+                    self._measured_qubits[qubit_id] = True
                 qis.mz(self._builder, qubit, result)
-        # Handle barrier
         elif op_name == "barrier":
             if self._emit_barrier_calls:
                 qis.barrier(self._builder)
-        # Handle no-op instructions
-        elif op_name in NOOP_INSTRUCTIONS:
-            pass
-        # Handle standard gates
-        elif op_name == "swap":
-            qis.swap(self._builder, *qubits)
-        elif op_name == "ccx":
-            qis.ccx(self._builder, *qubits)
-        elif op_name == "cx":
-            qis.cx(self._builder, *qubits)
-        elif op_name == "cz":
-            qis.cz(self._builder, *qubits)
-        elif op_name == "h":
-            qis.h(self._builder, *qubits)
-        elif op_name == "reset":
-            qis.reset(self._builder, qubits[0])
-        elif op_name == "rx":
-            qis.rx(self._builder, *instruction.params, *qubits)
-        elif op_name == "ry":
-            qis.ry(self._builder, *instruction.params, *qubits)
-        elif op_name == "rz":
-            qis.rz(self._builder, *instruction.params, *qubits)
-        elif op_name == "s":
-            qis.s(self._builder, *qubits)
-        elif op_name == "sdg":
-            qis.s_adj(self._builder, *qubits)
-        elif op_name == "t":
-            qis.t(self._builder, *qubits)
-        elif op_name == "tdg":
-            qis.t_adj(self._builder, *qubits)
-        elif op_name == "x":
-            qis.x(self._builder, *qubits)
-        elif op_name == "y":
-            qis.y(self._builder, *qubits)
-        elif op_name == "z":
-            qis.z(self._builder, *qubits)
-        elif op_name == "id":
-            # Identity: apply X twice (no-op effect)
-            qubit = qubits[0]
-            qis.x(self._builder, qubit)
-            qis.x(self._builder, qubit)
-        # Handle composite instructions (instructions with definitions)
-        elif instruction.definition is not None:
-            logger.debug(
-                "Processing composite instruction %s with qubits %s",
-                instruction.name,
-                qargs,
+        elif op_name in PYQIR_ONE_QUBIT_OP_MAP:
+            PYQIR_ONE_QUBIT_OP_MAP[op_name](self._builder, qubits[0])
+        elif op_name in PYQIR_ONE_QUBIT_ROTATION_MAP:
+            PYQIR_ONE_QUBIT_ROTATION_MAP[op_name](
+                self._builder, float(instruction.params[0]), qubits[0]
             )
+        elif op_name in PYQIR_TWO_QUBIT_OP_MAP:
+            PYQIR_TWO_QUBIT_OP_MAP[op_name](self._builder, qubits[0], qubits[1])
+        elif op_name in PYQIR_THREE_QUBIT_OP_MAP:
+            PYQIR_THREE_QUBIT_OP_MAP[op_name](self._builder, *qubits)
+        elif instruction.definition is not None:
             self._process_composite_instruction(instruction, qargs, cargs)
         else:
             raise QiskitConversionError(
@@ -329,4 +285,4 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
 
     def bitcode(self) -> bytes:
         """Return the QIR as bitcode."""
-        return self._module.bitcode()
+        return self._module.bitcode

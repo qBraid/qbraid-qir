@@ -1,4 +1,4 @@
-# Copyright 2025 qBraid
+# Copyright 2026 qBraid
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -98,7 +98,7 @@ class QiskitModule:
         self,
         circuit: QuantumCircuit,
         name: str,
-        module: Module,
+        module: Optional[Module],
         num_qubits: int,
         num_clbits: int,
         reg_sizes: list[int],
@@ -123,7 +123,7 @@ class QiskitModule:
         return self._name
 
     @property
-    def module(self) -> Module:
+    def module(self) -> Optional[Module]:
         """Return the PyQIR module."""
         return self._module
 
