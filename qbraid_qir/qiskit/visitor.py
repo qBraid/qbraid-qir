@@ -63,11 +63,16 @@ class QuantumCircuitElementVisitor(metaclass=ABCMeta):
     """Abstract base class for quantum circuit element visitors."""
 
     @abstractmethod
-    def visit_register(self, register):
+    def visit_register(self, register: Union[QuantumRegister, ClassicalRegister]) -> None:
         """Visit a register element."""
 
     @abstractmethod
-    def visit_instruction(self, instruction, qargs, cargs):
+    def visit_instruction(
+        self,
+        instruction: Instruction,
+        qargs: tuple[Qubit, ...],
+        cargs: tuple[Clbit, ...],
+    ) -> None:
         """Visit an instruction element."""
 
 
@@ -150,22 +155,23 @@ class BasicQiskitVisitor(  # pylint: disable=too-many-instance-attributes
         self._check_initialized()
         self._builder.ret(None)
 
-    def record_output(self, module: QiskitModule) -> None:
-        """Record output for classical registers.
-
-        Args:
-            module: The QiskitModule containing register information.
-        """
+    def record_output(self) -> None:
+        """Record output for classical registers using the visited module's register layout."""
         if not self._record_output:
             return
         self._check_initialized()
+
+        if self._qiskit_module is None:
+            raise RuntimeError(
+                "No QiskitModule has been visited. Call visit_qiskit_module() first."
+            )
 
         i8p = PointerType(IntType(self._module.context, 8))
 
         # Qiskit inverts the ordering of results within each register
         # but keeps the overall register ordering
         logical_id_base = 0
-        for size in module.reg_sizes:
+        for size in self._qiskit_module.reg_sizes:
             rt.array_record_output(
                 self._builder,
                 pyqir.const(IntType(self._module.context, 64), size),

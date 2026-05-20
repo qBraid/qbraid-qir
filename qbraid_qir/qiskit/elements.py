@@ -191,5 +191,5 @@ class QiskitModule:
         visitor.visit_qiskit_module(self)
         for element in self._elements:
             element.accept(visitor)
-        visitor.record_output(self)
+        visitor.record_output()
         visitor.finalize()
