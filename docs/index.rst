@@ -81,11 +81,11 @@ qBraid-QIR requires Python 3.10 or greater. The base package can be installed wi
    pip install qbraid-qir
 
 
-To enable specific conversions such as OpenQASM 3 to QIR or Cirq to QIR, you can install one or both extras:
+To enable specific conversions such as OpenQASM 3 to QIR, Cirq to QIR, or Qiskit to QIR, you can install the extras:
 
 .. code-block:: bash
 
-   pip install 'qbraid-qir[qasm3,cirq]'
+   pip install 'qbraid-qir[qasm3,cirq,qiskit]'
 
 
 Resources
@@ -117,6 +117,7 @@ Resources
    api/qbraid_qir
    api/qbraid_qir.cirq
    api/qbraid_qir.qasm3
+   api/qbraid_qir.qiskit
    api/qbraid_qir.squin
 
 .. toctree::

@@ -61,6 +61,12 @@ For Cirq to QIR conversions, install the `cirq` extra:
 pip install 'qbraid-qir[cirq]'
 ```
 
+For Qiskit to QIR conversions, install the `qiskit` extra:
+
+```shell
+pip install 'qbraid-qir[qiskit]'
+```
+
 For QIR to SQUIN conversions, install the `squin` extra:
 
 ```shell
@@ -142,6 +148,22 @@ circuit = cirq.Circuit(
 )
 
 module = cirq_to_qir(circuit, name="my-circuit")
+
+ir = str(module)
+```
+
+### Qiskit conversions
+
+```python
+from qiskit import QuantumCircuit
+from qbraid_qir import qiskit_to_qir
+
+circuit = QuantumCircuit(2, 2)
+circuit.h(0)
+circuit.cx(0, 1)
+circuit.measure([0, 1], [0, 1])
+
+module = qiskit_to_qir(circuit, name="bell")
 
 ir = str(module)
 ```
