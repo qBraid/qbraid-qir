@@ -28,6 +28,15 @@ Types of changes:
 
 ### ⬇️  Dependency Updates
 
+- Updated `autoqasm` requirement from `>=0.1.0` to `>=0.2.0` ([#278](https://github.com/qBraid/qbraid-qir/pull/278))
+- Updated `qbraid` requirement from `>=0.11.0,<0.12.0` to `>=0.11.1,<0.12.0` ([#279](https://github.com/qBraid/qbraid-qir/pull/279))
+- Updated `sphinx` requirement from `>=7.3.7,<=8.3.0` to `>=8.1.3,<=8.3.0` ([#282](https://github.com/qBraid/qbraid-qir/pull/282))
+- Updated `sphinx-rtd-theme` requirement from `>=2.0,<3.2` to `>=3.1.0,<3.2` ([#280](https://github.com/qBraid/qbraid-qir/pull/280))
+- Updated `sphinx-autodoc-typehints` requirement from `>=1.24,<3.2` to `>=3.0.1,<3.2` ([#281](https://github.com/qBraid/qbraid-qir/pull/281))
+- Bumped `actions/configure-pages` from 5 to 6 ([#274](https://github.com/qBraid/qbraid-qir/pull/274))
+- Bumped `actions/deploy-pages` from 4 to 5 ([#275](https://github.com/qBraid/qbraid-qir/pull/275))
+- Bumped `codecov/codecov-action` from 5.5.2 to 6.0.1 ([#276](https://github.com/qBraid/qbraid-qir/pull/276))
+
 ### 👋  Deprecations
 
 ## Past releases
