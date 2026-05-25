@@ -1,4 +1,4 @@
-qbraid>=0.11.1,<0.12.0
+qbraid>=0.12.1,<0.13.0
 pytest
 pytest-cov
 autoqasm>=0.2.0
