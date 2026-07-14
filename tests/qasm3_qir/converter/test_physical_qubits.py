@@ -32,7 +32,9 @@ from qbraid_qir.qasm3.visitor import QasmQIRVisitor
 from tests.qir_utils import (
     check_attributes,
     check_measure_op,
+    check_resets,
     check_single_qubit_gate_op,
+    check_single_qubit_rotation_op,
     check_two_qubit_gate_op,
 )
 
@@ -99,6 +101,11 @@ def test_qiskit_style_transpiled_program():
     generated_qir = str(result).splitlines()
 
     check_attributes(generated_qir, 3, 3)
+    # pyqir emits pi/2 as its IEEE-754 hex form rather than a decimal literal.
+    check_single_qubit_rotation_op(generated_qir, 1, [0], ["0x3FF921FB54442D18"], "rz")
+    # QIR has no native "sx", so pyqasm decomposes it to h - s - h, all on qubit 0.
+    check_single_qubit_gate_op(generated_qir, 2, [0, 0], "h")
+    check_single_qubit_gate_op(generated_qir, 1, [0], "s")
     check_two_qubit_gate_op(generated_qir, 2, [[0, 1], [1, 2]], "cz")
     check_measure_op(generated_qir, 3, [0, 1, 2], [0, 1, 2])
 
@@ -118,6 +125,7 @@ def test_physical_qubit_reset():
 
     check_attributes(generated_qir, 3, 1)
     check_single_qubit_gate_op(generated_qir, 1, [2], "h")
+    check_resets(generated_qir, 1, [2])
     check_measure_op(generated_qir, 1, [2], [0])
 
 

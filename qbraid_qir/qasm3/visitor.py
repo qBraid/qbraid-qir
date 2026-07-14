@@ -30,7 +30,6 @@ import openqasm3.ast as qasm3_ast
 import pyqir
 import pyqir.rt
 from openqasm3.ast import UnaryOperator
-from openqasm3.visitor import QASMVisitor
 from pyqir import qis
 
 from qbraid_qir._pyqir_compat import pointer_id, qubit_pointer_type
@@ -59,36 +58,6 @@ def _physical_qubit_index(node: Any) -> Optional[int]:
 
     match = _PHYSICAL_QUBIT_RE.match(node.name)
     return int(match.group(1)) if match else None
-
-
-class _HighestPhysicalQubit(QASMVisitor):
-    """Finds the largest physical qubit index addressed anywhere in a program."""
-
-    def __init__(self) -> None:
-        self.highest = -1
-
-    # Name and signature are fixed by openqasm3's QASMVisitor dispatch.
-    def visit_Identifier(  # pylint: disable=invalid-name,unused-argument
-        self, node: qasm3_ast.Identifier, context: Any = None
-    ) -> None:
-        index = _physical_qubit_index(node)
-        if index is not None:
-            self.highest = max(self.highest, index)
-
-
-def _required_qubits(module: QasmQIRModule) -> int:
-    """Number of qubits the entry point must declare.
-
-    A program that addresses physical qubits declares no qubit register, so pyqasm
-    reports ``num_qubits == 0`` for it after unrolling. Physical indices are absolute
-    hardware addresses, so the entry point has to cover the highest one used: a program
-    touching only "$7" still needs 8 qubits for "$7" to be a valid QIR qubit id.
-    """
-    finder = _HighestPhysicalQubit()
-    for statement in module.qasm_program.unrolled_ast.statements:
-        finder.visit(statement)
-
-    return max(module.num_qubits, finder.highest + 1)
 
 
 class QasmQIRVisitor(QIRVisitor):
@@ -179,7 +148,11 @@ class QasmQIRVisitor(QIRVisitor):
         # Set qir_profiles based on the profile being used
         qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "base"
 
-        self._required_qubit_count = _required_qubits(module)
+        # pyqasm registers physical qubits during unrolling and folds them into
+        # num_qubits: indices are absolute hardware addresses, so a program touching
+        # only "$7" reports 8 qubits, which is what the entry point has to declare for
+        # "$7" to be a valid QIR qubit id.
+        self._required_qubit_count = qasm3_module.num_qubits
 
         entry = pyqir.entry_point(
             self._llvm_module,
