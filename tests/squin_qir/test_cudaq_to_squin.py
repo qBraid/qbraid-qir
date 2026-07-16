@@ -20,9 +20,12 @@ from qbraid_qir._pyqir_compat import pyqir_uses_opaque_pointers
 
 cudaq = pytest.importorskip("cudaq")
 
-# cudaq 0.15+ emits opaque-pointer QIR (QIR 2.0), which only pyqir 0.12+ can parse.
-# Under the typed-pointer pyqir leg, pyqir.Module.from_ir rejects that text, so these
-# translations can only be exercised against pyqir 0.12+.
+# cudaq 0.15+ emits opaque-pointer QIR (QIR 2.0) with no option to emit typed pointers,
+# and pyqir 0.11.x (LLVM 14) cannot parse opaque pointers -- so pyqir.Module.from_ir
+# rejects cudaq's output on the typed-pointer leg. This is a hard capability requirement,
+# not a workaround: the cudaq->squin path only exists on pyqir 0.12+. The squin loader
+# itself is still exercised on the typed-pointer leg by test_qir_to_squin.py, which loads
+# a committed typed-pointer fixture (parseable by both pyqir versions).
 pytestmark = pytest.mark.skipif(
     not pyqir_uses_opaque_pointers(),
     reason="cudaq emits opaque-pointer QIR that requires pyqir 0.12+ to parse",

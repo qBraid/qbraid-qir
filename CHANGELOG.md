@@ -26,6 +26,8 @@ Types of changes:
 
 ### 🐛  Bug Fixes
 
+- Fixed the cudaq→squin tests (`test_bell_state`, `test_ghz_state`) failing under the typed-pointer pyqir (0.11.x) CI leg. cudaq 0.15+ emits opaque-pointer QIR (QIR 2.0) that only pyqir 0.12+ can parse, so these tests are now gated on `pyqir_uses_opaque_pointers()`. ([#292](https://github.com/qBraid/qbraid-qir/pull/292))
+
 ### ⬇️  Dependency Updates
 
 - Updated `autoqasm` requirement from `>=0.1.0` to `>=0.2.0` ([#278](https://github.com/qBraid/qbraid-qir/pull/278))
