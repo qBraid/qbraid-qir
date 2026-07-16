@@ -16,7 +16,17 @@
 
 import pytest
 
+from qbraid_qir._pyqir_compat import pyqir_uses_opaque_pointers
+
 cudaq = pytest.importorskip("cudaq")
+
+# cudaq 0.15+ emits opaque-pointer QIR (QIR 2.0), which only pyqir 0.12+ can parse.
+# Under the typed-pointer pyqir leg, pyqir.Module.from_ir rejects that text, so these
+# translations can only be exercised against pyqir 0.12+.
+pytestmark = pytest.mark.skipif(
+    not pyqir_uses_opaque_pointers(),
+    reason="cudaq emits opaque-pointer QIR that requires pyqir 0.12+ to parse",
+)
 
 # Imports after importorskip so optional dependency is not required at import time.
 from qbraid_qir.squin import load  # pylint: disable=wrong-import-position
