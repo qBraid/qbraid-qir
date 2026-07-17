@@ -233,12 +233,8 @@ class QasmQIRVisitor(QIRVisitor):
         qir_bits = []
         bit_list: list[Any] = []
         if isinstance(operation, qasm3_ast.QuantumMeasurementStatement):
-            if operation.target is None:
-                raise_qasm3_error(
-                    "Measurement result must be assigned to a classical bit, "
-                    "e.g. 'c[0] = measure q[0];'",
-                    span=operation.span,
-                )
+            # _visit_measurement is the sole handler for measurement statements and has
+            # already rejected a missing target, so operation.target is non-None here.
             bit_list = [operation.measure.qubit] if qubits else [operation.target]
         else:
             bit_list = (
