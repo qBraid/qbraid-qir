@@ -23,6 +23,7 @@ without code duplication, based on JSON profile specifications.
 """
 
 import logging
+import re
 from typing import Any, Callable, List, Optional, Union
 
 import openqasm3.ast as qasm3_ast
@@ -40,6 +41,23 @@ from .exceptions import raise_qasm3_error
 from .maps import PYQIR_ONE_QUBIT_ROTATION_MAP, map_qasm_op_to_pyqir_callable
 
 logger = logging.getLogger(__name__)
+
+
+_PHYSICAL_QUBIT_RE = re.compile(r"^\$(\d+)$")
+
+
+def _physical_qubit_index(node: Any) -> Optional[int]:
+    """Return the hardware index of a physical qubit reference, else None.
+
+    Physical qubits are written "$n" in OpenQASM 3 and survive unrolling as a plain
+    ``Identifier`` (they have no declaring register), unlike virtual qubits which
+    become ``IndexedIdentifier``. The index is carried in the name: "$3" is qubit 3.
+    """
+    if not isinstance(node, qasm3_ast.Identifier):
+        return None
+
+    match = _PHYSICAL_QUBIT_RE.match(node.name)
+    return int(match.group(1)) if match else None
 
 
 class QasmQIRVisitor(QIRVisitor):
@@ -81,6 +99,7 @@ class QasmQIRVisitor(QIRVisitor):
         self._global_creg_size_map: dict[str, int] = {}
         self._custom_gates: dict[str, qasm3_ast.QuantumGateDefinition] = {}
         self._barrier_qubits: set[pyqir.Constant] = set()
+        self._required_qubit_count: int = 0
 
         # Configuration
         self._initialize_runtime: bool = initialize_runtime
@@ -129,10 +148,16 @@ class QasmQIRVisitor(QIRVisitor):
         # Set qir_profiles based on the profile being used
         qir_profiles = "adaptive" if self._profile.name == "AdaptiveExecution" else "base"
 
+        # pyqasm registers physical qubits during unrolling and folds them into
+        # num_qubits: indices are absolute hardware addresses, so a program touching
+        # only "$7" reports 8 qubits, which is what the entry point has to declare for
+        # "$7" to be a valid QIR qubit id.
+        self._required_qubit_count = qasm3_module.num_qubits
+
         entry = pyqir.entry_point(
             self._llvm_module,
             module.name,
-            qasm3_module.num_qubits,
+            self._required_qubit_count,
             qasm3_module.num_clbits,
             qir_profiles=qir_profiles,
         )
@@ -206,9 +231,10 @@ class QasmQIRVisitor(QIRVisitor):
             Unionlist[pyqir.Constant] : The bits for the operation.
         """
         qir_bits = []
-        bit_list = []
+        bit_list: list[Any] = []
         if isinstance(operation, qasm3_ast.QuantumMeasurementStatement):
-            assert operation.target is not None
+            # _visit_measurement is the sole handler for measurement statements and has
+            # already rejected a missing target, so operation.target is non-None here.
             bit_list = [operation.measure.qubit] if qubits else [operation.target]
         else:
             bit_list = (
@@ -216,8 +242,21 @@ class QasmQIRVisitor(QIRVisitor):
             )
 
         for bit in bit_list:
-            # as we have unrolled qasm3, we can assume that the bit is an IndexedIdentifier
-            assert isinstance(bit, qasm3_ast.IndexedIdentifier)
+            # Physical qubits ("$n") are not backed by a declared register: they carry
+            # their hardware index in the identifier itself, so "$3" is qubit 3. Qiskit
+            # emits these when a circuit is transpiled against a backend.
+            physical_id = _physical_qubit_index(bit) if qubits else None
+            if physical_id is not None:
+                qir_bits.append(pyqir.qubit(self._llvm_module.context, physical_id))
+                continue
+
+            # Everything else is register-backed and, post-unroll, indexed.
+            if not isinstance(bit, qasm3_ast.IndexedIdentifier):
+                kind = "qubit" if qubits else "classical bit"
+                raise_qasm3_error(
+                    f"Unsupported {kind} operand of type {type(bit).__name__}",
+                    span=getattr(bit, "span", None),
+                )
             reg_name = bit.name.name
 
             assert isinstance(bit.indices, list) and len(bit.indices) == 1
@@ -275,9 +314,12 @@ class QasmQIRVisitor(QIRVisitor):
         """
         logger.debug("Visiting measurement statement '%s'", str(statement))
 
-        source = statement.measure.qubit
-        target = statement.target
-        assert source and target
+        if statement.target is None:
+            raise_qasm3_error(
+                "Measurement result must be assigned to a classical bit, "
+                "e.g. 'c[0] = measure q[0];'",
+                span=statement.span,
+            )
         source_ids = self._get_op_bits(statement, qubits=True)
         target_ids = self._get_op_bits(statement, qubits=False)
         measurement_func = self._profile.get_measurement_function()
@@ -325,7 +367,12 @@ class QasmQIRVisitor(QIRVisitor):
         if self._profile.restrictions.subset_barriers_allowed:
             return True
 
-        total_qubit_count = sum(self._global_qreg_size_map.values())
+        # Physical qubits belong to no declared register, so the register size map is
+        # empty for those programs and the entry point's qubit count is the only
+        # measure of how many qubits a full barrier has to cover.
+        total_qubit_count = max(
+            sum(self._global_qreg_size_map.values()), self._required_qubit_count
+        )
         return len(self._barrier_qubits) == total_qubit_count
 
     def _check_and_apply_barrier(self) -> None:
