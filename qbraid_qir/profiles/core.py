@@ -126,13 +126,20 @@ class BaseProfile(Profile):
         return False
 
     def record_output_method(self, visitor: QIRVisitor, module: QIRModule) -> None:
-        """Basic output recording - simple sequential recording."""
+        """Basic output recording - simple sequential recording.
+
+        Records only results a measurement actually wrote. Recording one per
+        *qubit* instead emitted reads of results the program never measured: a
+        circuit with no measurement declares ``required_num_results=0`` yet
+        recorded one result per qubit, and qir-runner reported the uninitialised
+        state it found there as if it were a measurement outcome.
+        """
         if visitor._record_output is False:
             return
         assert visitor._llvm_module is not None
         assert visitor._builder is not None
         i8p = pyqir.PointerType(pyqir.IntType(visitor._llvm_module.context, 8))
-        for i in range(module.num_qubits):
+        for i in sorted(visitor._measured_results):
             result_ref = pyqir.result(visitor._llvm_module.context, i)
             pyqir.rt.result_record_output(visitor._builder, result_ref, pyqir.Constant.null(i8p))
 
@@ -203,8 +210,11 @@ class AdaptiveProfile(Profile):
                             pyqir.rt.result_record_output(visitor._builder, result_ref, null_ptr)
                             recorded_ids.add(bit_id)
         else:
-            # Fallback to simple sequential recording
-            for i in range(module.num_qubits):
+            # Fallback to simple sequential recording, restricted to measured
+            # results for the same reason as BaseProfile. This branch is taken
+            # when there is no classical register, so iterating qubits here
+            # recorded results no measurement ever produced.
+            for i in sorted(visitor._measured_results):
                 result_ref = pyqir.result(visitor._llvm_module.context, i)
                 pyqir.rt.result_record_output(visitor._builder, result_ref, null_ptr)
 

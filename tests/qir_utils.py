@@ -406,14 +406,14 @@ def check_three_qubit_gate_op(
 
 
 def _validate_simple_custom_op(entry_body: list[str]):
+    # No result recording: the fixture declares no classical register, so the
+    # entry point declares required_num_results=0 and there is nothing to read.
     custom_op_lines = [
         initialize_call_string(),
         single_op_call_string("h", 0),
         single_op_call_string("z", 1),
         rotation_call_string("rx", 1.1, 0),
         double_op_call_string("cnot", 0, 1),
-        result_record_output_string(0),
-        result_record_output_string(1),
         return_string(),
     ]
 
@@ -431,8 +431,6 @@ def _validate_nested_custom_op(entry_body: list[str]):
         double_op_call_string("cnot", 0, 1),
         rotation_call_string("rx", 4.8, 1),
         rotation_call_string("ry", 5, 1),
-        result_record_output_string(0),
-        result_record_output_string(1),
         return_string(),
     ]
 
@@ -450,8 +448,6 @@ def _validate_complex_custom_op(entry_body: list[str]):
         rotation_call_string("ry", 0.1, 0),
         rotation_call_string("rz", 0.2, 0),
         double_op_call_string("cnot", 0, 1),
-        result_record_output_string(0),
-        result_record_output_string(1),
         return_string(),
     ]
 
