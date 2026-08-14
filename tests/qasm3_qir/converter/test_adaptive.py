@@ -413,3 +413,26 @@ def test_read_result_functionality():
     generated_qir = str(result).splitlines()
 
     check_read_result_calls(generated_qir, 1, [0])
+
+
+def test_adaptive_no_measurement_records_no_results():
+    """No classical register means nothing was measured, so nothing is recorded.
+
+    The adaptive profile previously fell back to recording one result per qubit
+    when no register structure was present, which made the runtime report
+    uninitialised results as measurement outcomes.
+    """
+    qasm3_string = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    qubit[2] q;
+
+    h q[0];
+    cx q[0], q[1];
+    """
+
+    generated_qir = str(qasm3_to_qir(qasm3_string, profile="adaptive")).splitlines()
+
+    recorded = [line for line in generated_qir if "record_output" in line and "call" in line]
+    assert recorded == []
