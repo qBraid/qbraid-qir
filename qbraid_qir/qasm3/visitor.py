@@ -106,12 +106,6 @@ class QasmQIRVisitor(QIRVisitor):
         self._record_output: bool = record_output
         self._emit_barrier_calls: bool = emit_barrier_calls
 
-        # Result ids actually written by a measurement. Output recording is
-        # driven by this rather than by a qubit or clbit count: a %Result only
-        # holds a value once mz writes it, so recording an id absent from this
-        # set reads uninitialised runtime state.
-        self._measured_results: set[int] = set()
-
         # Profile-specific attributes
         if self._profile.should_track_qubit_measurement():
             self._measured_qubits: dict[int, bool] = {}
