@@ -20,6 +20,8 @@ Types of changes:
 
 ### 🌟  Improvements
 
+- Added a `.github/CODEOWNERS` file designating @TheGupta2012 as code owner, matching the convention in `qBraid/qBraid` and `qBraid/pyqasm`. This declares ownership only; requiring code owner review is a separate branch protection setting, which stays off. ([#298](https://github.com/qBraid/qbraid-qir/pull/298))
+
 ### 📜  Documentation
 
 - Updated the `qbraid_qir.squin` module imports and __all__ to explicitly expose `SquinVisitor` and `InvalidSquinInput` alongside `load`, making these components part of the public API.
