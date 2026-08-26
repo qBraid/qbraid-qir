@@ -20,6 +20,8 @@ Types of changes:
 
 ### 🌟  Improvements
 
+- Added an OpenSSF Scorecard workflow that grades the repository's supply-chain practices, uploads the result to code scanning as SARIF, and publishes the score to the public Scorecard API. ([#300](https://github.com/qBraid/qbraid-qir/pull/300))
+
 ### 📜  Documentation
 
 - Updated the `qbraid_qir.squin` module imports and __all__ to explicitly expose `SquinVisitor` and `InvalidSquinInput` alongside `load`, making these components part of the public API.
