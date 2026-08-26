@@ -20,6 +20,7 @@ Types of changes:
 
 ### 🌟  Improvements
 
+- Added an OpenSSF Scorecard workflow that grades the repository's supply-chain practices, uploads the result to code scanning as SARIF, and publishes the score to the public Scorecard API. ([#300](https://github.com/qBraid/qbraid-qir/pull/300))
 - PyPI releases now authenticate with trusted publishing (OIDC) instead of the long-lived `PYPI_API_TOKEN` repository secret. `publish.yml` and `pre-release.yml` request `id-token: write` so `pypa/gh-action-pypi-publish` mints a short-lived credential, and the action attaches PEP 740 attestations to files published after this merges. ([#299](https://github.com/qBraid/qbraid-qir/pull/299))
 
 ### 📜  Documentation
