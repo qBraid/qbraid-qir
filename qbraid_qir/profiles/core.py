@@ -183,11 +183,14 @@ class AdaptiveProfile(Profile):
     def record_output_method(self, visitor: QIRVisitor, module: QIRModule) -> None:
         """Adaptive profile output recording - preserves register structure.
 
-        Records nothing when no classical register was declared: a measurement
-        needs a classical target, so such a program measured nothing and every
-        result is still uninitialised. The previous fallback recorded one result
-        per qubit there, which made the runtime report that uninitialised state
-        as a measurement outcome.
+        Records only results a measurement actually wrote, which is what
+        ``_clbit_labels`` alone cannot tell us: it is populated when a register is
+        *declared*, so a bit that was never measured still has a label. Recording it
+        makes the runtime report an uninitialised result as a measurement outcome.
+
+        A register with no measured bits is skipped entirely rather than recorded as
+        an empty array, and the array length counts the bits actually recorded --
+        emitting the declared width would promise elements that never follow.
         """
         if not visitor._record_output:
             return
@@ -199,21 +202,27 @@ class AdaptiveProfile(Profile):
 
         # Record output grouped by register to preserve structure
         for reg_name, reg_size in visitor._global_creg_size_map.items():
-            # Record array for each register
+            # Collect first (inverted order), so the array length matches what follows.
+            measured_ids = []
+            for i in range(reg_size - 1, -1, -1):
+                bit_id = visitor._clbit_labels.get(f"{reg_name}_{i}")
+                if bit_id is None or bit_id in recorded_ids:
+                    continue
+                if bit_id in visitor._measured_results:
+                    measured_ids.append(bit_id)
+
+            if not measured_ids:
+                continue
+
             pyqir.rt.array_record_output(
                 visitor._builder,
-                pyqir.const(pyqir.IntType(visitor._llvm_module.context, 64), reg_size),
+                pyqir.const(pyqir.IntType(visitor._llvm_module.context, 64), len(measured_ids)),
                 null_ptr,
             )
-            # Record individual results within the register (inverted order)
-            for i in range(reg_size - 1, -1, -1):
-                bit_label = f"{reg_name}_{i}"
-                if bit_label in visitor._clbit_labels:
-                    bit_id = visitor._clbit_labels[bit_label]
-                    if bit_id not in recorded_ids:
-                        result_ref = pyqir.result(visitor._llvm_module.context, bit_id)
-                        pyqir.rt.result_record_output(visitor._builder, result_ref, null_ptr)
-                        recorded_ids.add(bit_id)
+            for bit_id in measured_ids:
+                result_ref = pyqir.result(visitor._llvm_module.context, bit_id)
+                pyqir.rt.result_record_output(visitor._builder, result_ref, null_ptr)
+                recorded_ids.add(bit_id)
 
 
 class ProfileRegistry:
