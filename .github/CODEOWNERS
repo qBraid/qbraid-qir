@@ -1,0 +1,10 @@
+# Code ownership for this repository.
+#
+# Listing a user here makes them a review owner for the matching paths, so
+# GitHub requests their review on pull requests that touch those paths.
+# It does not grant merge permission — that comes from repository roles — and
+# it does not by itself make their approval mandatory, which is the
+# `require_code_owner_reviews` branch protection setting.
+#
+# qBraid QIR maintainers
+* @TheGupta2012
