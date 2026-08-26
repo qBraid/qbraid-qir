@@ -21,6 +21,7 @@ Types of changes:
 ### 🌟  Improvements
 
 - Added a `.github/CODEOWNERS` file designating @TheGupta2012 as code owner, matching the convention in `qBraid/qBraid` and `qBraid/pyqasm`. This declares ownership only; requiring code owner review is a separate branch protection setting, which stays off. ([#298](https://github.com/qBraid/qbraid-qir/pull/298))
+- PyPI releases now authenticate with trusted publishing (OIDC) instead of the long-lived `PYPI_API_TOKEN` repository secret. `publish.yml` and `pre-release.yml` request `id-token: write` so `pypa/gh-action-pypi-publish` mints a short-lived credential, and the action attaches PEP 740 attestations to files published after this merges. ([#299](https://github.com/qBraid/qbraid-qir/pull/299))
 
 ### 📜  Documentation
 
