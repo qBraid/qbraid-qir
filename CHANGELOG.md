@@ -20,6 +20,8 @@ Types of changes:
 
 ### 🌟  Improvements
 
+- PyPI releases now authenticate with trusted publishing (OIDC) instead of the long-lived `PYPI_API_TOKEN` repository secret. `publish.yml` and `pre-release.yml` request `id-token: write` so `pypa/gh-action-pypi-publish` mints a short-lived credential, and the action attaches PEP 740 attestations to files published after this merges. ([#299](https://github.com/qBraid/qbraid-qir/pull/299))
+
 ### 📜  Documentation
 
 - Updated the `qbraid_qir.squin` module imports and __all__ to explicitly expose `SquinVisitor` and `InvalidSquinInput` alongside `load`, making these components part of the public API.
