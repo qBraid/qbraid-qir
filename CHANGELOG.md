@@ -16,8 +16,6 @@ Types of changes:
 
 ### ➕  New Features
 
-- Added `qbraid_qir.qiskit` module for Qiskit to QIR conversion, ported from the archived [microsoft/qiskit-qir](https://github.com/microsoft/qiskit-qir) repository (MIT License). The module has been updated for compatibility with Qiskit 2.x and follows qbraid-qir conventions. Main entry point is `qiskit_to_qir(circuit, name=None, **kwargs)` which converts a Qiskit `QuantumCircuit` to a PyQIR `Module`. ([#272](https://github.com/qBraid/qbraid-qir/issues/272), [#271](https://github.com/qBraid/qbraid-qir/pull/271))
-
 ### 🌟  Improvements
 
 - Added a `.github/CODEOWNERS` file designating @TheGupta2012 as code owner, matching the convention in `qBraid/qBraid` and `qBraid/pyqasm`. This declares ownership only; requiring code owner review is a separate branch protection setting, which stays off. ([#298](https://github.com/qBraid/qbraid-qir/pull/298))
@@ -26,7 +24,7 @@ Types of changes:
 
 ### 📜  Documentation
 
-- Updated the `qbraid_qir.squin` module imports and __all__ to explicitly expose `SquinVisitor` and `InvalidSquinInput` alongside `load`, making these components part of the public API.
+- Added `SECURITY.md` documenting the supported version range and a private vulnerability disclosure path via GitHub Security Advisories. ([#296](https://github.com/qBraid/qbraid-qir/pull/296))
 
 ### 🐛  Bug Fixes
 
@@ -36,14 +34,7 @@ Types of changes:
 ### ⬇️  Dependency Updates
 
 - Updated `pyqasm` requirement from `>=0.4.0,<1.1.0` to `>=1.0.4,<1.1.0`, which is the first release that preserves physical qubits in `reset` statements rather than rewriting them to the internal pulse register.  ([#290](https://github.com/qBraid/qbraid-qir/pull/290))
-- Updated `autoqasm` requirement from `>=0.1.0` to `>=0.2.0` ([#278](https://github.com/qBraid/qbraid-qir/pull/278))
-- Updated `qbraid` requirement from `>=0.11.0,<0.12.0` to `>=0.11.1,<0.12.0` ([#279](https://github.com/qBraid/qbraid-qir/pull/279))
-- Updated `sphinx` requirement from `>=7.3.7,<=8.3.0` to `>=8.1.3,<=8.3.0` ([#282](https://github.com/qBraid/qbraid-qir/pull/282))
-- Updated `sphinx-rtd-theme` requirement from `>=2.0,<3.2` to `>=3.1.0,<3.2` ([#280](https://github.com/qBraid/qbraid-qir/pull/280))
-- Updated `sphinx-autodoc-typehints` requirement from `>=1.24,<3.2` to `>=3.0.1,<3.2` ([#281](https://github.com/qBraid/qbraid-qir/pull/281))
-- Bumped `actions/configure-pages` from 5 to 6 ([#274](https://github.com/qBraid/qbraid-qir/pull/274))
-- Bumped `actions/deploy-pages` from 4 to 5 ([#275](https://github.com/qBraid/qbraid-qir/pull/275))
-- Bumped `codecov/codecov-action` from 5.5.2 to 6.0.1 ([#276](https://github.com/qBraid/qbraid-qir/pull/276))
+- Bumped `actions/checkout` from 6 to 7 ([#289](https://github.com/qBraid/qbraid-qir/pull/289))
 
 ### 👋  Deprecations
 
