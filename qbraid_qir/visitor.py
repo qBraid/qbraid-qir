@@ -32,3 +32,8 @@ class QIRVisitor(ABC):
         self._builder: Optional[pyqir.Builder] = None
         self._clbit_labels: dict[str, int] = {}
         self._global_creg_size_map: dict[str, int] = {}
+        # Result ids actually written by a measurement. Output recording is driven by
+        # this rather than by a qubit or clbit count: a %Result only holds a value once
+        # mz writes it, so recording an id absent from this set reads uninitialised
+        # runtime state. Subclasses that emit measurements must populate it.
+        self._measured_results: set[int] = set()

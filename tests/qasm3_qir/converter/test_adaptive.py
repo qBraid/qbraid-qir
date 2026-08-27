@@ -18,6 +18,7 @@ Module containing unit tests for adaptive profile QIR validation and compliance.
 
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import (
+    array_record_output_string,
     check_adaptive_gate_set,
     check_adaptive_profile_compliance,
     check_attributes,
@@ -413,3 +414,78 @@ def test_read_result_functionality():
     generated_qir = str(result).splitlines()
 
     check_read_result_calls(generated_qir, 1, [0])
+
+
+def test_adaptive_no_measurement_records_no_results():
+    """No classical register means nothing was measured, so nothing is recorded.
+
+    The adaptive profile previously fell back to recording one result per qubit
+    when no register structure was present, which made the runtime report
+    uninitialised results as measurement outcomes.
+    """
+    qasm3_string = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    qubit[2] q;
+
+    h q[0];
+    cx q[0], q[1];
+    """
+
+    generated_qir = str(qasm3_to_qir(qasm3_string, profile="adaptive")).splitlines()
+
+    # Absence of record_output calls is not enough on its own: the module must also
+    # declare that it needs no result slots, and must not read any back.
+    check_attributes(generated_qir, 2, 0)
+    check_read_result_calls(generated_qir, 0, [])
+    recorded = [line for line in generated_qir if "record_output" in line and "call" in line]
+    assert recorded == []
+
+
+def test_adaptive_records_only_measured_bits_of_a_register():
+    """A declared-but-unmeasured bit is never recorded, and the array length matches.
+
+    ``_clbit_labels`` is populated when a register is declared, so it cannot answer
+    "was this measured?". Grouping on it alone recorded every declared bit: this
+    program measured one bit of three and emitted three result records under an
+    ``array_record_output(i64 3)``, handing the runtime two uninitialised slots and
+    an array whose length promised elements that never arrived.
+    """
+    qasm3_string = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    qubit[3] q;
+    bit[3] c;
+
+    h q[0];
+    c[0] = measure q[0];
+    """
+
+    generated_qir = str(qasm3_to_qir(qasm3_string, profile="adaptive")).splitlines()
+
+    assert array_record_output_string(1) in "\n".join(generated_qir)
+    recorded = [line for line in generated_qir if "result_record_output" in line and "call" in line]
+    assert len(recorded) == 1
+
+
+def test_adaptive_skips_a_register_with_no_measured_bits():
+    """A register nothing wrote to is omitted, not recorded as an empty array."""
+    qasm3_string = """
+    OPENQASM 3.0;
+    include "stdgates.inc";
+
+    qubit[2] q;
+    bit[1] used;
+    bit[2] unused;
+
+    h q[0];
+    used[0] = measure q[0];
+    """
+
+    generated_qir = str(qasm3_to_qir(qasm3_string, profile="adaptive")).splitlines()
+
+    arrays = [line for line in generated_qir if "array_record_output" in line and "call" in line]
+    assert len(arrays) == 1
+    assert array_record_output_string(1) in "\n".join(generated_qir)
