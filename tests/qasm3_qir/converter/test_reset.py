@@ -37,7 +37,7 @@ def test_reset_operations():
     reset q1;
     reset q2[1];
     reset q3[2];
-    reset q3[:2];
+    reset q3[{0, 1}];
     """
 
     result = qasm3_to_qir(qasm3_string)

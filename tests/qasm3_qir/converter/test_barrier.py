@@ -47,7 +47,7 @@ def test_barrier():
         x q1[i];
     }
 
-    barrier q1, q2[0:5], q3[:];
+    barrier q1, q2[:], q3[:];
     """
 
     result = qasm3_to_qir(qasm3_string)
@@ -83,7 +83,7 @@ def test_incorrect_barrier():
 
     qubit[3] q1;
 
-    barrier q1[:2];
+    barrier q1[{0, 1}];
     """
     with pytest.raises(
         NotImplementedError, match="Barrier operation on a qubit subset is not supported in pyqir"

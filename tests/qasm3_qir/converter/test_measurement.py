@@ -37,7 +37,7 @@ def test_measure():
     c1 = measure q1;
     measure q1 -> c1;
     c2[0] = measure q3[0];
-    measure q1[:1] -> c1[1];
+    measure q1[0] -> c1[1];
     measure q2[{0, 1}] -> c1[{1, 0}];
 
     """

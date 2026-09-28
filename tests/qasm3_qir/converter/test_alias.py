@@ -43,8 +43,8 @@ def test_alias():
     let myqreg0 = q;
     let myqreg1 = q[1];
     let myqreg2 = q[1:];
-    let myqreg3 = q[:4];
-    let myqreg4 = q[1:4];
+    let myqreg3 = q[{0, 1, 2, 3}];
+    let myqreg4 = q[{1, 2, 3}];
     let myqreg5 = q[1:2:4];
     let myqreg6 = q[{0, 1}];
 
@@ -135,7 +135,7 @@ def test_alias_in_scope_1():
     reset q[2];
 
     if(c[0]){
-        let alias = q[0:2];
+        let alias = q[{0, 1}];
         x alias[0];
         cx alias[0], alias[1];
     }
@@ -166,7 +166,7 @@ def test_alias_in_scope_2():
     qubit[4] q;
     bit[4] c;
 
-    let alias = q[0:2];
+    let alias = q[{0, 1}];
 
     h q;
     measure q -> c;
