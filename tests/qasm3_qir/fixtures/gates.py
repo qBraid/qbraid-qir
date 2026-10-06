@@ -65,7 +65,7 @@ def _generate_one_qubit_fixture(gate_name: str):
         qubit[2] q;
         {gate_name} q;
         {gate_name} q[0];
-        {gate_name} q[:];
+        {gate_name} q[0:1];
         """
         return qasm3_string
 
