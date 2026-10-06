@@ -705,6 +705,7 @@ class QasmQIRVisitor(QIRVisitor):
             qasm3_ast.QuantumGate: self._visit_generic_gate_operation,
             qasm3_ast.BranchingStatement: self._visit_branching_statement,
             qasm3_ast.QuantumPhase: lambda x: None,  # No operation
+            qasm3_ast.DelayInstruction: lambda x: None,  # No operation
         }
 
         visitor_function = visit_map.get(type(statement))

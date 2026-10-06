@@ -30,6 +30,7 @@ Types of changes:
 
 - Fixed `qasm3_to_qir` raising a bare `AssertionError` (with an empty message) for programs that address physical qubits, e.g. `h $0;`. Physical qubits are valid OpenQASM 3 and are what Qiskit emits when a circuit is transpiled against a backend (`qasm3.dumps(transpile(circuit, backend))`), but they survive unrolling as plain `Identifier` nodes rather than `IndexedIdentifier`, which the visitor assumed. They now lower to the QIR qubit of the same index (`$3` is qubit 3), and the entry point declares enough qubits to cover the highest index used. Operands the visitor cannot lower now raise `Qasm3ConversionError` with a message instead of an empty `AssertionError`. ([#290](https://github.com/qBraid/qbraid-qir/pull/290))
 - Fixed the cudaq→squin tests (`test_bell_state`, `test_ghz_state`) failing under the typed-pointer pyqir (0.11.x) CI leg. cudaq 0.15+ emits opaque-pointer QIR (QIR 2.0) that only pyqir 0.12+ can parse, so these tests are now gated on `pyqir_uses_opaque_pointers()`. ([#292](https://github.com/qBraid/qbraid-qir/pull/292))
+- Fixed `qasm3_to_qir()` throwing an "Unsupported statement of type DelayInstruction". A `DelayInstruction` is now treated as a no-op in QIR. This follows the precedent set by the same operation in Qiskit. ([#304](https://github.com/qBraid/qbraid-qir/issues/304))
 
 ### ⬇️  Dependency Updates
 
