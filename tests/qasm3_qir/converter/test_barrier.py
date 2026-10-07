@@ -24,7 +24,10 @@ from tests.qir_utils import check_attributes, check_barrier, check_single_qubit_
 
 
 # Test barrier operations in different ways
-def test_barrier():
+@pytest.mark.parametrize(
+    "indices", ["0:4", "{0, 1, 2, 3, 4}"], ids=["inclusive-range", "discrete-set"]
+)
+def test_barrier(indices):
     qasm3_string = """
     OPENQASM 3;
     include "stdgates.inc";
@@ -47,10 +50,10 @@ def test_barrier():
         x q1[i];
     }
 
-    barrier q1, q2[0:5], q3[:];
+    barrier q1, q2[0:4], q3[:];
     """
 
-    result = qasm3_to_qir(qasm3_string)
+    result = qasm3_to_qir(qasm3_string.replace("q2[0:4]", f"q2[{indices}]"))
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 8, 3)
     check_barrier(generated_qir, expected_barriers=4)
@@ -77,15 +80,16 @@ def test_barrier_in_function():
     check_barrier(generated_qir, 1)
 
 
-def test_incorrect_barrier():
+@pytest.mark.parametrize("indices", [":1", "{0, 1}"], ids=["inclusive-range", "discrete-set"])
+def test_incorrect_barrier(indices):
     subset = """
     OPENQASM 3;
 
     qubit[3] q1;
 
-    barrier q1[:2];
+    barrier q1[:1];
     """
     with pytest.raises(
         NotImplementedError, match="Barrier operation on a qubit subset is not supported in pyqir"
     ):
-        qasm3_to_qir(subset)
+        qasm3_to_qir(subset.replace("q1[:1]", f"q1[{indices}]"))

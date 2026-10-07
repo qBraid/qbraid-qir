@@ -35,6 +35,7 @@ Types of changes:
 
 - Updated `pyqasm` requirement from `>=0.4.0,<1.1.0` to `>=1.0.4,<1.1.0`, which is the first release that preserves physical qubits in `reset` statements rather than rewriting them to the internal pulse register.  ([#290](https://github.com/qBraid/qbraid-qir/pull/290))
 - Bumped `actions/checkout` from 6 to 7 ([#289](https://github.com/qBraid/qbraid-qir/pull/289))
+- Updated `pyqasm` requirement from `>=1.0.4,<1.1.0` to `>=1.3.0,<1.4.0`. pyqasm 1.3.0 treats qubit ranges as inclusive, as the OpenQASM 3 spec requires, so `q[0:2]` now selects three qubits instead of two. The QASM fixtures now use inclusive endpoints and also cover discrete index sets. ([#306](https://github.com/qBraid/qbraid-qir/pull/306))
 
 ### 👋  Deprecations
 

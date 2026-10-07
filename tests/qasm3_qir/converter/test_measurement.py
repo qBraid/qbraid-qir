@@ -17,12 +17,15 @@ Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
 
+import pytest
+
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import check_attributes, check_measure_op
 
 
 # 6. Test measurement operations in different ways
-def test_measure():
+@pytest.mark.parametrize("indices", [":0", "{0}"], ids=["inclusive-range", "discrete-set"])
+def test_measure(indices):
     qasm3_string = """
     OPENQASM 3;
 
@@ -37,12 +40,12 @@ def test_measure():
     c1 = measure q1;
     measure q1 -> c1;
     c2[0] = measure q3[0];
-    measure q1[:1] -> c1[1];
+    measure q1[:0] -> c1[1];
     measure q2[{0, 1}] -> c1[{1, 0}];
 
     """
 
-    result = qasm3_to_qir(qasm3_string)
+    result = qasm3_to_qir(qasm3_string.replace("q1[:0]", f"q1[{indices}]"))
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 8, 3)
     qubit_list = [0, 1, 0, 1, 7, 0, 2, 3]
