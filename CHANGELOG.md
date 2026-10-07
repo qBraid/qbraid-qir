@@ -21,6 +21,7 @@ Types of changes:
 - Added a `.github/CODEOWNERS` file designating @TheGupta2012 as code owner, matching the convention in `qBraid/qBraid` and `qBraid/pyqasm`. This declares ownership only; requiring code owner review is a separate branch protection setting, which stays off. ([#298](https://github.com/qBraid/qbraid-qir/pull/298))
 - Added an OpenSSF Scorecard workflow that grades the repository's supply-chain practices, uploads the result to code scanning as SARIF, and publishes the score to the public Scorecard API. ([#300](https://github.com/qBraid/qbraid-qir/pull/300))
 - PyPI releases now authenticate with trusted publishing (OIDC) instead of the long-lived `PYPI_API_TOKEN` repository secret. `publish.yml` and `pre-release.yml` request `id-token: write` so `pypa/gh-action-pypi-publish` mints a short-lived credential, and the action attaches PEP 740 attestations to files published after this merges. ([#299](https://github.com/qBraid/qbraid-qir/pull/299))
+- Added a `notify-docs` job to the publish workflow. When a release reaches PyPI it sends a `package-released` event to `qBraid/docs`, which opens a pull request bumping its `versions.json` so this release's documentation moves from Latest into Stable. The job reads the published version from PyPI rather than the release tag, runs with `continue-on-error`, and skips when `DOCS_DISPATCH_TOKEN` is absent, so it can never fail or block a release. Matches qBraid/pyqasm#443. ([#305](https://github.com/qBraid/qbraid-qir/pull/305))
 
 ### 📜  Documentation
 
