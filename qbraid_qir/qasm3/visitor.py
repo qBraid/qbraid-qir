@@ -333,6 +333,10 @@ class QasmQIRVisitor(QIRVisitor):
 
             measurement_func(self._builder, src_id, tgt_id)
 
+            result_id = pointer_id(tgt_id)
+            if result_id is not None:
+                self._measured_results.add(result_id)
+
     def _visit_reset(self, statement: qasm3_ast.QuantumReset) -> None:
         """Visit a reset statement element.
 

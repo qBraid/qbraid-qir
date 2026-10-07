@@ -17,12 +17,15 @@ Module containing unit tests for QASM3 to QIR conversion functions.
 
 """
 
+import pytest
+
 from qbraid_qir.qasm3 import qasm3_to_qir
 from tests.qir_utils import check_attributes, check_resets
 
 
 # 4. Test reset operations in different ways
-def test_reset_operations():
+@pytest.mark.parametrize("indices", [":1", "{0, 1}"], ids=["inclusive-range", "discrete-set"])
+def test_reset_operations(indices):
     """Test reset operations in different ways"""
     qasm3_string = """
     OPENQASM 3;
@@ -37,10 +40,10 @@ def test_reset_operations():
     reset q1;
     reset q2[1];
     reset q3[2];
-    reset q3[:2];
+    reset q3[:1];
     """
 
-    result = qasm3_to_qir(qasm3_string)
+    result = qasm3_to_qir(qasm3_string.replace("q3[:1]", f"q3[{indices}]"))
     generated_qir = str(result).splitlines()
     check_attributes(generated_qir, 6, 0)
     check_resets(generated_qir, expected_resets=5, qubit_list=[0, 2, 5, 3, 4])

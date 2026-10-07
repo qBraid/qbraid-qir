@@ -51,10 +51,10 @@ else5:                                            ; preds = %continue
   br label %continue6
 
 continue6:                                        ; preds = %else5, %then4
-  call void @__quantum__rt__result_record_output(ptr null, ptr null)
-  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 1 to ptr), ptr null)
-  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 2 to ptr), ptr null)
-  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 3 to ptr), ptr null)
+  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 4 to ptr), ptr null)
+  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 5 to ptr), ptr null)
+  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 6 to ptr), ptr null)
+  call void @__quantum__rt__result_record_output(ptr inttoptr (i64 7 to ptr), ptr null)
   ret void
 }
 
