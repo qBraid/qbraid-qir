@@ -36,6 +36,7 @@ jobs:
     # Stable docs. Never fails the release.
     needs: pypi-publish
     runs-on: ubuntu-latest
+    permissions: {}
     continue-on-error: true
     steps:
       - name: Send package-released event
