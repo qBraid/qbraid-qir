@@ -16,6 +16,8 @@ Types of changes:
 
 ### ➕  New Features
 
+- Added the `Publish qBraid Lab environment` workflow (`publish-lab-env.yml`), run by hand for a released version. It builds a `qbraid-qir (vX.Y.Z)` Lab environment with every extra, smoke tests it, and publishes it on qBraid staging or production, as pyqasm does. ([#309](https://github.com/qBraid/qbraid-qir/pull/309))
+
 ### 🌟  Improvements
 
 - Added a `.github/CODEOWNERS` file designating @TheGupta2012 as code owner, matching the convention in `qBraid/qBraid` and `qBraid/pyqasm`. This declares ownership only; requiring code owner review is a separate branch protection setting, which stays off. ([#298](https://github.com/qBraid/qbraid-qir/pull/298))
