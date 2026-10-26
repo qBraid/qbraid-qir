@@ -23,8 +23,7 @@ jobs:
         cache: pip
     - name: Install tox
       run: |
-        pip install --upgrade pip
-        pip install tox
+        pip install --require-hashes -r .github/requirements/tox.txt
     - name: Build docs
       run: |
         tox -e docs

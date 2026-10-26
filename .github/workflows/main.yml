@@ -26,10 +26,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - name: Upgrade pip and install build tools
+      - name: Install build tools
         run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel build
+          pip install --require-hashes -r .github/requirements/build.txt
       - name: Build the package
         run: |
           python -m build
@@ -61,7 +60,6 @@ jobs:
           path: dist
       - name: Install package wheel with extras
         run: |
-          pip install --upgrade pip
           pip install setuptools
           pip install -r requirements-test.txt
           bin/install_wheel_extras.sh dist --extra qasm3 --extra cirq --extra qiskit --extra squin
@@ -69,7 +67,6 @@ jobs:
         run: |
           pip install "pyqir>=0.10.0,<0.12"
           pytest tests/ --cov=qbraid_qir --cov-report=term --cov-report= --cov-config=pyproject.toml -q
-          pip install coverage
           mkdir -p cov_runs
           python -m coverage combine --data-file=cov_runs/.coverage.run1 .coverage
       - name: Run tests with pyqir 0.12+ (opaque pointers)
