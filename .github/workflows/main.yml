@@ -31,7 +31,7 @@ jobs:
           pip install --require-hashes -r .github/requirements/build.txt
       - name: Build the package
         run: |
-          python -m build
+          python -m build --no-isolation
       - name: Upload built package
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
