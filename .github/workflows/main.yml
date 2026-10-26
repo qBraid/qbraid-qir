@@ -8,6 +8,9 @@ on:
     branches: ['main']
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     if: github.event.pull_request.draft == false
@@ -17,21 +20,20 @@ jobs:
         python-version: ['3.11']
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - name: Upgrade pip and install build tools
+      - name: Install build tools
         run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel build
+          pip install --require-hashes -r .github/requirements/build.txt
       - name: Build the package
         run: |
-          python -m build
+          python -m build --no-isolation
       - name: Upload built package
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: built-package
           path: dist/*.whl
@@ -45,20 +47,19 @@ jobs:
         python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Download built package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: built-package
           path: dist
       - name: Install package wheel with extras
         run: |
-          pip install --upgrade pip
           pip install setuptools
           pip install -r requirements-test.txt
           bin/install_wheel_extras.sh dist --extra qasm3 --extra cirq --extra qiskit --extra squin
@@ -66,7 +67,6 @@ jobs:
         run: |
           pip install "pyqir>=0.10.0,<0.12"
           pytest tests/ --cov=qbraid_qir --cov-report=term --cov-report= --cov-config=pyproject.toml -q
-          pip install coverage
           mkdir -p cov_runs
           python -m coverage combine --data-file=cov_runs/.coverage.run1 .coverage
       - name: Run tests with pyqir 0.12+ (opaque pointers)
@@ -82,7 +82,7 @@ jobs:
           python -m coverage xml -o build/coverage/coverage.xml
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v6.0.1
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false

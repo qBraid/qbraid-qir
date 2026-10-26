@@ -3,6 +3,9 @@ name: Pre-release qbraid to PyPi
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   pypi-publish:
     name: Build dist & upload to PyPI
@@ -11,19 +14,18 @@ jobs:
       id-token: write  # mint the OIDC token PyPI trusted publishing verifies
       contents: read  # actions/checkout
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install build
+          python3 -m pip install --require-hashes -r .github/requirements/build.txt
 
       - name: Build binary wheel + source tarball
         id: build-dev
@@ -35,6 +37,6 @@ jobs:
             echo "dir=$out_dir" >> $GITHUB_OUTPUT
 
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           packages-dir: ${{ steps.build-dev.outputs.dir }}
